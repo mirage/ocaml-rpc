@@ -1,0 +1,225 @@
+(*
+ * Copyright (C) 2006-2010 Citrix Systems Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation; version 2.1 only. with the special
+ * exception on linking described in file LICENSE.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *)
+
+let lib_version = "0.1.1"
+let path = "/"
+
+exception Connection_reset
+
+module Utils = struct
+
+	exception Host_not_found of string
+
+	let open_connection_unix_fd filename =
+		let s = Unix.socket Unix.PF_UNIX Unix.SOCK_STREAM 0 in
+		try
+			let addr = Unix.ADDR_UNIX(filename) in
+			Unix.connect s addr;
+			s
+		with e ->
+			Unix.close s;
+			raise e
+
+	let open_connection_fd host port =
+		let s = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
+		try 
+			let he =
+				try Unix.gethostbyname host
+				with Not_found -> raise (Host_not_found host) in
+			if Array.length he.Unix.h_addr_list = 0
+			then failwith (Printf.sprintf "Couldn't resolve hostname: %s" host);
+			let ip = he.Unix.h_addr_list.(0) in
+			let addr = Unix.ADDR_INET(ip, port) in
+			Unix.connect s addr;
+			s
+		with e ->
+			Unix.close s;
+			raise e
+
+	let rec split ?(accu=[]) c s =
+		try
+			let i = String.index s c in
+			let prefix = String.sub s 0 i in
+			let suffix =
+				if i = String.length s - 1 then
+					""
+				else
+					String.sub s (i+1) (String.length s - i - 1) in
+			split ~accu:(prefix :: accu) c suffix
+		with _ ->
+			List.rev (s :: accu)
+
+	let strip s =
+		let is_space c = c = ' ' || c = '\n' || c = '\r' || c = '\t' in
+		let n = String.length s in
+		let start = ref 0 in
+		let ends = ref (n - 1) in
+		while is_space s.[!start] do
+			incr start;
+		done;
+		while is_space s.[!ends] do
+			decr ends;
+		done;
+		if !start = 0 && !ends = n - 1 then
+			s
+		else
+			String.sub s !start (!ends - !start + 1)
+
+end
+
+type content_type = [ `XML | `JSON ]
+
+let string_of_content_type = function
+	| `XML  -> "text/xml"
+	| `JSON -> "application/json"
+
+let content_type_of_string = function
+	| "text/xml"        -> `XML
+	| "application/json"-> `JSON
+	| s                 -> failwith (s ^ " is an invalid MIME content type")
+
+module Headers = struct
+
+	type t = {
+		version : string;
+		host : string;
+		user_agent : string;
+		content_type : content_type;
+	}
+			
+	let create ~host ~content_type = {
+		host = host;
+		version = "1.1";
+		user_agent = "rpc-light/" ^ lib_version;
+		content_type = content_type;
+	}
+
+	let to_string ~headers ~path =
+		Printf.sprintf "POST %s HTTP/%s\r\nUser-Agent: %s\r\nHost: %s\r\nContent-Type: %s\r\n\r\n"
+			path headers.version headers.user_agent headers.host (string_of_content_type headers.content_type)
+
+	exception Http_401_unauthorized
+	exception Http_request_rejected of string
+	exception Http_headers_truncated of string
+	exception Http_empty_request
+
+	let assert_success s =
+		match Utils.split ' ' s with
+		| "HTTP/1.1" :: "200" :: _ -> ()
+		| "HTTP/1.1" :: "401" :: _ -> raise Http_401_unauthorized
+		| _                        -> raise (Http_request_rejected s)
+
+	let of_string headers =
+		match Utils.split '\n' headers with
+		| []                  ->
+			raise Http_empty_request
+		| response :: headers ->
+			assert_success response;
+			let aux s = match Utils.split ':' s with
+				| []   -> raise Http_empty_request
+				| h::t -> (h, Utils.strip (String.concat ":" t)) in
+			let dict = List.map aux headers in
+			let get n =
+				try List.assoc n dict
+				with _ -> raise (Http_headers_truncated n) in
+			{
+				version        = get "Version";
+				host           = get "Host";
+				user_agent     = get "User-Agent";
+				content_type   = content_type_of_string (get "Content-Type");
+			}
+
+	let of_fd (fd: Unix.file_descr) = 
+		let buf = Buffer.create 64 in
+		let finished = ref false in
+		begin try
+			while not !finished do
+				let buffer = " " in
+				let read = Unix.read fd buffer 0 1 in
+				if read < 1 then raise (Http_headers_truncated (Buffer.contents buf));
+				let n = Buffer.length buf in
+				Buffer.add_char buf buffer.[0];
+				if n >= 4
+					&& Buffer.nth buf (n-4) = '\r'
+					&& Buffer.nth buf (n-3) = '\n'
+					&& Buffer.nth buf (n-2) = '\r'
+					&& Buffer.nth buf (n-1) = '\n' then
+					finished := true
+			done;
+		with Unix.Unix_error(Unix.ECONNRESET, _, _) -> raise Connection_reset end;
+		try of_string (Buffer.contents buf)
+		with _ -> raise Http_empty_request
+
+end
+
+let string_of_rpc_call headers call =
+	match headers.Headers.content_type with
+	| `XML  -> Xmlrpc.string_of_call call
+	| `JSON -> Jsonrpc.string_of_call call
+
+let rpc_response_of_fd headers fd =
+	match headers.Headers.content_type with
+	| `XML  -> Xmlrpc.response_of_in_channel (Unix.in_channel_of_descr fd)
+	| `JSON -> Jsonrpc.response_of_in_channel (Unix.in_channel_of_descr fd)
+
+let http_send_call ~fd ~path ~headers call =
+	let output_string str =
+		ignore (Unix.write fd str 0 (String.length str)) in
+	output_string (Headers.to_string ~path ~headers);
+	output_string (string_of_rpc_call headers call)
+
+(** Read the HTTP response from the fd *)
+let http_recv_response ~fd ~headers =
+	let (_ : Headers.t) = Headers.of_fd fd in
+	rpc_response_of_fd headers fd
+	
+let http_rpc_fd (fd: Unix.file_descr) headers call = 
+	try
+		http_send_call ~fd ~path ~headers call;
+		http_recv_response ~fd ~headers
+	with Unix.Unix_error(Unix.ECONNRESET, _, _) ->
+		raise Connection_reset
+
+type connection =
+	| Unix_socket of string
+	| Remote_port of int
+
+
+
+let with_fd ~connection ~headers ~path ~call f =
+	let s = 
+		match connection with
+		| Remote_port port ->
+			let s = Utils.open_connection_fd headers.Headers.host port in
+			Unix.setsockopt s Unix.TCP_NODELAY true;
+			s
+		| Unix_socket sock ->
+			Utils.open_connection_unix_fd sock in
+	try
+		let result = http_rpc_fd s headers call in
+		Unix.close s;
+		result;
+	with e ->
+		Unix.close s;
+		raise e
+
+let do_rpc ~content_type ~host ~port ~path call =
+	let headers = Headers.create ~content_type ~host in
+	let connection = Remote_port port in
+	with_fd ~connection ~headers ~path ~call rpc_response_of_fd
+
+let do_rpc_unix ~content_type ~filename ~path call =
+	let headers = Headers.create ~content_type ~host:"localhost" in
+	let connection = Unix_socket filename in
+	with_fd ~connection ~headers ~path ~call rpc_response_of_fd

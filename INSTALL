@@ -1,0 +1,10 @@
+dependencies:
+
+* ocamlfind
+* type-conv
+* xmlm
+
+instructions:
+* make
+* make install
+* (make tests)
