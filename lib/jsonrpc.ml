@@ -512,12 +512,11 @@ let response_of_stream str =
 		  let error = get "error" d in
 		  let (_:int64) = match get "id" d with Int i -> i | _ -> raise (Malformed_method_response "id") in
 		  begin match result, error with
-			  | Null, Null -> raise (Malformed_method_response "null/null")
-			  | Null, v    -> failure v
 			  | v, Null    -> success v
+			  | Null, v    -> failure v
 			  | x,y        -> raise (Malformed_method_response (Printf.sprintf "<result=%s><error=%s>" (Rpc.to_string x) (Rpc.to_string y)))
 		  end
-	| rpc -> raise (Malformed_method_response (Rpc.to_string rpc))
+	| rpc -> raise (Malformed_method_response (Printf.sprintf "<response_of_stream(%s)>" (to_string rpc)))
 
 let response_of_string str =
 	let i = ref (-1) in
