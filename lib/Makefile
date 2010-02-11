@@ -9,7 +9,8 @@ TARGETS = \
 	rpc.cmi rpc.cmo rpc.o rpc.cmx \
 	pa_rpc.cma \
 	xmlrpc.cmi xmlrpc.cmo xmlrpc.o xmlrpc.cmx \
-	jsonrpc.cmi jsonrpc.cmo jsonrpc.o jsonrpc.cmx
+	jsonrpc.cmi jsonrpc.cmo jsonrpc.o jsonrpc.cmx \
+	rpc_client.cmi rpc_client.cmo rpc_client.o rpc_client.cmx
 
 .PHONY: all clean
 all: $(TARGETS)

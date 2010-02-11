@@ -65,10 +65,10 @@ module Utils = struct
 		let n = String.length s in
 		let start = ref 0 in
 		let ends = ref (n - 1) in
-		while is_space s.[!start] do
+		while !start < n && is_space s.[!start] do
 			incr start;
 		done;
-		while is_space s.[!ends] do
+		while  !ends > 0 && is_space s.[!ends] do
 			decr ends;
 		done;
 		if !start = 0 && !ends = n - 1 then
@@ -105,14 +105,14 @@ module Headers = struct
 		content_type = content_type;
 	}
 
-	let to_string ~headers ~path =
-		Printf.sprintf "POST %s HTTP/%s\r\nUser-Agent: %s\r\nHost: %s\r\nContent-Type: %s\r\n\r\n"
-			path headers.version headers.user_agent headers.host (string_of_content_type headers.content_type)
+	let to_string ~path ~headers ~body =
+		Printf.sprintf "POST %s HTTP/%s\r\nUser-Agent: %s\r\nHost: %s\r\nContent-Length: %d\r\nContent-Type: %s\r\n\r\n"
+			path headers.version headers.user_agent headers.host (String.length body) (string_of_content_type headers.content_type)
 
 	exception Http_401_unauthorized
 	exception Http_request_rejected of string
 	exception Http_headers_truncated of string
-	exception Http_empty_request
+	exception Http_empty_request of string
 
 	let assert_success s =
 		match Utils.split ' ' s with
@@ -120,47 +120,25 @@ module Headers = struct
 		| "HTTP/1.1" :: "401" :: _ -> raise Http_401_unauthorized
 		| _                        -> raise (Http_request_rejected s)
 
-	let of_string headers =
-		match Utils.split '\n' headers with
-		| []                  ->
-			raise Http_empty_request
-		| response :: headers ->
-			assert_success response;
-			let aux s = match Utils.split ':' s with
-				| []   -> raise Http_empty_request
-				| h::t -> (h, Utils.strip (String.concat ":" t)) in
-			let dict = List.map aux headers in
-			let get n =
-				try List.assoc n dict
-				with _ -> raise (Http_headers_truncated n) in
-			{
-				version        = get "Version";
-				host           = get "Host";
-				user_agent     = get "User-Agent";
-				content_type   = content_type_of_string (get "Content-Type");
-			}
-
-	let of_fd (fd: Unix.file_descr) = 
+	(* Consumes the headers *)
+	let strip (fd: Unix.file_descr) = 
+		let buffer = " " in
 		let buf = Buffer.create 64 in
 		let finished = ref false in
 		begin try
 			while not !finished do
-				let buffer = " " in
 				let read = Unix.read fd buffer 0 1 in
 				if read < 1 then raise (Http_headers_truncated (Buffer.contents buf));
 				let n = Buffer.length buf in
 				Buffer.add_char buf buffer.[0];
 				if n >= 4
-					&& Buffer.nth buf (n-4) = '\r'
-					&& Buffer.nth buf (n-3) = '\n'
-					&& Buffer.nth buf (n-2) = '\r'
-					&& Buffer.nth buf (n-1) = '\n' then
+					&& Buffer.nth buf (n-3) = '\r'
+					&& Buffer.nth buf (n-2) = '\n'
+					&& Buffer.nth buf (n-1) = '\r'
+					&& Buffer.nth buf (n) = '\n' then
 					finished := true
 			done;
 		with Unix.Unix_error(Unix.ECONNRESET, _, _) -> raise Connection_reset end;
-		try of_string (Buffer.contents buf)
-		with _ -> raise Http_empty_request
-
 end
 
 let string_of_rpc_call headers call =
@@ -174,14 +152,15 @@ let rpc_response_of_fd headers fd =
 	| `JSON -> Jsonrpc.response_of_in_channel (Unix.in_channel_of_descr fd)
 
 let http_send_call ~fd ~path ~headers call =
+	let body = string_of_rpc_call headers call in
 	let output_string str =
 		ignore (Unix.write fd str 0 (String.length str)) in
-	output_string (Headers.to_string ~path ~headers);
-	output_string (string_of_rpc_call headers call)
+	output_string (Headers.to_string ~path ~headers ~body);
+	output_string body
 
 (** Read the HTTP response from the fd *)
 let http_recv_response ~fd ~headers =
-	let (_ : Headers.t) = Headers.of_fd fd in
+	Headers.strip fd;
 	rpc_response_of_fd headers fd
 	
 let http_rpc_fd (fd: Unix.file_descr) headers call = 
@@ -194,8 +173,6 @@ let http_rpc_fd (fd: Unix.file_descr) headers call =
 type connection =
 	| Unix_socket of string
 	| Remote_port of int
-
-
 
 let with_fd ~connection ~headers ~path ~call f =
 	let s = 
