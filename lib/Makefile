@@ -15,10 +15,13 @@ TARGETS = \
 .PHONY: all clean
 all: $(TARGETS)
 
-pa_rpc.cma: rpc.cmo p4_rpc.cmo pa_rpc.cmo
+pa_module_conv.cmo: pa_module_conv.ml
+	$(OCAMLC) $(OCAMLFLAGS) -c -package camlp4 -pp "camlp4orf" -I $(shell ocamlfind query camlp4) -o $@ $^
+
+pa_rpc.cma: pa_module_conv.cmo rpc.cmo p4_rpc.cmo pa_rpc.cmo
 	$(OCAMLC) -a $(ICAMLP4) -o $@ $^
 
-pa_rpc.cmo: pa_rpc.ml p4_rpc.cmo
+pa_rpc.cmo: pa_rpc.ml p4_rpc.cmo pa_module_conv.cmo
 	$(OCAMLC) $(OCAMLFLAGS) -c -package camlp4,type-conv -pp "camlp4orf" $(ICAMLP4) $@ $<
 
 p4_rpc.cmo: p4_rpc.ml rpc.cmo
