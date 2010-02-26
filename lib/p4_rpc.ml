@@ -441,3 +441,153 @@ let gen tds =
 		value rec $Rpc_of.gen tds$;
 	>>
 
+
+(* Helpers for the client/server code *)
+let call_of n = "call_of_" ^ n
+let of_call n = n ^ "of_call"
+
+let response_of n = "response_of_" ^ n
+let of_response n = n ^ "_of_response"
+
+let argi i    = Printf.sprintf "__x%d__" i
+
+type arg = {
+	kind: [ `Optional of string | `Named of string | `Anonymous ];
+	ctyp: ctyp;
+}
+
+let rec decompose_arrows ctyp =
+	let rec aux = function
+		| <:ctyp< $a$ -> $b$ >> -> aux a @ aux b
+		| ctyp -> [ ctyp ] in
+	List.rev (List.tl (List.rev (aux ctyp)))
+
+let arg_of_ctyp accu = function
+	| <:ctyp< ? $lid:s$ : $ctyp$ >> -> { kind = `Optional s; ctyp = ctyp } :: accu
+	| <:ctyp< ~ $lid:s$ : $ctyp$ >> -> { kind = `Named s; ctyp = ctyp } :: accu
+	| ctyp                          -> { kind = `Anonymous; ctyp = ctyp } :: accu
+
+let args_of_ctyp args =
+	List.rev (List.fold_left arg_of_ctyp [] args)
+
+let contains_names args =
+	List.exists (fun arg -> arg.kind <> `Anonymous) args
+
+let ctyp_of_arg accu arg =
+	let _loc = loc_of_ctyp arg.ctyp in
+	match arg.kind with
+	| `Optional s -> <:ctyp< $lid:s$ : option $arg.ctyp$ >> :: accu
+	| `Named s    -> <:ctyp< $lid:s$ : $arg.ctyp$ >> :: accu
+	| `Anonymous -> accu
+
+let ctyp_of_args args =
+	let _loc = match args with arg :: _ -> loc_of_ctyp arg.ctyp | _ -> Loc.ghost in
+	<:ctyp< { $tySem_of_list (List.rev (List.fold_left ctyp_of_arg [] args))$ } >>
+
+let rec_binding_of_arg name accu arg =
+	let _loc = loc_of_ctyp arg.ctyp in
+	match arg.kind with
+	| `Optional s
+	| `Named s    -> <:rec_binding< Args.$uid:String.capitalize name$.$lid:s$ = $lid:s$ >> :: accu
+	| `Anonymous  -> accu
+
+let rec_binding_of_args name args =
+	let _loc = match args with arg :: _ -> loc_of_ctyp arg.ctyp | _ -> Loc.ghost in
+	<:expr< { $rbSem_of_list (List.fold_left (rec_binding_of_arg name) [] args)$ } >>
+
+let decompose_value accu = function
+	| <:sig_item@_loc< value $lid:n$ : $ctyp$ >> -> (_loc, n, args_of_ctyp (decompose_arrows ctyp)) :: accu
+	| _ -> accu
+
+let decompose_values mt =
+	match mt with
+	| <:module_type< sig $sg$ end >> ->
+		List.fold_left decompose_value [] (list_of_sig_item sg [])
+	| _ -> failwith "TODO"
+
+module Args = struct
+
+	let gen_one (_loc, name, args) =
+		let n = List.length args in
+		let anonymous_rpcs = list_foldi
+			(fun accu arg i -> if arg.kind = `Anonymous then Rpc_of.gen_one (argi (n - i), [], arg.ctyp) :: accu else accu)
+			[] (List.rev args) in
+		if contains_names args then
+			<:str_item<
+				module $uid:String.capitalize name$ = struct
+					type __t__ = $ctyp_of_args args$;
+					value $Rpc_of.gen_one ("__t__", [], ctyp_of_args args)$;
+					value $Of_rpc.gen_one ("__t__", [], ctyp_of_args args)$;
+					value $biAnd_of_list anonymous_rpcs$;
+				end		
+			>>
+		else
+			<:str_item<
+				module $uid:String.capitalize name$ = struct
+					value $biAnd_of_list anonymous_rpcs$;
+				end
+			>>
+
+	let gen mt =
+		let _loc = loc_of_module_type mt in
+		let sts = List.map gen_one (decompose_values mt) in
+		<:str_item<
+			module Args = struct
+				$stSem_of_list sts$
+			end
+		>>
+		
+end
+
+module Call_of = struct
+
+	let create _loc name args =
+		let n = List.length args in
+
+		let anonymous_exprs = list_foldi
+			(fun accu arg i ->
+				if arg.kind = `Anonymous then <:expr< Args.$uid:String.capitalize name$.$lid:rpc_of (argi (n - i))$ $lid:argi (n - i)$ >> :: accu else accu)
+			[] (List.rev args) in
+
+		if contains_names args then
+			<:expr<
+				let arg = $rec_binding_of_args name args$ in
+				Rpc.call $str:name$  [ (Args.$uid:String.capitalize name$.rpc_of___t__ arg) :: $expr_list_of_list _loc anonymous_exprs$ ]
+			>>
+		else
+			<:expr<
+				Rpc.call $str:name$ $expr_list_of_list _loc anonymous_exprs$
+			>>
+
+	let gen_one (_loc, name, args) =
+		let n = List.length args in
+		<:binding< $lid:call_of name$ =
+				$list_foldi
+					(fun accu arg i ->
+						match arg.kind with
+						  `Optional s -> <:expr< fun ? $lid:s$ -> $accu$ >>
+						| `Named s    -> <:expr< fun ~ $lid:s$ -> $accu$ >>
+						| `Anonymous  -> <:expr< fun $lid:argi (n - i)$ -> $accu$ >>
+					)
+					(create _loc name args)
+					(List.rev args)$
+		>>
+
+	let gen mt =
+		let _loc = loc_of_module_type mt in
+		let bindings = List.map gen_one (decompose_values mt) in
+		<:str_item<
+			value $biAnd_of_list bindings$;
+		>>
+end
+
+module Of_call = struct
+end
+
+let gen_module mt =
+	let _loc = loc_of_module_type mt in
+	<:str_item<
+		$Args.gen mt$;
+		$Call_of.gen mt$;
+	>>
+		

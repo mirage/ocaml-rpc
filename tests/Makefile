@@ -10,7 +10,8 @@ EXAMPLES = \
 	option \
 	encoding \
 	dict \
-	variants
+	variants \
+	client
 
 EXECS=$(foreach example, $(EXAMPLES), $(example).opt)
 
