@@ -48,10 +48,10 @@ let gen_derived_defs _loc tp drvs =
 let rec fetch_generator_arg paren_count strm =
 	match Stream.next strm with
 	| KEYWORD "(", _ -> fetch_generator_arg (paren_count + 1) strm
-	| KEYWORD ")", loc ->
-		if paren_count = 1 then [(EOI, loc)]
+	| KEYWORD ")", token_info ->
+		if paren_count = 1 then [(EOI, token_info)]
 		else fetch_generator_arg (paren_count - 1) strm
-	| EOI, loc -> Loc.raise loc (Stream.Error "')' missing")
+	| EOI, token_info -> Loc.raise (Gram.token_location token_info) (Stream.Error "')' missing")
 	| x -> x :: fetch_generator_arg paren_count strm
 
 let generator_arg =
