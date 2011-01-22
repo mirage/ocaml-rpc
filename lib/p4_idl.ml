@@ -239,7 +239,7 @@ struct
 			in
 
 			<:match_case< 
-				  ($str:rpc.name$,[$MyRpcLight.patt_list_of_list rpc.loc pattern_list$]) -> 
+				  ($str:rpc.name$,$MyRpcLight.patt_list_of_list rpc.loc pattern_list$) -> 
 					$outer$ 
 				| ($str:rpc.name$,_) -> 
 					raise (RpcFailure ("MESSAGE_PARAMETER_COUNT_MISMATCH", 
