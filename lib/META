@@ -9,6 +9,14 @@ package "syntax" (
   archive(syntax,toploop) = "pa_rpc.cma"
   )
 
+package "idl" (
+  version = "0.1"
+  description = "Preprocessor to convert an idl definition in ocaml into an implementation of client and server modules"
+  requires = "camlp4"
+  archive(syntax,preprocessor) = "idl.cma"
+  archive(syntax,toploop) = "idl.cma"
+  )
+
 package "core" (
   description = "Common RPC definitions"
   archive(byte) = "rpc.cmo"

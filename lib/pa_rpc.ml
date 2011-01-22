@@ -17,6 +17,6 @@ open PreCast
 open Ast
 
 let _ =
-	Pa_type_conv.add_generator "rpc" (fun tds -> P4_rpc.gen tds);
-	Pa_module_conv.add_generator "rpc" (fun mt -> P4_rpc.gen_module mt)
+	Pa_type_conv.add_generator "rpc" (fun tds -> P4_rpc.RpcLightNormal.gen tds);
+	Pa_module_conv.add_generator "rpc" (fun mt -> P4_rpc.RpcLightNormal.gen_module mt)
 
