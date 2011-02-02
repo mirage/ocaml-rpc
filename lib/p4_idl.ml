@@ -289,6 +289,8 @@ struct
 		      add_rpcs si lid body 
 		| <:str_item@_loc< module $foo$ = struct $sis$ end >> ->
 		  <:str_item< module $foo$ = struct $list:List.map filter_types (Ast.list_of_str_item sis [])$ end>>
+		| <:str_item@_loc< external $fname$ : $ctyp$ = $override$ >> ->
+		  <:str_item< >>
 		| _ -> si
 
 	and add_rpcs si lid body = 
