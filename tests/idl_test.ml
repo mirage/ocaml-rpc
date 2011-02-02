@@ -12,3 +12,8 @@ type variant = | Foo of string list
 external rpc1 : arg1:string -> int -> return_record = ""
 external rpc2 : ?opt:string -> variant -> unit = ""
 external rpc3 : int64 -> int64 = ""
+
+module SubModule = struct
+	external rpc4 : int64 -> int64 = ""
+end
+

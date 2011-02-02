@@ -26,6 +26,12 @@ module Impl = struct
   let rpc3 context i =
     Printf.printf "%Ld\n" i;
     Int64.add i 1L
+
+  module SubModule = struct
+    let rpc4 context i =
+      Printf.printf "%Ld\n" i;
+      Int64.sub i 1L
+  end
 end
 
 module MyServer=Idl_test.Server(Impl)
@@ -55,4 +61,5 @@ let _ =
     Idl_test.Client.rpc2 rpc (Idl_test.Foo ["hello";"there"]);
     Idl_test.Client.rpc2 rpc ~opt:"Optional" (Idl_test.Foo ["hello";"there"]);
     let i = Idl_test.Client.rpc3 rpc 999999999999999999L in
-      Printf.printf "%Ld\n" i
+      Printf.printf "%Ld\n" i;
+    Idl_test.Client.SubModule.rpc4 rpc 3L

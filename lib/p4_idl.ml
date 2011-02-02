@@ -35,6 +35,11 @@ struct
 		| Rpc of rpc 
 		| Namespace of string * (module_item list)
 
+	let rec contains_rpc module_item =
+	  match module_item with
+	    | Rpc _ -> true
+	    | Namespace (_,mis) -> List.fold_left (fun a b -> a || b) false (List.map contains_rpc mis)
+
 	let rpc_name_of_fname_and_namespace fname namespace =
 		String.concat "." (List.rev (fname::namespace))
  
@@ -94,10 +99,12 @@ struct
 			(fun item -> match item with  
 	 			| Rpc r -> gen_call_module r
 	 			| Namespace (n,sub_rpcs) ->
+				    if contains_rpc item then 
 	 				<:str_item< 
 	 					module $uid:n$ = struct
 	 					$list:gen_str_items sub_rpcs$
-	 				end >>) items
+	 				end >>
+				    else <:str_item< >>) items
 		in	
 
 		<:str_item< module Args = struct $list: gen_str_items rpcs$ end >>
@@ -155,10 +162,13 @@ struct
 		let rec gen_str_items items = List.map 
 			(fun item -> match item with  
 	 		| Rpc r -> gen_client_fun r
-	 		| Namespace (n,sub_rpcs) -> <:str_item< 
+	 		| Namespace (n,sub_rpcs) -> 
+			    if contains_rpc item then 
+			      <:str_item< 
 	 			module $uid:n$ = struct
 	 				$list:gen_str_items sub_rpcs$
-	 			end >>) items
+	 			end >> 
+			    else <:str_item< >>) items
 		in
 		<:str_item< module Client = struct $list: gen_str_items rpcs$ end >>
 
@@ -187,10 +197,12 @@ struct
 			(fun item -> match item with  
  				| Rpc r -> gen_server_sig r
  				| Namespace (n,sub_rpcs) ->
+				    if contains_rpc item then 
  					<:sig_item< 
  						module $uid:n$ : sig 
  							$list:gen_sig_items sub_rpcs$
- 						end >>) items
+ 						end >>
+				    else <:sig_item< >>) items
 		in
 
 		<:str_item< module type Server_impl = sig 
@@ -274,7 +286,9 @@ struct
 	let rec filter_types si =
 		match si with
 		| <:str_item< type $lid:lid$ = $body$ >> ->
-			add_rpcs si lid body 
+		      add_rpcs si lid body 
+		| <:str_item@_loc< module $foo$ = struct $sis$ end >> ->
+		  <:str_item< module $foo$ = struct $list:List.map filter_types (Ast.list_of_str_item sis [])$ end>>
 		| _ -> si
 
 	and add_rpcs si lid body = 
