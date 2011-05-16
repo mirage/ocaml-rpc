@@ -7,6 +7,7 @@ EXAMPLES = \
 	all_types \
 	phantom \
 	xapi \
+	json \
 	option \
 	encoding \
 	dict \
