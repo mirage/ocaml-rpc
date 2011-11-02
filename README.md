@@ -44,3 +44,8 @@ will give two functions:
 So if you want to marshal a value x of type t to JSON, you can use the following function:
 
     Jsonrpc.to_string (rpc_of_t x)
+
+# Dependencies
+
+* [xmlm](http://erratique.ch/software/xmlm)
+* [type-conv](http://hg.ocaml.info/release/type-conv)
