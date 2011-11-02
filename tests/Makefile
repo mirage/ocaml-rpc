@@ -11,17 +11,27 @@ EXAMPLES = \
 	option \
 	encoding \
 	dict \
-	variants
+	variants \
+	client
 
 EXECS=$(foreach example, $(EXAMPLES), $(example).opt)
 
 .PHONY: all clean
 all: $(EXECS)
 
+client.opt: idl_test.cmx idl_test.cmi client.cmx
+	$(OCAMLOPT) -linkpkg -package $(PACKS) -o $@ idl_test.cmx client.cmx
+
+idl_test.cmx: idl_test.ml idl_test.cmi
+	$(OCAMLOPT) -package $(PACKS),rpc-light.idl -syntax camlp4o -c -o $@ $<
+
 %.opt: %.cmx
 	$(OCAMLOPT) -linkpkg -package $(PACKS) -o $@ $<
 
 %.cmx: %.ml
+	$(OCAMLOPT) $(OCAMLFLAGS) -package $(PACKS),rpc-light.syntax -syntax camlp4o -c -o $@ $<
+
+%.cmi: %.mli
 	$(OCAMLOPT) $(OCAMLFLAGS) -package $(PACKS),rpc-light.syntax -syntax camlp4o -c -o $@ $<
 
 %_gen: %.ml
