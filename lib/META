@@ -4,7 +4,7 @@ requires = "rpc-light.xml, rpc-light.json"
 
 package "syntax" (
   description = "rpc-light: library to marshalling/unmarshalling ML types to/from RPC intermediate language"
-  requires = "type-conv.syntax"
+  requires = "type-conv"
   archive(syntax,preprocessor) = "pa_rpc.cma"
   archive(syntax,toploop) = "pa_rpc.cma"
   )

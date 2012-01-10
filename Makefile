@@ -1,4 +1,4 @@
-.PHONY: all
+.PHONY: all install
 
 all:
 	cd lib && $(MAKE) all
