@@ -16,7 +16,18 @@ open Camlp4
 open PreCast
 open Ast
 
-let _ =
-	Pa_type_conv.add_generator "rpc" (fun tds -> P4_rpc.RpcLightNormal.gen tds);
-	Pa_module_conv.add_generator "rpc" (fun mt -> P4_rpc.RpcLightNormal.gen_module mt)
+module Param = struct
+  let rpc = Gram.Entry.mk "rpc"
+  EXTEND Gram
+    GLOBAL: rpc;
+    pair: [[ x=STRING; "->"; y=STRING -> (x, y ) ]];
+    rpc:  [[ l = LIST0 [ pair ] SEP "," -> l]];
+  END
+end
 
+let _ =
+  (* type generator *)
+  Pa_type_conv.add_generator_with_arg "rpc" Param.rpc P4_rpc.RpcLightNormal.gen;
+  
+  (* module generator *)
+  Pa_module_conv.add_generator "rpc" (fun mt -> P4_rpc.RpcLightNormal.gen_module mt)

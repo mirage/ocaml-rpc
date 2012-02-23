@@ -25,6 +25,18 @@ module RpcLight = functor (Ast : Camlp4.Sig.Camlp4Ast) ->
     module Quotation = Camlp4.Struct.Quotation.Make(Ast)
     module Syntax = Camlp4.OCamlInitSyntax.Make(Ast)(Gram)(Quotation)
 
+(* This is the (optional) mapping between field names from types to serialized data *)
+let mapping = ref []
+let revmapping = ref []
+
+let map type_name =
+  try List.assoc type_name !mapping
+  with Not_found -> type_name
+
+let revmap data_name =
+  try List.assoc data_name !revmapping
+  with Not_found -> data_name
+
 let is_base = function
 	| "int64" | "int32" | "int" | "float" | "string" | "unit" -> true
 	| _ -> false
@@ -56,7 +68,7 @@ let rec decompose_fields _loc fields =
 	| <:ctyp< $t1$; $t2$ >> ->
 		decompose_fields _loc t1 @ decompose_fields _loc t2
 	| <:ctyp< $lid:field_name$: mutable $t$ >> | <:ctyp< $lid:field_name$: $t$ >> ->
-		[ field_name, t ]
+		[ map field_name, t ]
 	| _ -> failwith "unexpected type while processing fields"
 
 let expr_list_of_list _loc exprs =
@@ -235,7 +247,7 @@ module Rpc_of = struct
 			let new_id, new_pid = new_id _loc in
 			<:expr< Rpc.Enum (Array.to_list (Array.map (fun $new_pid$ -> $create new_id t$) $id$)) >>
 
-		| <:ctyp< { $t$ } >>              -> product (fun field -> <:expr< $id$ . $lid:field$ >>) t
+		| <:ctyp< { $t$ } >>              -> product (fun field -> <:expr< $id$ . $lid:revmap field$ >>) t
 		| <:ctyp< < $t$ > >>              -> product (fun field -> <:expr< $id$ # $lid:field$ >>) t
 
 		| <:ctyp< '$lid:a$ >>             -> <:expr< $lid:rpc_of_polyvar a$ $id$  >>
@@ -258,7 +270,7 @@ module Rpc_of = struct
 				args$
 		>>
 
-	let gen tds =
+	let gen tds =          
 		let _loc = loc_of_ctyp tds in
 		let bindings = List.map gen_one (list_of_ctyp_decl tds) in
 		biAnd_of_list bindings
@@ -421,7 +433,7 @@ module Of_rpc = struct
 			>>
 
 		| <:ctyp< { $t$ } >> ->
-			product name (fun n i ctyp -> <:rec_binding< $lid:n$ = $create name i ctyp$ >>) (fun es -> <:expr< { $rbSem_of_list es$ } >>) id t
+			product name (fun n i ctyp -> <:rec_binding< $lid:revmap n$ = $create name i ctyp$ >>) (fun es -> <:expr< { $rbSem_of_list es$ } >>) id t
 
 		| <:ctyp< < $t$ > >> ->
 			product name (fun n i ctyp -> <:class_str_item< method $lid:n$ = $create name i ctyp$ >>) (fun es -> <:expr< object $crSem_of_list es$ end >>) id t
@@ -453,8 +465,10 @@ module Of_rpc = struct
 end
 
 
-let gen tds =
+let gen tds args =
 	let _loc = loc_of_ctyp tds in
+	mapping := (match args with None -> [] | Some l -> l);
+	revmapping := List.map (fun (k,v) -> (v,k)) !mapping;
 	<:str_item<
 		value rec $Of_rpc.gen tds$;
 		value rec $Rpc_of.gen tds$;

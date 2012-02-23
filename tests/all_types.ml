@@ -30,7 +30,7 @@ type 'a x = {
 	f6: (unit * char) list;
 	f7: 'a list;
 	progress: int array;
- } with rpc
+ } with rpc ("f5" -> "type", "f7" -> "let")
 
 let _ =
 	let x = {
