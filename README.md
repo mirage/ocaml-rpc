@@ -1,4 +1,4 @@
-`rpc-light` is a small libraries to deal with RPCs in ocaml.
+`ocaml-rpc` is a libraries to deal with RPCs in ocaml.
 
 # RPC types
 
@@ -16,7 +16,7 @@ An RPC value is defined as follow:
 
 # Generating code
 
-The idea of `rpc-light` is to generate functions to convert values of a
+The idea behing `ocaml-rpc` is to generate functions to convert values of a
 given type to and from theirs RPC representations.
 
 In order to do so, it is sufficicient to add `with rpc` to the
@@ -24,13 +24,24 @@ corresponding type defintion. Hence :
 
     type t = ... with rpc
 
-will give two functions:
+this will give two functions:
 
 * A function to convert values of type `t` to values of type `Rpc.t` :
   `val rpc_of_t : t -> Rpc.t`
 
 * A function to convert values of type `Rpc.t` to values of type `t` :
   `val t_of_rpc : Rpc.t -> t`
+
+Optionaly, it is possible to have different field name in the OCaml
+type (if it is a record) and in the dictionary argumenent (the first
+elements of `Dict`):
+
+    type t = { foo: int; bar: int }
+    with rpc ("foo" -> "type", "bar" -> "let")
+
+This will replace "foo" by "type" and "bar" by "let" in the RPC memory
+representation. This is particularly useful when you want to integrate
+with an existing API and the field names are not valid OCaml identifiers.
 
 # Conversion functions
 
