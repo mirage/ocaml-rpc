@@ -16,7 +16,7 @@ An RPC value is defined as follow:
 
 # Generating code
 
-The idea behing `ocaml-rpc` is to generate functions to convert values of a
+The idea behind `ocaml-rpc` is to generate functions to convert values of a
 given type to and from theirs RPC representations.
 
 In order to do so, it is sufficicient to add `with rpc` to the
@@ -39,7 +39,7 @@ elements of `Dict`):
     type t = { foo: int; bar: int }
     with rpc ("foo" -> "type", "bar" -> "let")
 
-This will replace "foo" by "type" and "bar" by "let" in the RPC memory
+This will replace "foo" by "type" and "bar" by "let" in the RPC 
 representation. This is particularly useful when you want to integrate
 with an existing API and the field names are not valid OCaml identifiers.
 
