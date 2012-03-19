@@ -89,9 +89,9 @@ let _ =
 	let s_xml = Xmlrpc.response_of_string s_xml_str in
 	let f_xml = Xmlrpc.response_of_string f_xml_str in
 
-	(* Printf.printf "\n==Sanity check 2==\ncall=c_xml: %b\nsuccess=s_xml: %b\nfailure=f_xml: %b\n"
+	Printf.printf "\n==Sanity check 2==\ncall=c_xml: %b\nsuccess=s_xml: %b\nfailure=f_xml: %b\n"
 		(call = c_xml) (success = s_xml) (failure = f_xml);
-	assert (call = c_xml && success = s_xml && failure = f_xml); *)
+	assert (call = c_xml && success = s_xml && failure = f_xml);
 
 	let c_json = Jsonrpc.call_of_string c_json_str in
 	let s_json = Jsonrpc.response_of_string s_json_str in
