@@ -9,6 +9,7 @@ An RPC value is defined as follow:
       | Bool of bool
       | Float of float
       | String of string
+      | DateTime of string
       | Enum of t list
       | Dict of (string * t) list
       | Null
