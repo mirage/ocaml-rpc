@@ -3,7 +3,7 @@ OCAMLOPT = ocamlfind ocamlopt
 OCAMLFLAGS = -annot -g
 PACKS = xmlm
 
-ICAMLP4 = -I $(shell ocamlfind query camlp4) -I $(shell ocamlfind query type-conv)
+ICAMLP4 = -I $(shell ocamlfind query camlp4) -I $(shell ocamlfind query type_conv)
 DOCDIR  = /myrepos/xen-api-libs.hg/doc
 TARGETS = \
 	rpc.cmi rpc.cmo rpc.o rpc.cmx \
@@ -25,13 +25,13 @@ idl.cma: p4_rpc.cmo p4_idl.cmo
 	$(OCAMLC) -a $(ICAMLP4) -o $@ $^
 
 pa_rpc.cmo: pa_rpc.ml p4_rpc.cmo pa_module_conv.cmo
-	$(OCAMLC) $(OCAMLFLAGS) -c -package camlp4,type-conv -pp "camlp4orf" $(ICAMLP4) $@ $<
+	$(OCAMLC) $(OCAMLFLAGS) -c -package camlp4,type_conv -pp "camlp4orf" $(ICAMLP4) $@ $<
 
 p4_rpc.cmo: p4_rpc.ml rpc.cmo
-	$(OCAMLC) $(OCAMLFLAGS) -c -package camlp4,type-conv -pp "camlp4orf" $(ICAMLP4) $@ $<
+	$(OCAMLC) $(OCAMLFLAGS) -c -package camlp4,type_conv -pp "camlp4orf" $(ICAMLP4) $@ $<
 
 p4_idl.cmo: p4_idl.ml p4_rpc.cmo
-	$(OCAMLC) $(OCAMLFLAGS) -c -package camlp4,type-conv -pp "camlp4orf" $(ICAMLP4) $@ $<
+	$(OCAMLC) $(OCAMLFLAGS) -c -package camlp4,type_conv -pp "camlp4orf" $(ICAMLP4) $@ $<
 
 %.o %.cmx: %.ml
 	$(OCAMLOPT) $(OCAMLFLAGS) -package $(PACKS) -c -o $@ $<
