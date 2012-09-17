@@ -1,9 +1,9 @@
 version = "1.1.0"
-description = "RPC light: lightweight library to convert plain ML types to and from RPC values"
-requires = "rpc-light.xml, rpc-light.json"
+description = "RPC: lightweight library to convert plain ML types to and from RPC values"
+requires = "rpc.xml, rpc.json"
 
 package "syntax" (
-  description = "rpc-light: library to marshalling/unmarshalling ML types to/from RPC intermediate language"
+  description = "rpc: library to marshalling/unmarshalling ML types to/from RPC intermediate language"
   requires = "type_conv"
   archive(syntax,preprocessor) = "pa_rpc.cma"
   archive(syntax,toploop) = "pa_rpc.cma"
@@ -24,14 +24,14 @@ package "core" (
 
 package "xml" (
   description = "XML-RPC marshalling/unmarshalling"
-  requires = "rpc-light.core,xmlm"
+  requires = "rpc.core,xmlm"
   archive(byte) = "xmlrpc.cmo"
   archive(native) = "xmlrpc.cmx"
   )
 
 package "json" (
   description = "JSON-RPC marshalling/unmarshalling"
-  requires = "rpc-light.core"
+  requires = "rpc.core"
   archive(byte) = "jsonrpc.cmo"
   archive(native) = "jsonrpc.cmx"
 )

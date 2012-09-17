@@ -4,35 +4,35 @@ module Make (AstFilters : Camlp4.Sig.AstFilters) =
 struct
 	open AstFilters
 
-	module MyRpcLight = P4_rpc.RpcLight(Ast) 
+	module MyRpc = P4_rpc.Rpc(Ast)
 
-	(* We build up a list of the 'external' functions in the ml file *)    
+	(* We build up a list of the 'external' functions in the ml file *)
 	(* For each one, we construct the following record: *)
-	type rpc = { 
+	type rpc = {
 		(* Location of the original definition *)
 		loc : Ast.Loc.t;
 
 		(* Capitalized module path (e.g. ["Sr"; "Foo"] for an external defined as Sr.Foo.funct *)
 		namespace : string list;
- 
+
 		(* Name of the function itself, e.g. funct *)
 		fname : string;
- 
+
 		(* Name of the wire call, e.g. sr_foo_name *)
 		name : string;
- 
+
 		(* Arguments *)
-		args : MyRpcLight.arg list;
- 
+		args : MyRpc.arg list;
+
 		(* Return type *)
 		rtype : Ast.ctyp;
-		}    
+		}
 
 	(* As well as keeping track of the namespace within the rpc record *)
 	(* we keep a hierarchical data structure so that we can reconstruct *)
-	(* the module tree as required later *) 
-	type module_item = 
-		| Rpc of rpc 
+	(* the module tree as required later *)
+	type module_item =
+		| Rpc of rpc
 		| Namespace of string * (module_item list)
 
 	let rec contains_rpc module_item =
@@ -42,32 +42,32 @@ struct
 
 	let rpc_name_of_fname_and_namespace fname namespace =
 		String.concat "." (List.rev (fname::namespace))
- 
+
 	let rec return_type ctyp =
-		match ctyp with 
+		match ctyp with
 		| <:ctyp< $x$ -> $y$ >> ->
 			return_type y
 		| t -> t
 
 	(* Find rpcs - any 'external' definitions in the module *)
-	let rec find_rpcs (cur,namespace) si = 
+	let rec find_rpcs (cur,namespace) si =
 		match si with
 		| <:str_item< module $name$ = struct $sis$ end >> ->
 			let sis = Ast.list_of_str_item sis [] in
 			let (rpcs,_) = List.fold_left find_rpcs ([],name::namespace) sis in
 			((Namespace (name,List.rev rpcs))::cur,namespace)
 		| <:str_item@loc< external $fname$ : $ctyp$ = $override$ >> ->
-			let override_name = 
+			let override_name =
 				match override with
 				| Ast.LCons (name,Ast.LNil) -> name
 				| _ -> failwith "Cannot parse external definition"
 			in
-			let args = MyRpcLight.args_of_ctyp (MyRpcLight.decompose_arrows ctyp) in
+			let args = MyRpc.args_of_ctyp (MyRpc.decompose_arrows ctyp) in
 
-			let name = 
-				if override_name="" 
+			let name =
+				if override_name=""
 				then rpc_name_of_fname_and_namespace fname namespace
-				else override_name 
+				else override_name
 			in
 
 			let rtype = return_type ctyp in
@@ -79,62 +79,62 @@ struct
 				name = name;
 				args = args;
 				rtype = rtype; }
-			in 
+			in
 			((Rpc rpc)::cur,namespace)
 		| _ -> (cur,namespace)
 
 	(* Create the Args module - this contains the of_rpc and to_rpc functions
-	   used to convert the arguments of the function call to Rpc.t type. It 
-	   also contains converters for the return type, and a function to 
+	   used to convert the arguments of the function call to Rpc.t type. It
+	   also contains converters for the return type, and a function to
 	   construct a Rpc.call record *)
-	let make_args rpcs = 
+	let make_args rpcs =
 		let _loc = Ast.Loc.ghost in
 
 		let gen_call_module rpc =
-			MyRpcLight.Args.gen_one 
+			MyRpc.Args.gen_one
 			  (rpc.loc, rpc.namespace, rpc.fname, rpc.name, rpc.args, rpc.rtype)
 		in
 
-		let rec gen_str_items items = List.map 
-			(fun item -> match item with  
+		let rec gen_str_items items = List.map
+			(fun item -> match item with
 	 			| Rpc r -> gen_call_module r
 	 			| Namespace (n,sub_rpcs) ->
-				    if contains_rpc item then 
-	 				<:str_item< 
+				    if contains_rpc item then
+	 				<:str_item<
 	 					module $uid:n$ = struct
 	 					$list:gen_str_items sub_rpcs$
 	 				end >>
 				    else <:str_item< >>) items
-		in	
+		in
 
 		<:str_item< module Args = struct $list: gen_str_items rpcs$ end >>
 
 
-	(* Make the client module - the signature of which is very similar to that of 
+	(* Make the client module - the signature of which is very similar to that of
 	   the original idl module, except each RPC function takes as first argument
 	   an rpc function of type 'Rpc.call -> Rpc.response' *)
-	let make_client rpcs = 
+	let make_client rpcs =
 		let _loc = Ast.Loc.ghost in
 
 		let create_call rpc =
 			let cap_name = String.capitalize rpc.fname in
-			let arg_path = MyRpcLight.arg_path rpc.loc (rpc.namespace @ [cap_name]) in
+			let arg_path = MyRpc.arg_path rpc.loc (rpc.namespace @ [cap_name]) in
 			let _loc = rpc.loc in
-			<:expr< $MyRpcLight.list_foldi 
+			<:expr< $MyRpc.list_foldi
 				(fun accu arg i ->
-	 				let lid = MyRpcLight.argi i in
-	 				match arg.MyRpcLight.kind with 
+	 				let lid = MyRpc.argi i in
+	 				match arg.MyRpc.kind with
 	 				| `Optional s -> <:expr< $accu$ ? $lid:s$ >>
 	 				| `Named s -> <:expr< $accu$ ~ $lid:s$ >>
 	 				| `Anonymous -> <:expr< $accu$ $lid:lid$ >>)
-				<:expr< Args.$arg_path$.$lid:MyRpcLight.call_of rpc.fname$ >>
+				<:expr< Args.$arg_path$.$lid:MyRpc.call_of rpc.fname$ >>
 				rpc.args$
-			>>	  
+			>>
 		in
 
 		let create rpc =
 			let cap_name = String.capitalize rpc.fname in
-			let arg_path = MyRpcLight.arg_path rpc.loc (rpc.namespace @ [cap_name]) in
+			let arg_path = MyRpc.arg_path rpc.loc (rpc.namespace @ [cap_name]) in
 			<:expr<
 				let call = $create_call rpc$ in
 				let response = rpc call in
@@ -148,26 +148,26 @@ struct
 		let gen_client_fun rpc =
 			let n = List.length rpc.args - 1 in
 			<:str_item< value $lid:rpc.fname$ = fun rpc ->
-				$MyRpcLight.list_foldi (fun accu arg i ->
-	 				let lid = MyRpcLight.argi (n-i) in
-	 				match arg.MyRpcLight.kind with 
+				$MyRpc.list_foldi (fun accu arg i ->
+	 				let lid = MyRpc.argi (n-i) in
+	 				match arg.MyRpc.kind with
 	 				| `Optional s -> <:expr< fun ? $lid:s$ -> $accu$ >>
 	 				| `Named s -> <:expr< fun ~ $lid:s$ -> $accu$ >>
 	 				| `Anonymous -> <:expr< fun $lid:lid$ -> $accu$ >>)
 					(create rpc)
 					(List.rev rpc.args)$
 			>>
-		in  
+		in
 
-		let rec gen_str_items items = List.map 
-			(fun item -> match item with  
+		let rec gen_str_items items = List.map
+			(fun item -> match item with
 	 		| Rpc r -> gen_client_fun r
-	 		| Namespace (n,sub_rpcs) -> 
-			    if contains_rpc item then 
-			      <:str_item< 
+	 		| Namespace (n,sub_rpcs) ->
+			    if contains_rpc item then
+			      <:str_item<
 	 			module $uid:n$ = struct
 	 				$list:gen_str_items sub_rpcs$
-	 			end >> 
+	 			end >>
 			    else <:str_item< >>) items
 		in
 		<:str_item< module Client = struct $list: gen_str_items rpcs$ end >>
@@ -181,86 +181,86 @@ struct
 
 		let gen_server_sig r =
 			let _loc = r.loc in
-			<:sig_item< 
-				value $lid:r.fname$ : context -> $List.fold_left 
+			<:sig_item<
+				value $lid:r.fname$ : context -> $List.fold_left
 					(fun accu arg ->
- 						match arg.MyRpcLight.kind with 
- 						| `Optional s -> <:ctyp< ? $lid:s$ : $arg.MyRpcLight.ctyp$ -> $accu$ >>
- 						| `Named s -> <:ctyp< ~ $lid:s$ : $arg.MyRpcLight.ctyp$ -> $accu$ >>
- 						| `Anonymous -> <:ctyp< $arg.MyRpcLight.ctyp$ -> $accu$ >>
+ 						match arg.MyRpc.kind with
+ 						| `Optional s -> <:ctyp< ? $lid:s$ : $arg.MyRpc.ctyp$ -> $accu$ >>
+ 						| `Named s -> <:ctyp< ~ $lid:s$ : $arg.MyRpc.ctyp$ -> $accu$ >>
+ 						| `Anonymous -> <:ctyp< $arg.MyRpc.ctyp$ -> $accu$ >>
 					)
 					r.rtype
 					(List.rev r.args)$; >>
-		in 
-	
-		let rec gen_sig_items items = List.map 
-			(fun item -> match item with  
+		in
+
+		let rec gen_sig_items items = List.map
+			(fun item -> match item with
  				| Rpc r -> gen_server_sig r
  				| Namespace (n,sub_rpcs) ->
-				    if contains_rpc item then 
- 					<:sig_item< 
- 						module $uid:n$ : sig 
+				    if contains_rpc item then
+ 					<:sig_item<
+ 						module $uid:n$ : sig
  							$list:gen_sig_items sub_rpcs$
  						end >>
 				    else <:sig_item< >>) items
 		in
 
-		<:str_item< module type Server_impl = sig 
-			type context; 
+		<:str_item< module type Server_impl = sig
+			type context;
 			$list: gen_sig_items rpcs$; end >>
 
 	(* Make the functor that generates server modules. The generated module will
-	   contain a single function - 'process' - which takes an Rpc.call and 
+	   contain a single function - 'process' - which takes an Rpc.call and
 	   unmarshals the arguments and passes them to the implementation module *)
 	let make_server_functor rpcs =
 		let gen_match_case rpc =
 			let _loc = rpc.loc in
 			let cap_name = String.capitalize rpc.fname in
-			let arg_path = Ast.ExId(_loc,MyRpcLight.arg_path rpc.loc ("Args"::rpc.namespace @ [cap_name])) in
-			let impl_path = Ast.ExId(_loc,MyRpcLight.arg_path rpc.loc ("Impl"::rpc.namespace)) in
+			let arg_path = Ast.ExId(_loc,MyRpc.arg_path rpc.loc ("Args"::rpc.namespace @ [cap_name])) in
+			let impl_path = Ast.ExId(_loc,MyRpc.arg_path rpc.loc ("Impl"::rpc.namespace)) in
 
-			let has_names = MyRpcLight.contains_names rpc.args in
+			let has_names = MyRpc.contains_names rpc.args in
 
-			let pattern_list = List.rev (MyRpcLight.list_foldi
+			let pattern_list = List.rev (MyRpc.list_foldi
 				(fun accu e i ->
-			 		let lid = MyRpcLight.argi (i + 1) in
-			 		match e.MyRpcLight.kind with 
-			 		| `Optional s 
+			 		let lid = MyRpc.argi (i + 1) in
+			 		match e.MyRpc.kind with
+			 		| `Optional s
 			 		| `Named s -> accu
 			 		| `Anonymous -> <:patt< $lid:lid$ >> :: accu )
 					(if has_names then [ <:patt< arg >> ] else [])
 					rpc.args)
 			in
 
-			let apply = MyRpcLight.list_foldi 
+			let apply = MyRpc.list_foldi
 				(fun accu e i ->
-	 				match e.MyRpcLight.kind with
+	 				match e.MyRpc.kind with
 	 				| `Optional s -> <:expr< $accu$ ? $lid:s$ : params.$arg_path$.$lid:s$ >>
 	 				| `Named s -> <:expr< $accu$ ~ $lid:s$ : params.$arg_path$.$lid:s$ >>
-	 				| `Anonymous -> <:expr< $accu$ ($arg_path$.$lid:MyRpcLight.of_rpc 
-						(MyRpcLight.argi (i+1))$ $lid:MyRpcLight.argi (i+1)$) >>)
-				<:expr< $impl_path$.$lid:rpc.fname$ x >> 
+	 				| `Anonymous -> <:expr< $accu$ ($arg_path$.$lid:MyRpc.of_rpc
+						(MyRpc.argi (i+1))$ $lid:MyRpc.argi (i+1)$) >>)
+				<:expr< $impl_path$.$lid:rpc.fname$ x >>
 				rpc.args
 			in
 
 			let inner = <:expr< $arg_path$.rpc_of_response ($apply$) >> in
-			let outer = 
-				if has_names 
-				then <:expr< let params = $arg_path$.request_of_rpc arg in $inner$ >> 
-				else inner 
+			let outer =
+				if has_names
+				then <:expr< let params = $arg_path$.request_of_rpc arg in $inner$ >>
+				else inner
 			in
 
-			<:match_case< 
-				  ($str:rpc.name$,$MyRpcLight.patt_list_of_list rpc.loc pattern_list$) -> 
-					$outer$ 
-				| ($str:rpc.name$,_) -> 
-					raise (RpcFailure ("MESSAGE_PARAMETER_COUNT_MISMATCH", 
-						[("func",$str:rpc.name$); 
-						 ("expected",$str:(string_of_int (List.length pattern_list))$); 
-						 ("received",string_of_int (List.length call.Rpc.params))])) 
+			<:match_case<
+				  ($str:rpc.name$,$MyRpc.patt_list_of_list rpc.loc pattern_list$) ->
+					$outer$
+				| ($str:rpc.name$,_) ->
+					raise (RpcFailure ("MESSAGE_PARAMETER_COUNT_MISMATCH",
+						[("func",$str:rpc.name$);
+						 ("expected",$str:(string_of_int (List.length pattern_list))$);
+						 ("received",string_of_int (List.length call.Rpc.params))]))
 			>>
 		in
-	
+
 		let mcs = List.map gen_match_case rpcs in
 		let _loc = Ast.Loc.ghost in
 		<:str_item<
@@ -268,16 +268,16 @@ struct
 				value process x call =
 					try
 						let contents = match (call.Rpc.name, call.Rpc.params) with
-							[ $Ast.mcOr_of_list mcs$ 
+							[ $Ast.mcOr_of_list mcs$
 							| (x,_) -> raise (RpcFailure ("Unknown RPC",[(x,"")]))]
 
 						in { Rpc.success = True;
 						     Rpc.contents = contents; }
 					with
-						[ RpcFailure (x,y) -> 
+						[ RpcFailure (x,y) ->
 							{ Rpc.success = False;
 							  Rpc.contents = rpc_of_failure (x,y); }
-						| e -> 
+						| e ->
 							{ Rpc.success = False;
 							  Rpc.contents = rpc_of_failure ("INTERNAL_ERROR",[]) } ];
 			end >>
@@ -286,52 +286,52 @@ struct
 	let rec filter_types si =
 		match si with
 		| <:str_item< type $lid:lid$ = $body$ >> ->
-		      add_rpcs si lid body 
+		      add_rpcs si lid body
 		| <:str_item@_loc< module $foo$ = struct $sis$ end >> ->
 		  <:str_item< module $foo$ = struct $list:List.map filter_types (Ast.list_of_str_item sis [])$ end>>
 		| <:str_item@_loc< external $fname$ : $ctyp$ = $override$ >> ->
 		  <:str_item< >>
 		| _ -> si
 
-	and add_rpcs si lid body = 
+	and add_rpcs si lid body =
 		let _loc = Ast.loc_of_str_item si in
 		<:str_item<
 			$si$;
-			value $MyRpcLight.Rpc_of.gen_one (lid,[],body)$;
-			value $MyRpcLight.Of_rpc.gen_one (lid,[],body)$;
+			value $MyRpc.Rpc_of.gen_one (lid,[],body)$;
+			value $MyRpc.Of_rpc.gen_one (lid,[],body)$;
 		>>;;
 
 	AstFilters.register_str_item_filter begin fun si ->
 		let _loc = Ast.loc_of_str_item si in
 		let (rev_rpcs,_) = List.fold_left find_rpcs ([],[]) (Ast.list_of_str_item si []) in
 		let rpcs = List.rev rev_rpcs in
-		let rec flatten_rpcs rpcs = 
-			List.flatten (List.map (function 
-				| Rpc r -> [r] 
+		let rec flatten_rpcs rpcs =
+			List.flatten (List.map (function
+				| Rpc r -> [r]
 				| Namespace (rs,rpcs) -> flatten_rpcs rpcs) rpcs)
-		in 
-		let failure_bits = 
+		in
+		let failure_bits =
 			let failure_ctyp = <:ctyp< (string * list (string * string)) >> in
 			<:str_item<
 				type failure = $failure_ctyp$;
-				value $MyRpcLight.Rpc_of.gen_one ("failure",[],failure_ctyp)$;
-				value $MyRpcLight.Of_rpc.gen_one ("failure",[],failure_ctyp)$; 
+				value $MyRpc.Rpc_of.gen_one ("failure",[],failure_ctyp)$;
+				value $MyRpc.Of_rpc.gen_one ("failure",[],failure_ctyp)$;
 				exception RpcFailure of (string * list (string * string))
-			>> 
+			>>
 		in
 		let flat_rpcs = flatten_rpcs rpcs in
 		let sis = Ast.list_of_str_item si [] in
-		<:str_item< $list: (List.map filter_types sis) @ 
-			[ failure_bits; 
-			  make_args rpcs; 
-			  make_client rpcs;  
-			  make_server_sig rpcs;  
+		<:str_item< $list: (List.map filter_types sis) @
+			[ failure_bits;
+			  make_args rpcs;
+			  make_client rpcs;
+			  make_server_sig rpcs;
 			  make_server_functor flat_rpcs ] $ >>
 		end
 
 end
 
-module Id = struct 
+module Id = struct
 	let name = "idl"
 	let version = "0.1"
 end

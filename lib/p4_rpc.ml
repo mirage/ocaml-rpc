@@ -15,7 +15,7 @@
  *)
 
 
-module RpcLight = functor (Ast : Camlp4.Sig.Camlp4Ast) ->
+module Rpc = functor (Ast : Camlp4.Sig.Camlp4Ast) ->
   struct
     open Ast
 
@@ -74,7 +74,7 @@ let rec decompose_fields _loc fields =
 let expr_list_of_list _loc exprs =
 	match List.rev exprs with
 	| []   -> <:expr< [] >>
-	| h::t -> List.fold_left (fun accu x -> <:expr< [ $x$ :: $accu$ ] >>) <:expr< [ $h$ ] >> t 
+	| h::t -> List.fold_left (fun accu x -> <:expr< [ $x$ :: $accu$ ] >>) <:expr< [ $h$ ] >> t
 
 let patt_list_of_list _loc patts =
 	match List.rev patts with
@@ -130,7 +130,7 @@ let type_not_supported ty =
 	let module PP = Camlp4.Printers.OCaml.Make(Syntax) in
 	let pp = new PP.printer () in
 	Format.eprintf "Type %a@. not supported.\n%!" pp#ctyp ty;
-	failwith "type not supported by rpc-light"
+	failwith "type not supported by rpc"
 
 let apply _loc fn fn_i create id modules t a =
 	let args = decompose_args _loc a in
@@ -158,7 +158,7 @@ let is_string _loc key =
 
 (* Conversion ML type -> Rpc.value *)
 module Rpc_of = struct
-	
+
 	let rec product get_field t =
 		let _loc = loc_of_ctyp t in
 		let fields = decompose_fields _loc t in
@@ -228,7 +228,7 @@ module Rpc_of = struct
 
 		| <:ctyp< option $t$ >> ->
 			let new_id, new_pid = new_id _loc in
-			<:expr< match $id$ with [ Some $new_pid$ -> Rpc.Enum [ $create new_id t$ ] | None -> Rpc.Enum [] ] >> 
+			<:expr< match $id$ with [ Some $new_pid$ -> Rpc.Enum [ $create new_id t$ ] | None -> Rpc.Enum [] ] >>
 
 		| <:ctyp< $tup:tp$ >> ->
 			let ctyps = list_of_ctyp tp [] in
@@ -270,7 +270,7 @@ module Rpc_of = struct
 				args$
 		>>
 
-	let gen tds =          
+	let gen tds =
 		let _loc = loc_of_ctyp tds in
 		let bindings = List.map gen_one (list_of_ctyp_decl tds) in
 		biAnd_of_list bindings
@@ -451,7 +451,7 @@ module Of_rpc = struct
 	let gen_one (name, args, ctyp) =
 		let _loc = loc_of_ctyp ctyp in
 		let id, pid = new_id _loc in
-		<:binding< $lid:of_rpc name$ = 
+		<:binding< $lid:of_rpc name$ =
 			$List.fold_left
 				(fun accu arg -> <:expr< fun $lid:of_rpc_polyvar (name_of_polyvar _loc arg)$ -> $accu$ >>)
 				(<:expr< fun $pid$ -> $create name id ctyp$ >>)
@@ -495,7 +495,7 @@ let rec decompose_arrows ctyp =
 		| ctyp -> [ ctyp ] in
 	List.rev (List.tl (List.rev (aux ctyp)))
 
-let arg_path _loc namespace = 
+let arg_path _loc namespace =
   Ast.idAcc_of_list (List.map (fun s -> <:ident< $uid:s$ >>) namespace)
 
 let arg_of_ctyp accu = function
@@ -532,7 +532,7 @@ let rec_binding_of_args name args =
 	<:expr< { $rbSem_of_list (List.fold_left (rec_binding_of_arg name) [] args)$ } >>
 
 let rec return_type ctyp =
-  match ctyp with 
+  match ctyp with
     | <:ctyp< $x$ -> $y$ >> ->
       return_type y
     | t -> t
@@ -600,16 +600,16 @@ end
 		let n = List.length args in
 		let cap_name = String.capitalize name in
 		let anonymous_rpcs = list_foldi
-			(fun accu arg i -> if arg.kind = `Anonymous then 
-			   (Rpc_of.gen_one (argi (n - i), [], arg.ctyp)) :: 
+			(fun accu arg i -> if arg.kind = `Anonymous then
+			   (Rpc_of.gen_one (argi (n - i), [], arg.ctyp)) ::
 			     (Of_rpc.gen_one (argi (n - i), [], arg.ctyp)) :: accu else accu)
 			[] (List.rev args) in
 		let response_and_call = <:str_item<
 	                type response = $rtype$;
 		        value $Rpc_of.gen_one ("response", [], rtype)$;
-			value $Of_rpc.gen_one ("response", [], rtype)$;				
+			value $Of_rpc.gen_one ("response", [], rtype)$;
 			value $Call_of.gen_one (_loc, namespace, name, wire_name, args, rtype)$; >> in
-		if contains_names args then 
+		if contains_names args then
 			<:str_item<
 				module $uid:cap_name$ = struct
 					type request = $ctyp_of_args args$;
@@ -617,7 +617,7 @@ end
 					value $Of_rpc.gen_one ("request", [], ctyp_of_args args)$;
 					value $biAnd_of_list anonymous_rpcs$;
 					$response_and_call$;
-				end		
+				end
 			>>
 		else
 			<:str_item<
@@ -635,7 +635,7 @@ end
 				$stSem_of_list sts$
 			end
 		>>
-		
+
 end
 
 
@@ -644,8 +644,8 @@ let gen_module mt =
 	<:str_item<
 		$Args.gen mt$;
 	>>
-		
+
  end
 
-module RpcLightNormal = RpcLight(Camlp4.PreCast.Ast) 
-open RpcLightNormal
+module RpcNormal = Rpc(Camlp4.PreCast.Ast)
+open RpcNormal

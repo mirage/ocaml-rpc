@@ -46,7 +46,7 @@ with an existing API and the field names are not valid OCaml identifiers.
 
 # Conversion functions
 
-`rpc-light` currently support two protocols: XMLRPC and JSON(RPC). Functions signatures are:
+`rpc` currently support two protocols: XMLRPC and JSON(RPC). Functions signatures are:
 
     val Xmlrpc.to_string : Rpc.t -> string
     val Xmlrpc.of_string : string -> Rpc.t

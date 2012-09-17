@@ -2,7 +2,7 @@ OCAMLC = ocamlfind ocamlc
 OCAMLOPT = ocamlfind ocamlopt
 OCAMLFLAGS = -annot -g
 
-PACKS = rpc-light,unix
+PACKS = rpc,unix
 EXAMPLES = \
 	all_types \
 	phantom \
@@ -23,19 +23,19 @@ client.opt: idl_test.cmx idl_test.cmi client.cmx
 	$(OCAMLOPT) -linkpkg -package $(PACKS) -o $@ idl_test.cmx client.cmx
 
 idl_test.cmx: idl_test.ml idl_test.cmi
-	$(OCAMLOPT) -package $(PACKS),rpc-light.idl -syntax camlp4o -c -o $@ $<
+	$(OCAMLOPT) -package $(PACKS),rpc.idl -syntax camlp4o -c -o $@ $<
 
 %.opt: %.cmx
 	$(OCAMLOPT) -linkpkg -package $(PACKS) -o $@ $<
 
 %.cmx: %.ml
-	$(OCAMLOPT) $(OCAMLFLAGS) -package $(PACKS),rpc-light.syntax -syntax camlp4o -c -o $@ $<
+	$(OCAMLOPT) $(OCAMLFLAGS) -package $(PACKS),rpc.syntax -syntax camlp4o -c -o $@ $<
 
 %.cmi: %.mli
-	$(OCAMLOPT) $(OCAMLFLAGS) -package $(PACKS),rpc-light.syntax -syntax camlp4o -c -o $@ $<
+	$(OCAMLOPT) $(OCAMLFLAGS) -package $(PACKS),rpc.syntax -syntax camlp4o -c -o $@ $<
 
 %_gen: %.ml
-	camlp4o $(shell ocamlfind query rpc-light.syntax -r -format "-I %d %a" -predicates syntax,preprocessor) $< -printer o > $@.ml
+	camlp4o $(shell ocamlfind query rpc.syntax -r -format "-I %d %a" -predicates syntax,preprocessor) $< -printer o > $@.ml
 	$(OCAMLOPT) $(OCAMLFLAGS) -package $(PACKS) -c -o $@ $@.ml
 
 clean:

@@ -33,7 +33,7 @@ module Utils = struct
 
 	let open_connection_fd host port =
 		let s = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
-		try 
+		try
 			let he =
 				try Unix.gethostbyname host
 				with Not_found -> raise (Host_not_found host) in
@@ -97,11 +97,11 @@ module Headers = struct
 		user_agent : string;
 		content_type : content_type;
 	}
-			
+
 	let create ~host ~content_type = {
 		host = host;
 		version = "1.1";
-		user_agent = "rpc-light/" ^ lib_version;
+		user_agent = "rpc/" ^ lib_version;
 		content_type = content_type;
 	}
 
@@ -121,7 +121,7 @@ module Headers = struct
 		| _                        -> raise (Http_request_rejected s)
 
 	(* Consumes the headers *)
-	let strip (fd: Unix.file_descr) = 
+	let strip (fd: Unix.file_descr) =
 		let buffer = " " in
 		let buf = Buffer.create 64 in
 		let finished = ref false in
@@ -162,8 +162,8 @@ let http_send_call ~fd ~path ~headers call =
 let http_recv_response ~fd ~headers =
 	Headers.strip fd;
 	rpc_response_of_fd headers fd
-	
-let http_rpc_fd (fd: Unix.file_descr) headers call = 
+
+let http_rpc_fd (fd: Unix.file_descr) headers call =
 	try
 		http_send_call ~fd ~path ~headers call;
 		http_recv_response ~fd ~headers
@@ -175,7 +175,7 @@ type connection =
 	| Remote_port of int
 
 let with_fd ~connection ~headers ~path ~call f =
-	let s = 
+	let s =
 		match connection with
 		| Remote_port port ->
 			let s = Utils.open_connection_fd headers.Headers.host port in

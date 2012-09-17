@@ -27,7 +27,7 @@ end
 
 let _ =
   (* type generator *)
-  Pa_type_conv.add_generator_with_arg "rpc" Param.rpc P4_rpc.RpcLightNormal.gen;
-  
+  Pa_type_conv.add_generator_with_arg "rpc" Param.rpc P4_rpc.RpcNormal.gen;
+
   (* module generator *)
-  Pa_module_conv.add_generator "rpc" (fun mt -> P4_rpc.RpcLightNormal.gen_module mt)
+  Pa_module_conv.add_generator "rpc" (fun mt -> P4_rpc.RpcNormal.gen_module mt)
