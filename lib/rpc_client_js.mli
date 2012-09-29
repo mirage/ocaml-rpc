@@ -12,4 +12,4 @@
  * GNU Lesser General Public License for more details.
  *)
 
-val do_rpc : string -> string -> XmlHttpRequest.http_frame Lwt.t
+val do_rpc : url:string -> Rpc.call -> Rpc.response Lwt.t

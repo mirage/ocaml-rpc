@@ -1,9 +1,10 @@
 open Lwt
 open Js
 
-let do_rpc url contents =
+let do_rpc ~url call =
   let method_ = "POST" in
   let content_type = "text/xml" in
+  let contents = Xmlrpc.string_of_call call in
   let (res, w) = Lwt.task () in
   let req = XmlHttpRequest.create () in
 
@@ -16,7 +17,8 @@ let do_rpc url contents =
     (fun _ ->
        (match req##readyState with
 		   | XmlHttpRequest.DONE ->
-			   Lwt.wakeup w
+			   Lwt.wakeup w (Xmlrpc.response_of_string (Js.to_string req##responseText))
+(*
 				   {XmlHttpRequest.url = url;
 					code = req##status;
 					content = Js.to_string req##responseText;
@@ -30,6 +32,7 @@ let do_rpc url contents =
 									   else Some doc);
 					headers = fun _ -> None;
 				   }
+*)
 		   | _ -> ()));
 
   req##send (Js.some (Js.string contents));
