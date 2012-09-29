@@ -35,3 +35,10 @@ package "json" (
   archive(byte) = "jsonrpc.cmo"
   archive(native) = "jsonrpc.cmx"
 )
+
+package "unix" (
+  description = "Unix socket connection handling"
+  requires = "rpc.core"
+  archive(byte) = "rpc_client.cmo"
+  archive(native) = "rpc_client.cmx"
+)
