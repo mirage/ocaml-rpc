@@ -1,16 +1,21 @@
 OCAMLC = ocamlfind ocamlc
 OCAMLOPT = ocamlfind ocamlopt
 OCAMLFLAGS = -annot -g
-PACKS = xmlm
+PACKS = xmlm,lwt,js_of_ocaml,js_of_ocaml.syntax
 
-ICAMLP4 = -I $(shell ocamlfind query camlp4) -I $(shell ocamlfind query type_conv)
+ICAMLP4 = -I $(shell ocamlfind query camlp4) \
+	-I $(shell ocamlfind query type_conv)    \
+	-I $(shell ocamlfind query js_of_ocaml)  \
+	-I $(shell ocamlfind query lwt)
+
 DOCDIR  = /myrepos/xen-api-libs.hg/doc
 TARGETS = \
 	rpc.cmi rpc.cmo rpc.o rpc.cmx \
 	pa_rpc.cma idl.cma \
 	xmlrpc.cmi xmlrpc.cmo xmlrpc.o xmlrpc.cmx \
 	jsonrpc.cmi jsonrpc.cmo jsonrpc.o jsonrpc.cmx \
-	rpc_client.cmi rpc_client.cmo rpc_client.o rpc_client.cmx
+	rpc_client.cmi rpc_client.cmo rpc_client.o rpc_client.cmx \
+	rpc_client_js.cmi rpc_client_js.cmo
 
 .PHONY: all clean
 all: $(TARGETS)
@@ -32,6 +37,9 @@ p4_rpc.cmo: p4_rpc.ml rpc.cmo
 
 p4_idl.cmo: p4_idl.ml p4_rpc.cmo
 	$(OCAMLC) $(OCAMLFLAGS) -c -package camlp4,type_conv -pp "camlp4orf" $(ICAMLP4) $@ $<
+
+rpc_client_js.cmo: rpc_client_js.ml
+	$(OCAMLC) $(OCAMLFLAGS) -package $(PACKS) -syntax camlp4o $(ICAMLP4) -c $@ $<
 
 %.o %.cmx: %.ml
 	$(OCAMLOPT) $(OCAMLFLAGS) -package $(PACKS) -c -o $@ $<

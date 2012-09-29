@@ -42,3 +42,9 @@ package "unix" (
   archive(byte) = "rpc_client.cmo"
   archive(native) = "rpc_client.cmx"
 )
+
+package "js" (
+  description = "Javascript/browser connection handling"
+  requires = "rpc.core"
+  archive(byte) = "rpc_client_js.cmo"
+)
