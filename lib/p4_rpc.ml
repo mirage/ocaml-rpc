@@ -465,7 +465,7 @@ module Of_rpc = struct
 end
 
 
-let gen args tds =
+let gen args _ tds =
 	let _loc = loc_of_ctyp tds in
 	mapping := (match args with None -> [] | Some l -> l);
 	revmapping := List.map (fun (k,v) -> (v,k)) !mapping;
