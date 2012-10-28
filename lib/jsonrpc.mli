@@ -15,6 +15,9 @@
 val to_string : Rpc.t -> string
 val of_string : string -> Rpc.t
 
+val to_fct : Rpc.t -> (string -> unit) -> unit
+val of_fct : (unit -> char) -> Rpc.t
+
 val string_of_call: Rpc.call -> string
 val call_of_string: string -> Rpc.call
 

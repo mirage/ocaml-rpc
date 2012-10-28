@@ -480,6 +480,8 @@ module Parser = struct
 		of_stream next
 end
 
+let of_fct = Parser.of_stream
+
 let of_string = Parser.of_string
 
 exception Malformed_method_request of string
