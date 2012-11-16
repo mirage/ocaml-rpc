@@ -1,6 +1,6 @@
-version = "1.1.0"
+version = "1.2.0"
 description = "RPC: lightweight library to convert plain ML types to and from RPC values"
-requires = "rpc.xml, rpc.json"
+requires = "rpclib.xml, rpclib.json"
 
 package "syntax" (
   description = "rpc: library to marshalling/unmarshalling ML types to/from RPC intermediate language"
@@ -24,27 +24,27 @@ package "core" (
 
 package "xml" (
   description = "XML-RPC marshalling/unmarshalling"
-  requires = "rpc.core,xmlm"
+  requires = "rpclib.core,xmlm"
   archive(byte) = "xmlrpc.cmo"
   archive(native) = "xmlrpc.cmx"
   )
 
 package "json" (
   description = "JSON-RPC marshalling/unmarshalling"
-  requires = "rpc.core"
+  requires = "rpclib.core"
   archive(byte) = "jsonrpc.cmo"
   archive(native) = "jsonrpc.cmx"
 )
 
 package "unix" (
   description = "Unix socket connection handling"
-  requires = "rpc.core"
+  requires = "rpclib.core"
   archive(byte) = "rpc_client.cmo"
   archive(native) = "rpc_client.cmx"
 )
 
 package "js" (
   description = "Javascript/browser connection handling"
-  requires = "rpc.core"
+  requires = "rpclib.core"
   archive(byte) = "rpc_client_js.cmo"
 )

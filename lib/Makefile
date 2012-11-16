@@ -53,15 +53,15 @@ rpc_client_js.cmo: rpc_client_js.ml
 .PHONY: install
 install: INSTALL_PATH = $(DESTDIR)$(shell ocamlfind printconf destdir)
 install: all
-	ocamlfind install -destdir $(INSTALL_PATH) rpc META $(TARGETS)
+	ocamlfind install -destdir $(INSTALL_PATH) rpclib META $(TARGETS)
 
 .PHONY: uninstall
 uninstall:
-	ocamlfind remove rpc
+	ocamlfind remove rpclib
 
 .PHONY: doc
 doc: $(INTF)
-	python ../doc/doc.py $(DOCDIR) "rpc" "package" "jsonrpc pa_rpc rpc xmlrpc" "." "xmlm" ""
+	python ../doc/doc.py $(DOCDIR) "rpclib" "package" "jsonrpc pa_rpc rpc xmlrpc" "." "xmlm" ""
 
 clean:
 	rm -f *.cmo *.cmx *.cma *.cmxa *.annot *.o *.cmi *.a
