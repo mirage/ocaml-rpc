@@ -34,30 +34,34 @@ end
 
 module MyServer=Idl_test.Server(Impl)
 
-let rpc call =
-  let call_string = Jsonrpc.string_of_call call in
-  Printf.printf "rpc function: call_string='%s'\n" call_string;
-  let call = Jsonrpc.call_of_string call_string in
-  let response = MyServer.process () call in
-  let response_str = Jsonrpc.string_of_response response in
-  Printf.printf "rpc function: response_string = '%s'\n" response_str;
-  Jsonrpc.response_of_string response_str
+module RPC = struct
+  let rpc call =
+    let call_string = Jsonrpc.string_of_call call in
+    Printf.printf "rpc function: call_string='%s'\n" call_string;
+    let call = Jsonrpc.call_of_string call_string in
+    let response = MyServer.process () call in
+    let response_str = Jsonrpc.string_of_response response in
+    Printf.printf "rpc function: response_string = '%s'\n" response_str;
+    Jsonrpc.response_of_string response_str
+end
+
+module Client = Idl_test.Client(RPC)
 
 let _ =
-  let result = Idl_test.Client.rpc1 rpc ~arg1:"test argument" 2 in
+  let result = Client.rpc1 ~arg1:"test argument" 2 in
   Printf.printf "result.result='%s', metadata=[%s]\n"
     result.Idl_test.result (String.concat ";" (List.map (fun (a,b) -> Printf.sprintf "(%d,%d)" a b) result.Idl_test.metadata));
 
-  begin try
-    let result = Idl_test.Client.rpc1 rpc ~arg1:"test argument" 5 in
-    Printf.printf "result.result='%s', metadata=[%s]\n"
-      result.Idl_test.result (String.concat ";" (List.map (fun (a,b) -> Printf.sprintf "(%d,%d)" a b) result.Idl_test.metadata));
-  with
-  | Idl_test.RpcFailure (msg,info) ->
-    Printf.printf "Got a failure: %s\n" msg
+  begin
+    try
+      let result = Client.rpc1 ~arg1:"test argument" 5 in
+      Printf.printf "result.result='%s', metadata=[%s]\n"
+        result.Idl_test.result (String.concat ";" (List.map (fun (a,b) -> Printf.sprintf "(%d,%d)" a b) result.Idl_test.metadata));
+    with
+      e -> Printf.printf "Got a failure: %s\n" (Printexc.to_string e)
   end;
-  Idl_test.Client.rpc2 rpc (Idl_test.Foo ["hello";"there"]);
-  Idl_test.Client.rpc2 rpc ~opt:"Optional" (Idl_test.Foo ["hello";"there"]);
-  let i = Idl_test.Client.rpc3 rpc 999999999999999999L in
+  Client.rpc2 (Idl_test.Foo ["hello";"there"]);
+  Client.rpc2 ~opt:"Optional" (Idl_test.Foo ["hello";"there"]);
+  let i = Client.rpc3 999999999999999999L in
   Printf.printf "%Ld\n" i;
-  Idl_test.Client.SubModule.rpc4 rpc 3L
+  Client.SubModule.rpc4 3L

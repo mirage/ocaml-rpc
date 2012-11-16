@@ -2,16 +2,17 @@ type return_record = { result : string; metadata : (int * int) list; }
 
 type variant = Foo of string list | Bar | Baz of float
 
-type failure = string * (string * string) list
+module type RPC = sig
+  val rpc: Rpc.call -> Rpc.response
+end
 
-exception RpcFailure of (string * (string * string) list)
-
-module Client : sig
-  val rpc1 : (Rpc.call -> Rpc.response) -> arg1:string -> int -> return_record
-  val rpc2 : (Rpc.call -> Rpc.response) -> ?opt:string -> variant -> unit
-  val rpc3 : (Rpc.call -> Rpc.response) -> int64 -> int64
+module Client: functor (R: RPC) ->
+sig
+  val rpc1: arg1:string -> int -> return_record
+  val rpc2: ?opt:string -> variant -> unit
+  val rpc3: int64 -> int64
   module SubModule : sig
-    val rpc4 : (Rpc.call -> Rpc.response) -> int64 -> int64
+    val rpc4 : int64 -> int64
   end
 end
 
