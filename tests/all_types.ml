@@ -64,15 +64,18 @@ let _ =
     match (fields, value) with
     | ["progress"], Rpc.Int i -> Printf.printf "Progress: %Ld\n" i
     | _                       -> () in
-  let x_xml = x_of_rpc M.m_of_rpc (Xmlrpc.of_string ~callback rpc_xml) in
-  let x_json = x_of_rpc M.m_of_rpc (Jsonrpc.of_string rpc_json) in
+
+  let x_of_rpc = x_of_rpc M.m_of_rpc in
+
+  let x_xml = x_of_rpc (Xmlrpc.of_string ~callback rpc_xml) in
+  let x_json = x_of_rpc (Jsonrpc.of_string rpc_json) in
 
   Printf.printf "\n==Sanity check 1==\nx=x_xml: %b\nx=x_json: %b\n" (x = x_xml) (x = x_json);
   assert (x = x_xml && x = x_json);
 
   (* Testing calls and responses *)
 
-  let call = Rpc.call "foo" [ rpc; Rpc.String "Mouhahahaaaaa" ] in
+  let call = Rpc.call "foo" [ rpc ] in
   let success = Rpc.success rpc in
   let failure = Rpc.failure rpc in
 
@@ -92,9 +95,16 @@ let _ =
   let s_xml = Xmlrpc.response_of_string s_xml_str in
   let f_xml = Xmlrpc.response_of_string f_xml_str in
 
-  Printf.printf "\n==Sanity check 2==\ncall=c_xml: %b\nsuccess=s_xml: %b\nfailure=f_xml: %b\n"
-    (call = c_xml) (success = s_xml) (failure = f_xml);
-  assert (call = c_xml && success = s_xml && failure = f_xml);
+  let c1 = x_of_rpc (List.hd call.Rpc.params) in
+  let c2 = x_of_rpc (List.hd c_xml.Rpc.params) in
+  let s1 = x_of_rpc success.Rpc.contents in
+  let s2 = x_of_rpc s_xml.Rpc.contents in
+  let f1 = x_of_rpc failure.Rpc.contents in
+  let f2 = x_of_rpc f_xml.Rpc.contents in
+
+  Printf.printf "\n==Sanity check 2==\nc1=c2: %b\ns1=s2: %b\nf1=f2: %b\n"
+    (c1 = c2) (s1 = s2) (f1 = f2);
+  assert (c1 = c2 && s1 = s2 && f1 = f2);
 
   let c_json = Jsonrpc.call_of_string c_json_str in
   let s_json = Jsonrpc.response_of_string s_json_str in
