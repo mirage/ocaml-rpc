@@ -18,6 +18,10 @@ EXECS=$(foreach example, $(EXAMPLES), $(example).opt)
 
 .PHONY: all clean
 all: $(EXECS)
+	make $(EXECS:%=%.run)
+
+%.run: %
+	./$?
 
 client.opt: idl_test.cmx idl_test.cmi client.cmx
 	$(OCAMLOPT) -linkpkg -package $(PACKS) -o $@ idl_test.cmx client.cmx
