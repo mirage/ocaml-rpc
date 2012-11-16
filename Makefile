@@ -9,6 +9,7 @@ install:
 uninstall:
 	cd lib && $(MAKE) uninstall
 
+.PHONY: tests
 tests:
 	cd tests && $(MAKE) all
 
