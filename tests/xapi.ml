@@ -1,4 +1,4 @@
-let array_call = 
+let array_call =
 "<methodCall>
   <methodName>event.register</methodName>
   <params>
@@ -35,7 +35,7 @@ let simple_call =
 </methodCall>
 "
 
-let error = 
+let error =
 "<methodResponse>
 <fault>
 <value><struct>
@@ -122,19 +122,19 @@ let sm =
 let empty = "<value></value>"
 
 let _ =
-	Printf.printf "Parsing SM XML ... %!";
-	let _ = Xmlrpc.response_of_string sm in
+  Printf.printf "Parsing SM XML ... %!";
+  let _ = Xmlrpc.response_of_string sm in
 
-	Printf.printf "OK\nParsing empty tags ... %!";
-	let _ = Xmlrpc.of_string empty in
+  Printf.printf "OK\nParsing empty tags ... %!";
+  let _ = Xmlrpc.of_string empty in
 
-	Printf.printf "OK\nParsing error ... %!";
-	let _ = Xmlrpc.response_of_string error in
+  Printf.printf "OK\nParsing error ... %!";
+  let _ = Xmlrpc.response_of_string error in
 
-	Printf.printf "OK\nParsing simple call ... %!";
-	let _ = Xmlrpc.call_of_string simple_call in
+  Printf.printf "OK\nParsing simple call ... %!";
+  let _ = Xmlrpc.call_of_string simple_call in
 
-	Printf.printf "OK\nParsing array call ... %!"
-	let _ = Xmlrpc.call_of_string array_call in
+  Printf.printf "OK\nParsing array call ... %!";
+  let _ = Xmlrpc.call_of_string array_call in
 
-	Printf.printf "OK\n%!"
+  Printf.printf "OK\n%!"
