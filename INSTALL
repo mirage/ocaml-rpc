@@ -3,7 +3,6 @@ dependencies:
 * ocamlfind
 * type-conv
 * xmlm
-* lwt
 * ocaml-js
 
 instructions:
