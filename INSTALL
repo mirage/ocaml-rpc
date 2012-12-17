@@ -3,8 +3,11 @@ dependencies:
 * ocamlfind
 * type-conv
 * xmlm
+* lwt
+* ocaml-js
 
 instructions:
+
 * make
 * make install
 * (make tests)

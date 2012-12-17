@@ -53,7 +53,7 @@ rpc_client_js.cmo: rpc_client_js.ml
 .PHONY: install
 install: INSTALL_PATH = $(DESTDIR)$(shell ocamlfind printconf destdir)
 install: all
-	ocamlfind install -destdir $(INSTALL_PATH) rpclib META $(TARGETS)
+	ocamlfind install -destdir "$(INSTALL_PATH)" rpclib META $(TARGETS)
 
 .PHONY: uninstall
 uninstall:
