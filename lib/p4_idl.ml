@@ -335,8 +335,8 @@ struct
 		let _loc = Ast.loc_of_str_item si in
 		<:str_item<
 			$si$;
-			value $MyRpc.Rpc_of.gen_one (lid,[],body)$;
-			value $MyRpc.Of_rpc.gen_one (lid,[],body)$;
+			value rec $MyRpc.Rpc_of.gen_one (lid,[],body)$
+			and $MyRpc.Of_rpc.gen_one (lid,[],body)$;
 		>>;;
 
 	AstFilters.register_str_item_filter begin fun si ->
