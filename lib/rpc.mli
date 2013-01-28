@@ -82,3 +82,6 @@ exception Runtime_exception of string * string
 (** {2 Debug options} *)
 val set_debug : bool -> unit
 val get_debug : unit -> bool
+
+(** Helper *)
+val lowerfn : t -> t
