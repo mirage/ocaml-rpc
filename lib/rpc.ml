@@ -15,6 +15,7 @@
 let debug = ref false
 let set_debug x = debug := x
 let get_debug () = !debug
+let lower = String.lowercase
 
 type t =
 	| Int of int64
@@ -73,6 +74,8 @@ let float_of_rpc = function
 let string_of_rpc = function String s -> s | _ -> failwith "string_of_rpc"
 let dateTime_of_rpc = function DateTime s -> s | _ -> failwith "dateTime_of_rpc"
 let unit_of_rpc = function Null -> () | _ -> failwith "unit_of_rpc"
+
+let lowerfn = function | String s -> String (lower s) | Enum (String s::ss) -> Enum ((String (lower s))::ss) | x -> x
 
 type callback = string list -> t -> unit
 

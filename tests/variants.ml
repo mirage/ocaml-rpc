@@ -13,4 +13,10 @@ let _ =
   let t2' = t_of_rpc r2 in
 
   Printf.printf "t1 = t1' : %b\nt2 = t2' : %b\n%!" (t1 = t1') (t2 = t2');
-  assert (t1 = t1' && t2 = t2')
+  assert (t1 = t1' && t2 = t2');
+
+  let test3 = Rpc.String "FOO" in
+  ignore(t_of_rpc test3);
+  Printf.printf "Case insensitive test: OK\n!"
+
+	  
