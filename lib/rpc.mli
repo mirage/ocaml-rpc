@@ -16,6 +16,7 @@
 
 type t =
     Int of int64
+  | Int32 of int32
   | Bool of bool
   | Float of float
   | String of string
