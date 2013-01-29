@@ -44,6 +44,7 @@ let escape_string s =
 let rec to_fct t f =
 	match t with
 	| Int i    -> f (Printf.sprintf "%Ld" i)
+	| Int32 i  -> f (Printf.sprintf "%ld" i)
 	| Bool b   -> f (string_of_bool b)
 	| Float r  -> f (Printf.sprintf "%f" r)
 	| String s -> f (escape_string s)

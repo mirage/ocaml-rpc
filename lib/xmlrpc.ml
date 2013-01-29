@@ -65,6 +65,11 @@ let rec add_value f = function
 		f (Int64.to_string i);
 		f "</value>"
 
+	| Int32 i ->
+		f "<value><i4>";
+		f (Int32.to_string i);
+		f "</i4></value>"
+
 	| Bool b ->
 		f "<value><boolean>";
 		f (if b then "1" else "0");

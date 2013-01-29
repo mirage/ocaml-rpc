@@ -19,6 +19,7 @@ let lower = String.lowercase
 
 type t =
 	| Int of int64
+	| Int32 of int32
 	| Bool of bool
 	| Float of float
 	| String of string
@@ -34,6 +35,7 @@ open Printf
 let map_strings sep fn l = String.concat sep (List.map fn l)
 let rec to_string t = match t with
 	| Int i      -> sprintf "I(%Li)" i
+	| Int32 i    -> sprintf "I32(%li)" i
 	| Bool b     -> sprintf "B(%b)" b
 	| Float f    -> sprintf "F(%g)" f
 	| String s   -> sprintf "S(%s)" s
