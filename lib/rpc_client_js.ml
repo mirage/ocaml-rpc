@@ -1,41 +1,26 @@
 open Lwt
 open Js
 
-let do_rpc ~url call =
+let do_rpc enc dec content_type ~url call =
   let method_ = "POST" in
-  let content_type = "text/xml" in
-  let contents = Xmlrpc.string_of_call call in
+  let contents = enc call in
   let (res, w) = Lwt.task () in
   let req = XmlHttpRequest.create () in
 
   req##_open (Js.string method_, Js.string url, Js._true);
   req##setRequestHeader (Js.string "Content-type", Js.string content_type);
-
-(*  List.iter (fun (n, v) -> req##setRequestHeader (Js.string n, Js.string v)) headers;*)
-
   req##onreadystatechange <- Js.wrap_callback
     (fun _ ->
        (match req##readyState with
 		   | XmlHttpRequest.DONE ->
-			   Lwt.wakeup w (Xmlrpc.response_of_string (Js.to_string req##responseText))
-(*
-				   {XmlHttpRequest.url = url;
-					code = req##status;
-					content = Js.to_string req##responseText;
-					content_xml =
-						   (fun () ->
-							   match Js.Opt.to_option (req##responseXML) with
-								   | None -> None
-								   | Some doc ->
-									   if (Js.some doc##documentElement) == Js.null
-									   then None
-									   else Some doc);
-					headers = fun _ -> None;
-				   }
-*)
+			   Lwt.wakeup w (dec (Js.to_string req##responseText))
 		   | _ -> ()));
 
   req##send (Js.some (Js.string contents));
 
   Lwt.on_cancel res (fun () -> req##abort ()) ;
   res
+
+let do_xml_rpc = do_rpc Xmlrpc.string_of_call Xmlrpc.response_of_string "text/xml"
+let do_json_rpc = do_rpc Jsonrpc.string_of_call Jsonrpc.response_of_string "text/json"
+let do_json_rpc_opt = do_rpc Rpc_client_js_helper.string_of_call Rpc_client_js_helper.response_of_string "text/json"

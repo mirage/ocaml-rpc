@@ -15,7 +15,8 @@ TARGETS = \
 	xmlrpc.cmi xmlrpc.cmo xmlrpc.o xmlrpc.cmx \
 	jsonrpc.cmi jsonrpc.cmo jsonrpc.o jsonrpc.cmx \
 	rpc_client.cmi rpc_client.cmo rpc_client.o rpc_client.cmx \
-	rpc_client_js.cmi rpc_client_js.cmo
+	rpc_client_js.cmi rpc_client_js.cmo rpc_client_js_helper.cmo \
+	rpc_client.cmo rpc_client_js.cma
 
 .PHONY: all clean
 all: $(TARGETS)
@@ -38,7 +39,13 @@ p4_rpc.cmo: p4_rpc.ml rpc.cmo
 p4_idl.cmo: p4_idl.ml p4_rpc.cmo
 	$(OCAMLC) $(OCAMLFLAGS) -c -package camlp4,type_conv -pp "camlp4orf" $(ICAMLP4) $@ $<
 
-rpc_client_js.cmo: rpc_client_js.ml
+rpc_client_js.cma: rpc_client_js_helper.cmo rpc_client_js.cmo
+	$(OCAMLC) $(OCAMLFLAGS) -package $(PACKS) -syntax camlp4o $(ICAMLP4) -a -o $@ $^
+
+rpc_client_js_helper.cmo: rpc_client_js_helper.ml
+	$(OCAMLC) $(OCAMLFLAGS) -package $(PACKS) -syntax camlp4o $(ICAMLP4) -c $@ $<
+
+rpc_client_js.cmo: rpc_client_js.ml rpc_client_js_helper.cmo 
 	$(OCAMLC) $(OCAMLFLAGS) -package $(PACKS) -syntax camlp4o $(ICAMLP4) -c $@ $<
 
 %.o %.cmx: %.ml

@@ -46,5 +46,5 @@ package "unix" (
 package "js" (
   description = "Javascript/browser connection handling"
   requires = "rpclib.core"
-  archive(byte) = "rpc_client_js.cmo"
+  archive(byte) = "rpc_client_js.cma"
 )

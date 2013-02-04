@@ -12,4 +12,6 @@
  * GNU Lesser General Public License for more details.
  *)
 
-val do_rpc : url:string -> Rpc.call -> Rpc.response Lwt.t
+val do_json_rpc : url:string -> Rpc.call -> Rpc.response Lwt.t
+val do_json_rpc_opt : url:string -> Rpc.call -> Rpc.response Lwt.t
+val do_xml_rpc :  url:string -> Rpc.call -> Rpc.response Lwt.t
