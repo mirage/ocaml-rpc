@@ -2,7 +2,7 @@ OCAMLC = ocamlfind ocamlc
 OCAMLOPT = ocamlfind ocamlopt
 OCAMLFLAGS = -annot -g
 
-PACKS = rpclib,unix
+PACKS = rpclib,lwt,lwt.unix
 EXAMPLES = \
 	all_types \
 	phantom \
@@ -12,7 +12,8 @@ EXAMPLES = \
 	encoding \
 	dict \
 	variants \
-	client
+	client \
+	client_lwt
 
 EXECS=$(foreach example, $(EXAMPLES), $(example).opt)
 
@@ -26,6 +27,8 @@ all: $(EXECS)
 client.opt: idl_test.cmx idl_test.cmi client.cmx
 	$(OCAMLOPT) -linkpkg -package $(PACKS) -o $@ idl_test.cmx client.cmx
 
+client_lwt.opt: idl_test.cmx idl_test.cmi client_lwt.cmx
+	$(OCAMLOPT) -linkpkg -package $(PACKS) -o $@ idl_test.cmx client_lwt.cmx
 idl_test.cmx: idl_test.ml idl_test.cmi
 	$(OCAMLOPT) -package $(PACKS),rpclib.idl -syntax camlp4o -c -o $@ $<
 
