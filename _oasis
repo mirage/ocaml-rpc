@@ -1,0 +1,122 @@
+OASISFormat: 0.3
+Name:        rpc
+Version:     1.5.0
+Synopsis:    RPC library
+Authors:     Thomas Gazagnaire, Jon Ludlam
+License:     LGPL-2.0 with OCaml linking exception
+Plugins:     META (0.3), DevFiles (0.3)
+BuildTools:  ocamlbuild
+
+Flag js
+  Description: build the JS client
+  Default: false
+
+Library rpclib
+  Path: lib
+  Findlibname: rpclib
+  Modules: Rpc, Xmlrpc, Jsonrpc, Rpc_client
+  BuildDepends:	xmlm
+
+Library pa_rpc
+  Path: lib
+  FindlibParent: rpclib
+  FindlibName: syntax
+  Modules: Rpc, Pa_rpc
+  BuildDepends: type_conv
+
+Library idl
+  Path: lib
+  FindlibParent: rpclib
+  FindlibName: idl
+  Modules: P4_idl
+  BuildDepends: rpclib, camlp4
+  
+Library rpc_client_js
+  Build$: flag(js)
+  Install$: flag(js)
+  Path: lib
+  FindlibParent: rpclib
+  Findlibname: js
+  BuildDepends: js_of_ocaml, js_of_ocaml.syntax
+  Modules: Rpc_client_js
+
+Executable test
+  Path:               tests
+  MainIs:             all_types.ml
+  Build$:             flag(tests)
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       rpclib.syntax
+
+Executable test
+  Path:               tests
+  MainIs:             phantom.ml
+  Build$:             flag(tests)
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       rpclib
+
+Executable test
+  Path:               tests
+  MainIs:             xapi.ml
+  Build$:             flag(tests)
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       rpclib
+
+Executable test
+  Path:               tests
+  MainIs:             json.ml
+  Build$:             flag(tests)
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       rpclib
+
+Executable test
+  Path:               tests
+  MainIs:             option.ml
+  Build$:             flag(tests)
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       rpclib
+
+Executable test
+  Path:               tests
+  MainIs:             endoding.ml
+  Build$:             flag(tests)
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       rpclib
+
+Executable test
+  Path:               tests
+  MainIs:             dict.ml
+  Build$:             flag(tests)
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       rpclib
+
+Executable test
+  Path:               tests
+  MainIs:             variants.ml
+  Build$:             flag(tests)
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       rpclib
+
+Executable test
+  Path:               tests
+  MainIs:             client.ml
+  Build$:             flag(tests)
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       rpclib
+
+Executable test
+  Path:               tests
+  MainIs:             client_lwt.ml
+  Build$:             flag(tests)
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       rpclib, lwt
+
