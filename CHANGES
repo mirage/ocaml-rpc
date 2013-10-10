@@ -1,0 +1,13 @@
+1.5.0 (Oct 2013)
+* Abstract interface over Async and Lwt (@jonludlam)
+* Remove some debug messages (@djs55)
+
+1.4.1 (May 2013)
+* Add support for using the browser's JSON parser (@jonludlam)
+
+1.3.0 (Jan 2013)
+* Add support for Int32 (@jonludlam)
+* Make unmarshalling of variant types case insensitive (@jonludlam)
+* Make Xmlrpc and Jsonrpc interface look more alike (@jonludlam)
+* Support for recursive types in the IDL (@jonludlam)
+* Improve installation instructions (Daniel Weil)
