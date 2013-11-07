@@ -12,7 +12,7 @@
  * GNU Lesser General Public License for more details.
  *)
 
-let debug = ref true
+let debug = ref false
 let set_debug x = debug := x
 let get_debug () = !debug
 let lower = String.lowercase
