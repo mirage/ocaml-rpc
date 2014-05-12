@@ -3,7 +3,9 @@ dependencies:
 * ocamlfind
 * type-conv
 * xmlm
-* ocaml-js
+
+optional dependencies:
+* js_of_ocaml
 
 instructions:
 
