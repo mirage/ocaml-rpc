@@ -1,3 +1,6 @@
+1.5.1 (May 2014)
+* make js_of_ocaml dependency optional (@djs55)
+
 1.5.0 (Oct 2013)
 * Abstract interface over Async and Lwt (@jonludlam)
 * Remove some debug messages (@djs55)

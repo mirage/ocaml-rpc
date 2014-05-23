@@ -1,6 +1,6 @@
 OASISFormat: 0.3
 Name:        rpc
-Version:     1.5.0
+Version:     1.5.1
 Synopsis:    RPC library
 Authors:     Thomas Gazagnaire, Jon Ludlam
 License:     LGPL-2.0 with OCaml linking exception
@@ -30,7 +30,7 @@ Library idl
   FindlibName: idl
   Modules: P4_idl
   BuildDepends: rpclib, camlp4
-  
+
 Library rpc_client_js
   Build$: flag(js)
   Install$: flag(js)
@@ -119,4 +119,3 @@ Executable test
   CompiledObject:     best
   Install:            false
   BuildDepends:       rpclib, lwt
-
