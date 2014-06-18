@@ -10,11 +10,11 @@ let do_rpc enc dec content_type ~url call =
   req##_open (Js.string method_, Js.string url, Js._true);
   req##setRequestHeader (Js.string "Content-type", Js.string content_type);
   req##onreadystatechange <- Js.wrap_callback
-    (fun _ ->
-       (match req##readyState with
-		   | XmlHttpRequest.DONE ->
-			   Lwt.wakeup w (dec (Js.to_string req##responseText))
-		   | _ -> ()));
+      (fun _ ->
+         (match req##readyState with
+          | XmlHttpRequest.DONE ->
+            Lwt.wakeup w (dec (Js.to_string req##responseText))
+          | _ -> ()));
 
   req##send (Js.some (Js.string contents));
 

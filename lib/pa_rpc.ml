@@ -18,11 +18,11 @@ open Ast
 
 module Param = struct
   let rpc = Gram.Entry.mk "rpc"
-  EXTEND Gram
-    GLOBAL: rpc;
+      EXTEND Gram
+      GLOBAL: rpc;
     pair: [[ x=STRING; "->"; y=STRING -> (x, y ) ]];
     rpc:  [[ l = LIST0 [ pair ] SEP "," -> l]];
-  END
+    END
 end
 
 let _ =

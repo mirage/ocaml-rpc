@@ -29,4 +29,4 @@ val response_of_string: string -> Rpc.response
 val response_of_in_channel : in_channel -> Rpc.response
 
 val a_of_response : empty:(unit -> 'a) -> append:('a -> string -> unit) -> Rpc.response -> 'a
- 
+
