@@ -1,5 +1,7 @@
 (*
- * Copyright (c) 2009 Thomas Gazagnaire <thomas@gazagnaire.com>
+ * Copyright (c) 2006-2009 Citrix Systems Inc.
+ * Copyright (c) 2006-2014 Jon Ludlam <jonathan.ludlam@eu.citrix.com>
+ * Copyright (c) 2006-2014 Thomas Gazagnaire <thomas@gazagnaire.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -12,8 +14,7 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *)
-
+*)
 
 module Rpc = functor (Ast : Camlp4.Sig.Camlp4Ast) ->
 struct
@@ -651,13 +652,13 @@ module Args = struct
       let n = List.length args in
       <:binding<
         $lid:call_of name$ =
-          list_foldi (fun accu arg i ->
-            match arg.kind with
-            | `Optional s -> <:expr< fun ? $lid:s$ -> $accu$ >>
-            | `Named s    -> <:expr< fun ~ $lid:s$ -> $accu$ >>
-            | `Anonymous  -> <:expr< fun $lid:argi (n - i)$ -> $accu$ >>
-          ) (create _loc namespace name wire_name args)
-        (List.rev args)$
+          $list_foldi (fun accu arg i ->
+             match arg.kind with
+             | `Optional s -> <:expr< fun ? $lid:s$ -> $accu$ >>
+             | `Named s    -> <:expr< fun ~ $lid:s$ -> $accu$ >>
+             | `Anonymous  -> <:expr< fun $lid:argi (n - i)$ -> $accu$ >>
+           ) (create _loc namespace name wire_name args)
+             (List.rev args)$
       >>
 
 let gen mt =
