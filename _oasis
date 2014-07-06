@@ -1,9 +1,9 @@
 OASISFormat: 0.3
 Name:        rpc
-Version:     1.5.1
+Version:     1.5.2
 Synopsis:    RPC library
 Authors:     Thomas Gazagnaire, Jon Ludlam
-License:     LGPL-2.0 with OCaml linking exception
+License:     ISC
 Plugins:     META (0.3), DevFiles (0.3)
 BuildTools:  ocamlbuild
 

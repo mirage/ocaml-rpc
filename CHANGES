@@ -1,3 +1,6 @@
+1.5.2 (June 2014)
+* Change license to ISC
+
 1.5.1 (May 2014)
 * make js_of_ocaml dependency optional (@djs55)
 
