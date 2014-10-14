@@ -7,3 +7,4 @@
 *.cmo
 *.annot
 *~
+idl_test_gen.ml
