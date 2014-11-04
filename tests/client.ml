@@ -5,8 +5,8 @@ module Impl = struct
     (if x=5 then failwith "Boo");
     Printf.printf "rpc1: %s %d\n" arg1 x;
     {
-      Idl_test.result = "OK!";
-      Idl_test.metadata = [(1,2);(3,4)];
+      Idl_test.Old.result = "OK!";
+      Idl_test.Old.metadata = [(1,2);(3,4)];
     }
 
   let rpc2 context ?opt v =
@@ -50,13 +50,13 @@ module Client = Idl_test.Client(RPC)
 let _ =
   let result = Client.rpc1 ~arg1:"test argument" 2 in
   Printf.printf "result.result='%s', metadata=[%s]\n"
-    result.Idl_test.result (String.concat ";" (List.map (fun (a,b) -> Printf.sprintf "(%d,%d)" a b) result.Idl_test.metadata));
+    result.Idl_test.Old.result (String.concat ";" (List.map (fun (a,b) -> Printf.sprintf "(%d,%d)" a b) result.Idl_test.Old.metadata));
 
   begin
     try
       let result = Client.rpc1 ~arg1:"test argument" 5 in
       Printf.printf "result.result='%s', metadata=[%s]\n"
-        result.Idl_test.result (String.concat ";" (List.map (fun (a,b) -> Printf.sprintf "(%d,%d)" a b) result.Idl_test.metadata));
+        result.Idl_test.Old.result (String.concat ";" (List.map (fun (a,b) -> Printf.sprintf "(%d,%d)" a b) result.Idl_test.Old.metadata));
     with
       e -> Printf.printf "Got a failure: %s\n" (Printexc.to_string e)
   end;
@@ -64,4 +64,15 @@ let _ =
   Client.rpc2 ~opt:"Optional" (Idl_test.Foo ["hello";"there"]);
   let i = Client.rpc3 999999999999999999L in
   Printf.printf "%Ld\n" i;
-  Client.SubModule.rpc4 3L
+  Client.SubModule.rpc4 3L;
+  
+  let test_extend = {
+    Idl_test.Old.result = "foo";
+    Idl_test.Old.metadata = [(5,6)];
+  } in
+  
+  let test_old = Idl_test.Old.rpc_of_return_record test_extend in
+  Printf.printf "Checking extension:\n";
+  let test_new = Idl_test.return_record_extended_of_rpc test_old in
+  Printf.printf "new_field = [%s]\n" (String.concat ";" test_new.Idl_test.new_field);
+  Printf.printf "result (should be 'foo') = %s\n" test_new.Idl_test.result

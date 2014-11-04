@@ -45,5 +45,9 @@ idl_test.cmx: idl_test.ml idl_test.cmi
 	camlp4o $(shell ocamlfind query rpclib.syntax -r -format "-I %d %a" -predicates syntax,preprocessor) $< -printer o > $@.ml
 	$(OCAMLOPT) $(OCAMLFLAGS) -package $(PACKS) -c -o $@ $@.ml
 
+idl_test_gen.ml: idl_test.ml
+	camlp4o $(shell ocamlfind query rpclib.idl -r -format "-I %d %a" -predicates syntax,preprocessor) $< -printer o > $@
+
+
 clean:
 	rm -f *_gen.ml *.annot *.cmx *.cmi *.cmo *.cmxa *.o $(EXECS)

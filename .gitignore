@@ -1,0 +1,10 @@
+*.opt
+*.o
+*.cmi
+*.cmx
+*.cma
+*.cmxa
+*.cmo
+*.annot
+*~
+idl_test_gen.ml

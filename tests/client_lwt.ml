@@ -18,8 +18,8 @@ module ImplM = struct
     (if x=5 then failwith "Boo");
     Printf.printf "rpc1: %s %d\n" arg1 x;
     return {
-      Idl_test.result = "OK!";
-      Idl_test.metadata = [(1,2);(3,4)];
+      Idl_test.Old.result = "OK!";
+      Idl_test.Old.metadata = [(1,2);(3,4)];
     }
 
   let rpc2 context ?opt v =
@@ -68,12 +68,12 @@ module Client = Idl_test.ClientM(RPCM)
 let main () =
   Client.rpc1 ~arg1:"test argument" 2 >>= fun result -> 
   Printf.printf "result.result='%s', metadata=[%s]\n"
-    result.Idl_test.result (String.concat ";" (List.map (fun (a,b) -> Printf.sprintf "(%d,%d)" a b) result.Idl_test.metadata));
+    result.Idl_test.Old.result (String.concat ";" (List.map (fun (a,b) -> Printf.sprintf "(%d,%d)" a b) result.Idl_test.Old.metadata));
 
   Lwt.catch (fun () ->  
       Client.rpc1 ~arg1:"test argument" 5 >>= fun result -> 
       Printf.printf "result.result='%s', metadata=[%s]\n"
-        result.Idl_test.result (String.concat ";" (List.map (fun (a,b) -> Printf.sprintf "(%d,%d)" a b) result.Idl_test.metadata));
+        result.Idl_test.Old.result (String.concat ";" (List.map (fun (a,b) -> Printf.sprintf "(%d,%d)" a b) result.Idl_test.Old.metadata));
       Lwt.return ()) 
     (fun e -> Printf.printf "Got a failure: %s\n" (Printexc.to_string e);
         Lwt.return ()) >>= fun _ -> 

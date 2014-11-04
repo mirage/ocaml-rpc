@@ -89,3 +89,5 @@ val get_debug : unit -> bool
 
 (** Helper *)
 val lowerfn : t -> t
+
+val struct_extend : t -> t -> t
