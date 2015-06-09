@@ -85,10 +85,10 @@ let lowerfn = function | String s -> String (lower s) | Enum (String s::ss) -> E
 let struct_extend rpc default_rpc =
   match rpc, default_rpc with
   | Dict real, Dict default_fields ->
-    Dict (List.map (fun (f,default) ->
-        if List.mem_assoc f real 
-        then (f,List.assoc f real) 
-        else (f,default)) default_fields)
+    Dict (List.fold_left (fun real (f, default) ->
+      if List.mem_assoc f real
+      then real
+      else (f, default) :: real) real default_fields)
   | _, _ -> rpc
 
 type callback = string list -> t -> unit
