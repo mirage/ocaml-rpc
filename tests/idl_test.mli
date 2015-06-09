@@ -1,12 +1,17 @@
 module Old :
   sig
-    type return_record = { result : string; metadata : (int * int) list; }
+    type return_record = {
+      result : string;
+      metadata : (int * int) list;
+      extras: string option;
+    }
     val rpc_of_return_record : return_record -> Rpc.t
     val return_record_of_rpc : Rpc.t -> return_record
   end
 type return_record_extended = {
   result : string;
   metadata : (int * int) list;
+  extras : string option;
   new_field : string list;
 }
 val rpc_of_return_record_extended : return_record_extended -> Rpc.t
