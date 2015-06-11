@@ -1,3 +1,9 @@
+1.5.4 (June 2015)
+* Fix struct_extend handling of option types (with test)
+
+1.5.3 (Nov 2014)
+* Add a mechanism for performing upgrade
+
 1.5.2 (June 2014)
 * Change license to ISC
 

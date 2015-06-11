@@ -1,6 +1,6 @@
 OASISFormat: 0.3
 Name:        rpc
-Version:     1.5.2
+Version:     1.5.4
 Synopsis:    RPC library
 Authors:     Thomas Gazagnaire, Jon Ludlam
 License:     ISC
