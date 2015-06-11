@@ -90,4 +90,8 @@ val get_debug : unit -> bool
 (** Helper *)
 val lowerfn : t -> t
 
+(** [struct_extend rpc1 rpc2] first checks that [rpc1] and [rpc2] are both
+ *  dictionaries. If this is the case then [struct_extend] will create a new
+ *  [Rpc.t] which contains all key-value pairs from [rpc1], as well as all
+ *  key-value pairs from [rpc2] for which the key does not exist in [rpc1]. *)
 val struct_extend : t -> t -> t

@@ -20,6 +20,7 @@ module ImplM = struct
     return {
       Idl_test.Old.result = "OK!";
       Idl_test.Old.metadata = [(1,2);(3,4)];
+      Idl_test.Old.extras = Some "bar";
     }
 
   let rpc2 context ?opt v =

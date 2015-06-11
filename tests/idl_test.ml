@@ -4,18 +4,21 @@ module Old = struct
   type return_record = {
     result : string;
     metadata : (int * int) list;
+    extras : string option;
   }
 end
 
 type return_record_extended = {
   result : string;
   metadata : (int * int) list;
+  extras : string option;
   new_field : string list;
 }
 
 let default_return_record_extended = {
   result = "hello";
   metadata = [(1,2); (3,4)];
+  extras = None;
   new_field = ["1"; "3"; "5"];
 }
 

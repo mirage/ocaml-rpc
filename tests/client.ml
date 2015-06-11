@@ -7,6 +7,7 @@ module Impl = struct
     {
       Idl_test.Old.result = "OK!";
       Idl_test.Old.metadata = [(1,2);(3,4)];
+      Idl_test.Old.extras = Some "bar";
     }
 
   let rpc2 context ?opt v =
@@ -69,10 +70,15 @@ let _ =
   let test_extend = {
     Idl_test.Old.result = "foo";
     Idl_test.Old.metadata = [(5,6)];
+    Idl_test.Old.extras = Some "bar";
   } in
   
   let test_old = Idl_test.Old.rpc_of_return_record test_extend in
   Printf.printf "Checking extension:\n";
   let test_new = Idl_test.return_record_extended_of_rpc test_old in
   Printf.printf "new_field = [%s]\n" (String.concat ";" test_new.Idl_test.new_field);
-  Printf.printf "result (should be 'foo') = %s\n" test_new.Idl_test.result
+  Printf.printf "result (should be 'foo') = %s\n" test_new.Idl_test.result;
+  Printf.printf "extras (should be 'Some \"bar\"' = %s\n"
+    (match test_new.Idl_test.extras with
+    | Some x -> Printf.sprintf "Some \"%s\"" x
+    | None -> "None")
