@@ -38,7 +38,7 @@ let encode s =
   let need_encoding =
     let b = ref false in
     let i = ref 0 in
-    while not !b && !i < n-1 do
+    while not !b && !i < n do
       b := aux s.[ !i ] <> None;
       incr i;
     done;
