@@ -7,5 +7,9 @@ let _ =
 
 	let t' = t_of_rpc r in
 	Printf.printf "t = t : %b'\n%!" (t = t');
-	assert (t = t')
+	assert (t = t');
+
+	let test = Rpc.Dict ["foo", String "&"] in
+	let str = Xmlrpc.to_string test in
+	assert (str = "<value><struct><member><name>foo</name><value>&amp;</value></member></struct></value>")
 
