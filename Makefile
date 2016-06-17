@@ -30,8 +30,11 @@ clean:
 distclean:
 	$(SETUP) -distclean $(DISTCLEANFLAGS)
 
-setup.data:
+setup.data: setup.ml
 	$(SETUP) -configure $(CONFIGUREFLAGS)
+
+setup.ml: _oasis
+	oasis setup
 
 configure:
 	$(SETUP) -configure $(CONFIGUREFLAGS)
