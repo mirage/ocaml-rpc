@@ -1,52 +1,44 @@
-version = "1.6.0"
-description = "RPC: lightweight library to convert plain ML types to and from RPC values"
-requires = "rpclib.xml, rpclib.json"
-
+# OASIS_START
+# DO NOT EDIT (digest: bd83ac2a780d2336ff4099113c7dc022)
+version = "2.0.0"
+description = "RPC library"
+requires = "xmlm result"
+archive(byte) = "rpclib.cma"
+archive(byte, plugin) = "rpclib.cma"
+archive(native) = "rpclib.cmxa"
+archive(native, plugin) = "rpclib.cmxs"
+exists_if = "rpclib.cma"
 package "syntax" (
-  description = "rpc: library to marshalling/unmarshalling ML types to/from RPC intermediate language"
-  requires = "type_conv"
-  archive(syntax,preprocessor) = "pa_rpc.cma"
-  archive(syntax,toploop) = "pa_rpc.cma"
-  )
-
-package "idl" (
-  description = "Preprocessor to convert an idl definition in ocaml into an implementation of client and server modules"
-  requires = "camlp4"
-  archive(syntax,preprocessor) = "idl.cma"
-  archive(syntax,toploop) = "idl.cma"
-  )
-
-package "core" (
-  description = "Common RPC definitions"
-  archive(byte) = "rpc.cmo"
-  archive(native) = "rpc.cmx"
-)
-
-package "xml" (
-  description = "XML-RPC marshalling/unmarshalling"
-  requires = "rpclib.core,xmlm"
-  archive(byte) = "xmlrpc.cmo"
-  archive(native) = "xmlrpc.cmx"
-  )
-
-package "json" (
-  description = "JSON-RPC marshalling/unmarshalling"
-  requires = "rpclib.core"
-  archive(byte) = "jsonrpc.cmo"
-  archive(native) = "jsonrpc.cmx"
-)
-
-package "unix" (
-  description = "Unix socket connection handling"
-  requires = "rpclib.core"
-  archive(byte) = "rpc_client.cmo"
-  archive(native) = "rpc_client.cmx"
+ version = "2.0.0"
+ description = "RPC library"
+ requires = "type_conv result"
+ archive(syntax, preprocessor) = "pa_rpc.cma"
+ archive(syntax, toploop) = "pa_rpc.cma"
+ archive(syntax, preprocessor, native) = "pa_rpc.cmxa"
+ archive(syntax, preprocessor, native, plugin) = "pa_rpc.cmxs"
+ exists_if = "pa_rpc.cma"
 )
 
 package "js" (
-  description = "Javascript/browser connection handling"
-  requires = "rpclib.core"
-  archive(byte) = "rpc_client_js.cma"
-  exists_if = "rpc_client_js.cma"
-
+ version = "2.0.0"
+ description = "RPC library"
+ requires = "js_of_ocaml js_of_ocaml.syntax"
+ archive(byte) = "rpc_client_js.cma"
+ archive(byte, plugin) = "rpc_client_js.cma"
+ archive(native) = "rpc_client_js.cmxa"
+ archive(native, plugin) = "rpc_client_js.cmxs"
+ exists_if = "rpc_client_js.cma"
 )
+
+package "idl" (
+ version = "2.0.0"
+ description = "RPC library"
+ requires = "rpclib camlp4 result"
+ archive(syntax, preprocessor) = "idl.cma"
+ archive(syntax, toploop) = "idl.cma"
+ archive(syntax, preprocessor, native) = "idl.cmxa"
+ archive(syntax, preprocessor, native, plugin) = "idl.cmxs"
+ exists_if = "idl.cma"
+)
+# OASIS_STOP
+

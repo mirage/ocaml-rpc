@@ -4,7 +4,7 @@ Version:     2.0.0
 Synopsis:    RPC library
 Authors:     Thomas Gazagnaire, Jon Ludlam
 License:     ISC
-Plugins:     DevFiles (0.3)
+Plugins:     DevFiles (0.3), META(0.4)
 BuildTools:  ocamlbuild
 
 Flag js
@@ -13,6 +13,7 @@ Flag js
 
 Library rpclib
   Path: lib
+  CompiledObject: best
   Findlibname: rpclib
   Modules: Rpc, Xmlrpc, Jsonrpc, Rpc_client
   BuildDepends:	xmlm, result
@@ -21,15 +22,23 @@ Library pa_rpc
   Path: lib
   FindlibParent: rpclib
   FindlibName: syntax
-  Modules: Rpc, Pa_rpc
+  XMETAType: syntax
+  Modules: Pa_rpc, P4_rpc, Pa_module_conv
   BuildDepends: type_conv, result
 
 Library idl
   Path: lib
   FindlibParent: rpclib
   FindlibName: idl
-  Modules: P4_idl
+  Modules: P4_idl, P4_rpc, Pa_module_conv
+  XMETAType: syntax
   BuildDepends: rpclib, camlp4, result
+
+Library ppx_deriving_rpc
+  Path: ppx
+  Findlibname: ppx_deriving_rpc
+  Modules: Ppx_deriving_rpc
+  BuildDepends: compiler-libs.common, ppx_tools.metaquot, ppx_deriving, ppx_deriving.api
 
 Library rpc_client_js
   Build$: flag(js)

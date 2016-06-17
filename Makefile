@@ -30,11 +30,8 @@ clean:
 distclean:
 	$(SETUP) -distclean $(DISTCLEANFLAGS)
 
-setup.data: setup.ml
+setup.data:
 	$(SETUP) -configure $(CONFIGUREFLAGS)
-
-setup.ml: _oasis
-	oasis setup
 
 configure:
 	$(SETUP) -configure $(CONFIGUREFLAGS)
@@ -42,3 +39,8 @@ configure:
 .PHONY: build doc test all install uninstall reinstall clean distclean configure
 
 # OASIS_STOP
+
+setup.data: setup.ml
+setup.ml: _oasis
+	oasis setup
+
