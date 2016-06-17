@@ -1,10 +1,10 @@
 OASISFormat: 0.3
-Name:        rpc
-Version:     1.6.0
+Name:        rpclib
+Version:     2.0.0
 Synopsis:    RPC library
 Authors:     Thomas Gazagnaire, Jon Ludlam
 License:     ISC
-Plugins:     META (0.3), DevFiles (0.3)
+Plugins:     DevFiles (0.3)
 BuildTools:  ocamlbuild
 
 Flag js

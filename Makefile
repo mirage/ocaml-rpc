@@ -1,40 +1,41 @@
-.PHONY: all install
+# OASIS_START
+# DO NOT EDIT (digest: a3c674b4239234cbbe53afe090018954)
 
-HAVE_JS_OF_OCAML ?= $(shell if ocamlfind query js_of_ocaml > /dev/null 2>&1; then echo true; else echo false; fi)
+SETUP = ocaml setup.ml
+
+build: setup.data
+	$(SETUP) -build $(BUILDFLAGS)
+
+doc: setup.data build
+	$(SETUP) -doc $(DOCFLAGS)
+
+test: setup.data build
+	$(SETUP) -test $(TESTFLAGS)
 
 all:
-	cd lib && $(MAKE) all
-ifeq ($(HAVE_JS_OF_OCAML),true)
-	cd lib && $(MAKE) all-js
-endif
+	$(SETUP) -all $(ALLFLAGS)
 
-install:
-ifeq ($(HAVE_JS_OF_OCAML),true)
-	cd lib && $(MAKE) install-js
-else
-	cd lib && $(MAKE) install
-endif
+install: setup.data
+	$(SETUP) -install $(INSTALLFLAGS)
 
-uninstall:
-	cd lib && $(MAKE) uninstall
+uninstall: setup.data
+	$(SETUP) -uninstall $(UNINSTALLFLAGS)
 
-.PHONY: tests
-tests:
-	cd tests && $(MAKE) all
+reinstall: setup.data
+	$(SETUP) -reinstall $(REINSTALLFLAGS)
 
 clean:
-	cd lib && $(MAKE) clean
-	cd tests && $(MAKE) clean
+	$(SETUP) -clean $(CLEANFLAGS)
 
-VERSION = $(shell grep 'Version:' _oasis | sed 's/Version: *//')
-NAME    = $(shell grep 'Name:' _oasis    | sed 's/Name: *//')
-ARCHIVE = https://github.com/mirage/ocaml-rpc/archive/v$(VERSION).tar.gz
+distclean:
+	$(SETUP) -distclean $(DISTCLEANFLAGS)
 
-release:
-	git tag -a v$(VERSION) -m "Version $(VERSION)."
-	git push upstream v$(VERSION)
-	$(MAKE) pr
+setup.data:
+	$(SETUP) -configure $(CONFIGUREFLAGS)
 
-pr:
-	opam publish prepare $(NAME).$(VERSION) $(ARCHIVE)
-	OPAMYES=1 opam publish submit $(NAME).$(VERSION) && rm -rf $(NAME).$(VERSION)
+configure:
+	$(SETUP) -configure $(CONFIGUREFLAGS)
+
+.PHONY: build doc test all install uninstall reinstall clean distclean configure
+
+# OASIS_STOP
