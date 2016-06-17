@@ -31,6 +31,20 @@ type t =
   | Dict of (string * t) list
   | Null
 
+type 'a error_or = ('a, string) Result.result
+
+let bind m f =
+  match m with
+  | Result.Ok x -> f x
+  | Result.Error y -> Result.Error y
+let return x = Result.Ok x
+let (>>=) = bind
+let rec map_bind f acc xs =
+  match xs with
+  | x :: xs -> f x >>= fun x -> map_bind f (x :: acc) xs
+  | [] -> Result.Ok (List.rev acc)
+let lift f x = return (f x)
+
 exception Runtime_error of string * t
 exception Runtime_exception of string * string
 
@@ -62,23 +76,60 @@ let t_of_rpc x = x
 let int64_of_rpc = function
   | Int i    -> i
   | String s -> Int64.of_string s
-  | _ -> failwith "int64_of_rpc"
+  | x -> failwith (Printf.sprintf "Expected int64, got '%s'" (to_string x))
 let int32_of_rpc = function
   | Int i    -> Int64.to_int32 i
   | String s -> Int32.of_string s
-  | _ -> failwith "int32_of_rpc"
+  | x -> failwith (Printf.sprintf "Expected int32, got '%s'" (to_string x))
 let int_of_rpc = function
   | Int i    -> Int64.to_int i
   | String s -> int_of_string s
-  | _ -> failwith "int_of_rpc"
-let bool_of_rpc = function Bool b -> b | _ -> failwith "bool_of_rpc"
+  | x -> failwith (Printf.sprintf "Expected int, got '%s'" (to_string x))
+let bool_of_rpc = function
+  | Bool b -> b
+  | x -> failwith (Printf.sprintf "Expected bool, got '%s'" (to_string x))
 let float_of_rpc = function
   | Float f  -> f
   | String s -> float_of_string s
-  | _ -> failwith "float_of_rpc"
-let string_of_rpc = function String s -> s | _ -> failwith "string_of_rpc"
-let dateTime_of_rpc = function DateTime s -> s | _ -> failwith "dateTime_of_rpc"
-let unit_of_rpc = function Null -> () | _ -> failwith "unit_of_rpc"
+  | x -> failwith (Printf.sprintf "Expected float, got '%s'" (to_string x))
+let string_of_rpc = function
+  | String s -> s
+  | x -> failwith (Printf.sprintf "Expected string, got '%s'" (to_string x))
+let dateTime_of_rpc = function
+  | DateTime s -> s
+  | x -> failwith (Printf.sprintf "Expected DateTime, got '%s'" (to_string x))
+let unit_of_rpc = function
+  | Null -> ()
+  | x -> failwith (Printf.sprintf "Expected unit, got '%s'" (to_string x))
+
+let int64r_of_rpc = function
+  | Int i    -> Result.Ok i
+  | String s -> Result.Ok (Int64.of_string s)
+  | x -> Result.Error (Printf.sprintf "Expected int64, got '%s'" (to_string x))
+let int32r_of_rpc = function
+  | Int i    -> Result.Ok (Int64.to_int32 i)
+  | String s -> Result.Ok (Int32.of_string s)
+  | x -> Result.Error (Printf.sprintf "Expected int32, got '%s'" (to_string x))
+let intr_of_rpc = function
+  | Int i    -> Result.Ok (Int64.to_int i)
+  | String s -> Result.Ok (int_of_string s)
+  | x -> Result.Error (Printf.sprintf "Expected int, got '%s'" (to_string x))
+let boolr_of_rpc = function
+  | Bool b -> Result.Ok b
+  | x -> Result.Error (Printf.sprintf "Expected bool, got '%s'" (to_string x))
+let floatr_of_rpc = function
+  | Float f  -> Result.Ok f
+  | String s -> Result.Ok (float_of_string s)
+  | x -> Result.Error (Printf.sprintf "Expected float, got '%s'" (to_string x))
+let stringr_of_rpc = function
+  | String s -> Result.Ok s
+  | x -> Result.Error (Printf.sprintf "Expected string, got '%s'" (to_string x))
+let dateTimer_of_rpc = function
+  | DateTime s -> Result.Ok s
+  | x -> Result.Error (Printf.sprintf "Expected DateTime, got '%s'" (to_string x))
+let unitr_of_rpc = function
+  | Null -> Result.Ok ()
+  | x -> Result.Error (Printf.sprintf "Expected unit, got '%s'" (to_string x))
 
 let lowerfn = function | String s -> String (lower s) | Enum (String s::ss) -> Enum ((String (lower s))::ss) | x -> x
 
@@ -113,3 +164,6 @@ let string_of_response response =
 
 let success v = { success = true; contents = v }
 let failure v = { success = false; contents = v }
+
+
+      

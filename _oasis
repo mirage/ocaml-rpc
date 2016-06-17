@@ -15,21 +15,21 @@ Library rpclib
   Path: lib
   Findlibname: rpclib
   Modules: Rpc, Xmlrpc, Jsonrpc, Rpc_client
-  BuildDepends:	xmlm
+  BuildDepends:	xmlm, result
 
 Library pa_rpc
   Path: lib
   FindlibParent: rpclib
   FindlibName: syntax
   Modules: Rpc, Pa_rpc
-  BuildDepends: type_conv
+  BuildDepends: type_conv, result
 
 Library idl
   Path: lib
   FindlibParent: rpclib
   FindlibName: idl
   Modules: P4_idl
-  BuildDepends: rpclib, camlp4
+  BuildDepends: rpclib, camlp4, result
 
 Library rpc_client_js
   Build$: flag(js)

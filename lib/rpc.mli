@@ -28,34 +28,49 @@ type t =
   | Dict of (string * t) list
   | Null
 
+type 'a error_or = ('a, string) Result.result
+
+val bind : 'a error_or -> ('a -> 'b error_or) -> 'b error_or
+val return : 'a -> 'a error_or
+val (>>=) : 'a error_or -> ('a -> 'b error_or) -> 'b error_or
+val map_bind : ('a -> 'b error_or) -> 'b list -> 'a list -> ('b list) error_or
+
 val to_string : t -> string
 
 (** {2 Basic constructors} *)
 
+val int64r_of_rpc : t -> int64 error_or
 val int64_of_rpc : t -> int64
 val rpc_of_int64 : int64 -> t
 
+val int32r_of_rpc : t -> int32 error_or
 val int32_of_rpc : t -> int32
 val rpc_of_int32 : int32 -> t
 
+val intr_of_rpc : t -> int error_or
 val int_of_rpc : t -> int
 val rpc_of_int : int -> t
 
+val boolr_of_rpc : t -> bool error_or
 val bool_of_rpc : t -> bool
 val rpc_of_bool : bool -> t
 
+val floatr_of_rpc : t -> float error_or
 val float_of_rpc : t -> float
 val rpc_of_float : float -> t
 
+val stringr_of_rpc : t -> string error_or
 val string_of_rpc : t -> string
 val rpc_of_string : string -> t
 
+val dateTimer_of_rpc : t -> string error_or
 val dateTime_of_rpc : t -> string
 val rpc_of_dateTime : string -> t
 
 val t_of_rpc : t -> t
 val rpc_of_t : t -> t
 
+val unitr_of_rpc : t -> unit error_or
 val unit_of_rpc : t -> unit
 val rpc_of_unit : unit -> t
 
@@ -95,3 +110,5 @@ val lowerfn : t -> t
  *  [Rpc.t] which contains all key-value pairs from [rpc1], as well as all
  *  key-value pairs from [rpc2] for which the key does not exist in [rpc1]. *)
 val struct_extend : t -> t -> t
+
+

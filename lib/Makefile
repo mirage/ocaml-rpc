@@ -1,7 +1,7 @@
 OCAMLC = ocamlfind ocamlc
 OCAMLOPT = ocamlfind ocamlopt
 OCAMLFLAGS = -annot -g
-PACKS = xmlm,lwt
+PACKS = xmlm,lwt,result
 PACKS_JS = js_of_ocaml,js_of_ocaml.syntax
 
 ICAMLP4 = -I $(shell ocamlfind query camlp4) \
