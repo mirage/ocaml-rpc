@@ -1,13 +1,35 @@
 # OASIS_START
-# DO NOT EDIT (digest: bd83ac2a780d2336ff4099113c7dc022)
+# DO NOT EDIT (digest: 388a20a1f76ef5fad9314467510ecc84)
 version = "2.0.0"
 description = "RPC library"
-requires = "xmlm result"
+requires = "rpclib.xml rpclib.json"
 archive(byte) = "rpclib.cma"
 archive(byte, plugin) = "rpclib.cma"
 archive(native) = "rpclib.cmxa"
 archive(native, plugin) = "rpclib.cmxs"
 exists_if = "rpclib.cma"
+package "xml" (
+ version = "2.0.0"
+ description = "RPC library"
+ requires = "xmlm rpclib.core"
+ archive(byte) = "xml.cma"
+ archive(byte, plugin) = "xml.cma"
+ archive(native) = "xml.cmxa"
+ archive(native, plugin) = "xml.cmxs"
+ exists_if = "xml.cma"
+)
+
+package "unix" (
+ version = "2.0.0"
+ description = "RPC library"
+ requires = "rpclib.core"
+ archive(byte) = "unix.cma"
+ archive(byte, plugin) = "unix.cma"
+ archive(native) = "unix.cmxa"
+ archive(native, plugin) = "unix.cmxs"
+ exists_if = "unix.cma"
+)
+
 package "syntax" (
  version = "2.0.0"
  description = "RPC library"
@@ -17,6 +39,17 @@ package "syntax" (
  archive(syntax, preprocessor, native) = "pa_rpc.cmxa"
  archive(syntax, preprocessor, native, plugin) = "pa_rpc.cmxs"
  exists_if = "pa_rpc.cma"
+)
+
+package "json" (
+ version = "2.0.0"
+ description = "RPC library"
+ requires = "rpclib.core"
+ archive(byte) = "json.cma"
+ archive(byte, plugin) = "json.cma"
+ archive(native) = "json.cmxa"
+ archive(native, plugin) = "json.cmxs"
+ exists_if = "json.cma"
 )
 
 package "js" (
@@ -39,6 +72,17 @@ package "idl" (
  archive(syntax, preprocessor, native) = "idl.cmxa"
  archive(syntax, preprocessor, native, plugin) = "idl.cmxs"
  exists_if = "idl.cma"
+)
+
+package "core" (
+ version = "2.0.0"
+ description = "RPC library"
+ requires = "result"
+ archive(byte) = "rpclib_core.cma"
+ archive(byte, plugin) = "rpclib_core.cma"
+ archive(native) = "rpclib_core.cmxa"
+ archive(native, plugin) = "rpclib_core.cmxs"
+ exists_if = "rpclib_core.cma"
 )
 # OASIS_STOP
 

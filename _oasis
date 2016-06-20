@@ -11,12 +11,29 @@ Flag js
   Description: build the JS client
   Default: false
 
-Library rpclib
+Library rpclib_core
   Path: lib
   CompiledObject: best
-  Findlibname: rpclib
-  Modules: Rpc, Xmlrpc, Jsonrpc, Rpc_client
-  BuildDepends:	xmlm, result
+  FindlibParent: rpclib
+  Findlibname: core
+  Modules: Rpc
+  BuildDepends:	result
+
+Library xml
+  Path: lib
+  CompiledObject: best
+  FindlibParent: rpclib
+  Findlibname: xml
+  Modules: Xmlrpc
+  BuildDepends:	xmlm, rpclib.core
+
+Library json
+  Path: lib
+  CompiledObject: best
+  FindlibParent: rpclib
+  Findlibname: json
+  Modules: Jsonrpc
+  BuildDepends:	rpclib.core
 
 Library pa_rpc
   Path: lib
@@ -25,6 +42,18 @@ Library pa_rpc
   XMETAType: syntax
   Modules: Pa_rpc, P4_rpc, Pa_module_conv
   BuildDepends: type_conv, result
+
+Library unix
+  Path: lib
+  FindlibParent: rpclib
+  FindlibName: unix
+  Modules: Rpc_client
+  BuildDepends: rpclib.core
+
+Library rpclib
+  Path: lib
+  FindlibName: rpclib
+  BuildDepends: rpclib.xml, rpclib.json
 
 Library idl
   Path: lib

@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: d1a92c67c09ec6da63eb72a7e0651894)
+# DO NOT EDIT (digest: c64552eaaa1e9f6dc7597ee5f7ed5317)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -14,17 +14,28 @@ true: annot, bin_annot
 ".git": not_hygienic
 "_darcs": -traverse
 "_darcs": not_hygienic
-# Library rpclib
-"lib/rpclib.cmxs": use_rpclib
+# Library rpclib_core
+"lib/rpclib_core.cmxs": use_rpclib_core
+# Library xml
+"lib/xml.cmxs": use_xml
+# Library json
+"lib/json.cmxs": use_json
 # Library pa_rpc
 "lib/pa_rpc.cmxs": use_pa_rpc
 <lib/*.ml{,i,y}>: pkg_type_conv
+# Library unix
+"lib/unix.cmxs": use_unix
+# Library rpclib
+"lib/rpclib.cmxs": use_rpclib
 # Library idl
 "lib/idl.cmxs": use_idl
 <lib/*.ml{,i,y}>: pkg_camlp4
 <lib/*.ml{,i,y}>: pkg_result
 <lib/*.ml{,i,y}>: pkg_xmlm
+<lib/*.ml{,i,y}>: use_json
 <lib/*.ml{,i,y}>: use_rpclib
+<lib/*.ml{,i,y}>: use_rpclib_core
+<lib/*.ml{,i,y}>: use_xml
 # Library ppx_deriving_rpc
 "ppx/ppx_deriving_rpc.cmxs": use_ppx_deriving_rpc
 <ppx/*.ml{,i,y}>: pkg_compiler-libs.common
