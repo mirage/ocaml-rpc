@@ -39,40 +39,44 @@ val to_string : t -> string
 
 (** {2 Basic constructors} *)
 
-val int64r_of_rpc : t -> int64 error_or
-val int64_of_rpc : t -> int64
+val int64_of_rpc : t -> int64 error_or
 val rpc_of_int64 : int64 -> t
 
-val int32r_of_rpc : t -> int32 error_or
-val int32_of_rpc : t -> int32
+val int32_of_rpc : t -> int32 error_or
 val rpc_of_int32 : int32 -> t
 
-val intr_of_rpc : t -> int error_or
-val int_of_rpc : t -> int
+val int_of_rpc : t -> int error_or
 val rpc_of_int : int -> t
 
-val boolr_of_rpc : t -> bool error_or
-val bool_of_rpc : t -> bool
+val bool_of_rpc : t -> bool error_or
 val rpc_of_bool : bool -> t
 
-val floatr_of_rpc : t -> float error_or
-val float_of_rpc : t -> float
+val float_of_rpc : t -> float error_or
 val rpc_of_float : float -> t
 
-val stringr_of_rpc : t -> string error_or
-val string_of_rpc : t -> string
+val string_of_rpc : t -> string error_or
 val rpc_of_string : string -> t
 
-val dateTimer_of_rpc : t -> string error_or
-val dateTime_of_rpc : t -> string
+val dateTime_of_rpc : t -> string error_or
 val rpc_of_dateTime : string -> t
 
-val t_of_rpc : t -> t
+val t_of_rpc : t -> t error_or (* For consistency!? *)
 val rpc_of_t : t -> t
 
-val unitr_of_rpc : t -> unit error_or
-val unit_of_rpc : t -> unit
+val unit_of_rpc : t -> unit error_or
 val rpc_of_unit : unit -> t
+
+module ExnProducing : sig
+val int64_of_rpc : t -> int64
+val int32_of_rpc : t -> int32
+val int_of_rpc : t -> int
+val bool_of_rpc : t -> bool
+val float_of_rpc : t -> float
+val string_of_rpc : t -> string
+val dateTime_of_rpc : t -> string
+val t_of_rpc : t -> t
+val unit_of_rpc : t -> unit
+end
 
 (** {2 Calls} *)
 

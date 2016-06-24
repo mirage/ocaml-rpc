@@ -4,7 +4,7 @@ Version:     2.0.0
 Synopsis:    RPC library
 Authors:     Thomas Gazagnaire, Jon Ludlam
 License:     ISC
-Plugins:     DevFiles (0.3), META(0.4)
+Plugins:     META(0.4)
 BuildTools:  ocamlbuild
 
 Flag js
@@ -17,7 +17,7 @@ Library rpclib_core
   FindlibParent: rpclib
   Findlibname: core
   Modules: Rpc, Idl, Types, Pythongen, Htmlgen, Codegen
-  BuildDepends:	result
+  BuildDepends:	result, cow
 
 Library xml
   Path: lib
@@ -66,7 +66,7 @@ Library idl
 Library ppx_deriving_rpc
   Path: ppx
   Findlibname: ppx_deriving_rpc
-  Modules: Ppx_deriving_rpc
+  Modules: Ppx_deriving_rpc, Ppx_deriving_rpcty
   BuildDepends: compiler-libs.common, ppx_tools.metaquot, ppx_deriving, ppx_deriving.api
 
 Library rpc_client_js
@@ -78,82 +78,3 @@ Library rpc_client_js
   BuildDepends: js_of_ocaml, js_of_ocaml.syntax
   Modules: Rpc_client_js
 
-Executable test
-  Path:               tests
-  MainIs:             all_types.ml
-  Build$:             flag(tests)
-  CompiledObject:     best
-  Install:            false
-  BuildDepends:       rpclib.syntax
-
-Executable test
-  Path:               tests
-  MainIs:             phantom.ml
-  Build$:             flag(tests)
-  CompiledObject:     best
-  Install:            false
-  BuildDepends:       rpclib
-
-Executable test
-  Path:               tests
-  MainIs:             xapi.ml
-  Build$:             flag(tests)
-  CompiledObject:     best
-  Install:            false
-  BuildDepends:       rpclib
-
-Executable test
-  Path:               tests
-  MainIs:             json.ml
-  Build$:             flag(tests)
-  CompiledObject:     best
-  Install:            false
-  BuildDepends:       rpclib
-
-Executable test
-  Path:               tests
-  MainIs:             option.ml
-  Build$:             flag(tests)
-  CompiledObject:     best
-  Install:            false
-  BuildDepends:       rpclib
-
-Executable test
-  Path:               tests
-  MainIs:             endoding.ml
-  Build$:             flag(tests)
-  CompiledObject:     best
-  Install:            false
-  BuildDepends:       rpclib
-
-Executable test
-  Path:               tests
-  MainIs:             dict.ml
-  Build$:             flag(tests)
-  CompiledObject:     best
-  Install:            false
-  BuildDepends:       rpclib
-
-Executable test
-  Path:               tests
-  MainIs:             variants.ml
-  Build$:             flag(tests)
-  CompiledObject:     best
-  Install:            false
-  BuildDepends:       rpclib
-
-Executable test
-  Path:               tests
-  MainIs:             client.ml
-  Build$:             flag(tests)
-  CompiledObject:     best
-  Install:            false
-  BuildDepends:       rpclib
-
-Executable test
-  Path:               tests
-  MainIs:             client_lwt.ml
-  Build$:             flag(tests)
-  CompiledObject:     best
-  Install:            false
-  BuildDepends:       rpclib, lwt

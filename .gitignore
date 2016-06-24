@@ -8,3 +8,6 @@
 *.annot
 *~
 idl_test_gen.ml
+*.mldylib
+*.mllib
+lib/META
