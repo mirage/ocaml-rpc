@@ -66,6 +66,9 @@ val rpc_of_t : t -> t
 val unit_of_rpc : t -> unit error_or
 val rpc_of_unit : unit -> t
 
+val char_of_rpc : t -> char error_or
+val rpc_of_char : char -> t
+
 module ExnProducing : sig
 val int64_of_rpc : t -> int64
 val int32_of_rpc : t -> int32

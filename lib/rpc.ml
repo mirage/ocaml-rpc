@@ -71,6 +71,7 @@ let rpc_of_float f = Float f
 let rpc_of_string s = String s
 let rpc_of_dateTime s = DateTime s
 let rpc_of_unit () = Null
+let rpc_of_char x = Int (Int64.of_int (Char.code x))
 
 module ExnProducing = struct
   let t_of_rpc x = x
@@ -106,22 +107,34 @@ end
 
 let int64_of_rpc = function
   | Int i    -> Result.Ok i
-  | String s -> Result.Ok (Int64.of_string s)
+  | String s -> begin
+      try Result.Ok (Int64.of_string s)
+      with _ -> Result.Error (Printf.sprintf "Expected int64, got string '%s'" s)
+    end
   | x -> Result.Error (Printf.sprintf "Expected int64, got '%s'" (to_string x))
 let int32_of_rpc = function
   | Int i    -> Result.Ok (Int64.to_int32 i)
-  | String s -> Result.Ok (Int32.of_string s)
+  | String s -> begin
+      try Result.Ok (Int32.of_string s)
+      with _ -> Result.Error (Printf.sprintf "Expected int32, got string '%s'" s)
+    end
   | x -> Result.Error (Printf.sprintf "Expected int32, got '%s'" (to_string x))
 let int_of_rpc = function
   | Int i    -> Result.Ok (Int64.to_int i)
-  | String s -> Result.Ok (int_of_string s)
+  | String s -> begin
+      try Result.Ok (int_of_string s)
+      with _ -> Result.Error (Printf.sprintf "Expected int, got string '%s'" s)
+    end
   | x -> Result.Error (Printf.sprintf "Expected int, got '%s'" (to_string x))
 let bool_of_rpc = function
   | Bool b -> Result.Ok b
   | x -> Result.Error (Printf.sprintf "Expected bool, got '%s'" (to_string x))
 let float_of_rpc = function
   | Float f  -> Result.Ok f
-  | String s -> Result.Ok (float_of_string s)
+  | String s -> begin
+      try Result.Ok (float_of_string s)
+      with _ -> Result.Error (Printf.sprintf "Expected float, got string '%s'" s)
+    end
   | x -> Result.Error (Printf.sprintf "Expected float, got '%s'" (to_string x))
 let string_of_rpc = function
   | String s -> Result.Ok s
@@ -132,7 +145,13 @@ let dateTime_of_rpc = function
 let unit_of_rpc = function
   | Null -> Result.Ok ()
   | x -> Result.Error (Printf.sprintf "Expected unit, got '%s'" (to_string x))
+let char_of_rpc x =
+  int_of_rpc x >>= fun x ->
+  if x < 0 || x > 255
+  then Result.Error (Printf.sprintf "Char out of range (%d)" x)
+  else Result.Ok (Char.chr x)
 let t_of_rpc t = Result.Ok t
+
 
 let lowerfn = function | String s -> String (lower s) | Enum (String s::ss) -> Enum ((String (lower s))::ss) | x -> x
 
