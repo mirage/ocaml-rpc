@@ -74,7 +74,11 @@ let rpc_of_unit () = Null
 let rpc_of_char x = Int (Int64.of_int (Char.code x))
 
 module ExnProducing = struct
+  type rpc = t
+  type t = rpc
+
   let t_of_rpc x = x
+  let rpc_of_t x = x
   let int64_of_rpc = function
     | Int i    -> i
     | String s -> Int64.of_string s

@@ -70,6 +70,8 @@ val char_of_rpc : t -> char error_or
 val rpc_of_char : char -> t
 
 module ExnProducing : sig
+type rpc = t
+type t = rpc
 val int64_of_rpc : t -> int64
 val int32_of_rpc : t -> int32
 val int_of_rpc : t -> int
@@ -78,6 +80,7 @@ val float_of_rpc : t -> float
 val string_of_rpc : t -> string
 val dateTime_of_rpc : t -> string
 val t_of_rpc : t -> t
+val rpc_of_t : t -> t
 val unit_of_rpc : t -> unit
 end
 
