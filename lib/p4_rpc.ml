@@ -628,8 +628,6 @@ module Args = struct
 
     let create _loc namespace name wire_name args =
       let n = List.length args in
-      let cap_name = String.capitalize name in
-      let arg_path = arg_path _loc (namespace @ [cap_name]) in
       let anonymous_exprs = list_foldi
           (fun accu arg i ->
              if arg.kind = `Anonymous then

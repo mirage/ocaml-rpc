@@ -7,9 +7,9 @@ module Param : sig
   (** A Param.t has a name, description and a typedef. We may also want to add in here
       default values, example values and so on *)
   type 'a t = {
-    name : bytes;
-    description : bytes;
-    typedef : 'a Types.def;
+    name : string;
+    description : string;
+    typedef : 'a Rpc.Types.def;
   }
 
   (** We box parameters to put them into lists *)
@@ -18,7 +18,7 @@ module Param : sig
   (** [mk ~name ~description typ] creates a Param.t out of a type definition
       from the Types module. If the name or description are omitted, the name
       or description from the type definition will be inherited *)
-  val mk : ?name:string -> ?description:string -> 'a Types.def -> 'a t
+  val mk : ?name:string -> ?description:string -> 'a Rpc.Types.def -> 'a t
 end
 
 (** An interface is a collection of RPC declarations. *)
@@ -74,12 +74,12 @@ module GenClient : sig
       an rpc function, which might send the RPC across the network,
       and returns a function of type 'a, in this case (int -> string
       -> bool). *)
-  type 'a res = (Rpc.call -> Rpc.response Rpc.error_or) -> 'a
+  type 'a res = (Rpc.call -> Rpc.response Rpc.Monad.error_or) -> 'a
 
   (** Our functions return a Result.result type, which either contains
       the result of the Rpc, or an error message indicating a problem
       happening at the transport level *)
-  type 'a comp = 'a Rpc.error_or
+  type 'a comp = 'a Rpc.Monad.error_or
 
   type _ fn
   val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
@@ -93,7 +93,7 @@ module GenServer : sig
 
   (** 'funcs' is a Hashtbl type that is used to hold the implementations of 
       the RPCs *)
-  type funcs = (string, Rpc.call -> Rpc.response Rpc.error_or) Hashtbl.t
+  type funcs = (string, Rpc.call -> Rpc.response Rpc.Monad.error_or) Hashtbl.t
 
   (** The result of a declaration of an RPC is a function type that takes
       as first parameter the implementation of the RPC, and as second
@@ -111,7 +111,7 @@ module GenServer : sig
   val empty : unit -> funcs
 
   (** [server funcs] is a function that can be used to respond to RPC calls *)
-  val server : funcs -> Rpc.call -> Rpc.response Rpc.error_or
+  val server : funcs -> Rpc.call -> Rpc.response Rpc.Monad.error_or
 
   val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
   val returning : 'a Param.t -> 'a comp fn

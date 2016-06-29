@@ -28,47 +28,108 @@ type t =
   | Dict of (string * t) list
   | Null
 
-type 'a error_or = ('a, string) Result.result
+module Monad : sig
+  type err
+  type 'a error_or = ('a, err) Result.result
 
-val bind : 'a error_or -> ('a -> 'b error_or) -> 'b error_or
-val return : 'a -> 'a error_or
-val (>>=) : 'a error_or -> ('a -> 'b error_or) -> 'b error_or
-val map_bind : ('a -> 'b error_or) -> 'b list -> 'a list -> ('b list) error_or
+  val string_of_error : 'a error_or -> string
+  val string_of_err : err -> string
+  val error_of_string : string -> 'a error_or
 
+  val bind : 'a error_or -> ('a -> 'b error_or) -> 'b error_or
+  val return : 'a -> 'a error_or
+  val (>>=) : 'a error_or -> ('a -> 'b error_or) -> 'b error_or
+  val map_bind : ('a -> 'b error_or) -> 'b list -> 'a list -> ('b list) error_or
+  val lift : ('a -> 'b) -> 'a error_or -> 'b error_or
+end
+    
 val to_string : t -> string
+
+(** {2 Type declarations} *)
+module Types : sig
+  type _ basic =
+      Int : int basic
+    | Int32 : int32 basic
+    | Int64 : int64 basic
+    | Bool : bool basic
+    | Float : float basic
+    | String : string basic
+    | Char : char basic
+  type _ typ =
+      Basic : 'a basic -> 'a typ
+    | DateTime : string typ
+    | Array : 'a typ -> 'a array typ
+    | List : 'a typ -> 'a list typ
+    | Dict : 'a basic * 'b typ -> ('a * 'b) list typ
+    | Unit : unit typ
+    | Option : 'a typ -> 'a option typ
+    | Tuple : 'a typ * 'b typ -> ('a * 'b) typ
+    | Struct : 'a structure -> 'a structure_value typ
+    | Variant : 'a variant -> 'a variant_value typ
+  and 'a def = { name : string; description : string; ty : 'a typ; }
+  and boxed_def = BoxedDef : 'a def -> boxed_def
+  and 'a structure_value = { vfields : (string * t) list; }
+  and ('a, 's) field = {
+    fname : string;
+    fdescription : string;
+    field : 'a typ;
+  }
+  and 'a boxed_field = BoxedField : ('a, 's) field -> 's boxed_field
+  and 'a structure = {
+    sname : string;
+    mutable fields : 'a boxed_field list;
+  }
+  and ('a, 's) tag = {
+    vname : string;
+    vdescription : string;
+    vcontents : 'a typ;
+  }
+  and 'a boxed_tag = BoxedTag : ('a, 's) tag -> 's boxed_tag
+  and 'a variant = { mutable variants : 'a boxed_tag list; }
+  and 'a variant_value = { tag : string; contents : t; }
+  val int : int def
+  val int32 : int32 def
+  val int64 : int64 def
+  val bool : bool def
+  val float : float def
+  val string : string def
+  val char : char def
+  val unit : unit def
+end
 
 (** {2 Basic constructors} *)
 
-val int64_of_rpc : t -> int64 error_or
+val int64_of_rpc : t -> int64 Monad.error_or
 val rpc_of_int64 : int64 -> t
 
-val int32_of_rpc : t -> int32 error_or
+val int32_of_rpc : t -> int32 Monad.error_or
 val rpc_of_int32 : int32 -> t
 
-val int_of_rpc : t -> int error_or
+val int_of_rpc : t -> int Monad.error_or
 val rpc_of_int : int -> t
 
-val bool_of_rpc : t -> bool error_or
+val bool_of_rpc : t -> bool Monad.error_or
 val rpc_of_bool : bool -> t
 
-val float_of_rpc : t -> float error_or
+val float_of_rpc : t -> float Monad.error_or
 val rpc_of_float : float -> t
 
-val string_of_rpc : t -> string error_or
+val string_of_rpc : t -> string Monad.error_or
 val rpc_of_string : string -> t
 
-val dateTime_of_rpc : t -> string error_or
+val dateTime_of_rpc : t -> string Monad.error_or
 val rpc_of_dateTime : string -> t
 
-val t_of_rpc : t -> t error_or (* For consistency!? *)
+val t_of_rpc : t -> t Monad.error_or (* For consistency!? *)
 val rpc_of_t : t -> t
 
-val unit_of_rpc : t -> unit error_or
+val unit_of_rpc : t -> unit Monad.error_or
 val rpc_of_unit : unit -> t
 
-val char_of_rpc : t -> char error_or
+val char_of_rpc : t -> char Monad.error_or
 val rpc_of_char : char -> t
 
+(** {2 Backwards compatibility module} *)
 module ExnProducing : sig
 type rpc = t
 type t = rpc

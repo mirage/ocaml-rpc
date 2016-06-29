@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 4fcb211274abdb447a811b7756f8c55a)
+# DO NOT EDIT (digest: 9484bdcdf197036002037d56f587bad9)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -44,11 +44,12 @@ true: annot, bin_annot
 <ppx/*.ml{,i,y}>: pkg_ppx_deriving.api
 <ppx/*.ml{,i,y}>: pkg_ppx_tools.metaquot
 # Library rpc_client_js
-"lib/rpc_client_js.cmxs": use_rpc_client_js
-<lib/*.ml{,i,y}>: pkg_js_of_ocaml
-<lib/*.ml{,i,y}>: pkg_js_of_ocaml.syntax
+"js/rpc_client_js.cmxs": use_rpc_client_js
+<js/*.ml{,i,y}>: pkg_js_of_ocaml
+<js/*.ml{,i,y}>: pkg_js_of_ocaml.syntax
 # OASIS_STOP
 <lib/pa_rpc.ml>: pp(camlp4orf)
 <lib/p4_rpc.ml>: pp(camlp4orf)
 <lib/pa_module_conv.ml>: pp(camlp4orf)
 <lib/p4_idl.ml>: pp(camlp4orf)
+<lib/*.ml>: safe_string

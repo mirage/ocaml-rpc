@@ -5,7 +5,7 @@ let check_marshal_unmarshal : 'a * Rpc.t * ('a -> Rpc.t) * (Rpc.t -> ('a,_) Resu
   let r' = marshal x in
   let x' = unmarshal r in
   (match x' with
-  | Result.Error x -> Printf.printf "Found Error when expecting OK: %s\n%!" x
+  | Result.Error e -> Printf.printf "Found Error when expecting OK: %s\n%!" (Rpc.Monad.string_of_err e)
   | Result.Ok y -> Printf.printf "OK: (%s)\n%!" (marshal y |> Rpc.to_string));
   assert_equal (Result.Ok x) x';
   if r <> r' then begin
@@ -13,15 +13,15 @@ let check_marshal_unmarshal : 'a * Rpc.t * ('a -> Rpc.t) * (Rpc.t -> ('a,_) Resu
   end;
   assert_equal r r'
 
-let check_unmarshal_error : (Rpc.t -> 'a Rpc.error_or) -> Rpc.t -> unit = fun unmarshal t ->
+let check_unmarshal_error : (Rpc.t -> 'a Rpc.Monad.error_or) -> Rpc.t -> unit = fun unmarshal t ->
   match unmarshal t with
   | Result.Ok _ -> assert_equal false true
-  | Result.Error s -> Printf.printf "%s\n" s
+  | Result.Error e -> Printf.printf "%s\n" (Rpc.Monad.string_of_err e)
 
-let check_unmarshal_ok : 'a -> (Rpc.t -> 'a Rpc.error_or) -> Rpc.t -> unit = fun x unmarshal r ->
+let check_unmarshal_ok : 'a -> (Rpc.t -> 'a Rpc.Monad.error_or) -> Rpc.t -> unit = fun x unmarshal r ->
   match unmarshal r with
   | Result.Ok x' -> assert_equal x x'
-  | Result.Error s -> assert_equal false true
+  | Result.Error _ -> assert_equal false true
 
 type test_int = int [@@deriving rpc]
 let test_int () =

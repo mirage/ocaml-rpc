@@ -1,3 +1,5 @@
+open Rpc.Types
+
 type 'a comp = 'a
   
 type _ fn =
@@ -41,11 +43,11 @@ module Interface = struct
          BoxedFunction Method.({ name = m.name; description = m.description; ty = prepend m.ty}))
          interface.methods}
 
-  let rec all_types : t -> Types.boxed_def list = fun i ->
+  let rec all_types : t -> boxed_def list = fun i ->
     let all_inputs = List.map (function BoxedFunction f -> Method.(find_inputs f.ty)) i.methods in
     let all_outputs = List.map (function BoxedFunction f -> Method.(find_output f.ty)) i.methods in
     let all = List.concat (all_inputs @ [all_outputs]) in
-    let types = List.map (fun (Idl.Param.Boxed p) -> Types.BoxedDef p.Idl.Param.typedef) all in
+    let types = List.map (fun (Idl.Param.Boxed p) -> BoxedDef p.Idl.Param.typedef) all in
     let rec setify = function
       | [] -> []
       | (x::xs) -> if List.mem x xs then setify xs else x::(setify xs)
@@ -65,25 +67,25 @@ module Interfaces = struct
     name : string;
     title : string;
     description : string;
-    type_decls : Types.boxed_def list;
+    type_decls : boxed_def list;
     interfaces : Interface.t list;
-    exn_decls : Types.boxed_def;
+    exn_decls : boxed_def;
   }  
   
   let empty name title description =
-    { name; title; description; exn_decls=Types.BoxedDef Types.int64; type_decls=[]; interfaces=[] }
+    { name; title; description; exn_decls=BoxedDef int64; type_decls=[]; interfaces=[] }
     
   let register_exn is es =
-    { is with exn_decls=Types.BoxedDef es }
+    { is with exn_decls=BoxedDef es }
     
   let add_interface is i =
     let typedefs = Interface.all_types i in
     let new_typedefs = List.filter
         (fun def -> not
             (List.exists
-               (fun (Types.BoxedDef def') ->
+               (fun (BoxedDef def') ->
                   match def with
-                  | Types.BoxedDef d -> def'.Types.name = d.Types.name) is.type_decls)) typedefs in
+                  | BoxedDef d -> def'.name = d.name) is.type_decls)) typedefs in
     
     { is with type_decls = new_typedefs @ is.type_decls; interfaces = i :: is.interfaces }
     

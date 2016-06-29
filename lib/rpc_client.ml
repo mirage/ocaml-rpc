@@ -125,7 +125,7 @@ module Headers = struct
 
   (* Consumes the headers *)
   let strip (fd: Unix.file_descr) =
-    let buffer = " " in
+    let buffer = Bytes.of_string " " in
     let buf = Buffer.create 64 in
     let finished = ref false in
     begin try
@@ -133,7 +133,7 @@ module Headers = struct
           let read = Unix.read fd buffer 0 1 in
           if read < 1 then raise (Http_headers_truncated (Buffer.contents buf));
           let n = Buffer.length buf in
-          Buffer.add_char buf buffer.[0];
+          Buffer.add_char buf (Bytes.get buffer 0);
           if n >= 4
           && Buffer.nth buf (n-3) = '\r'
           && Buffer.nth buf (n-2) = '\n'
@@ -157,7 +157,7 @@ let rpc_response_of_fd headers fd =
 let http_send_call ~fd ~path ~headers call =
   let body = string_of_rpc_call headers call in
   let output_string str =
-    ignore (Unix.write fd str 0 (String.length str)) in
+    ignore (Unix.write fd (Bytes.of_string str) 0 (String.length str)) in
   output_string (Headers.to_string ~path ~headers ~body);
   output_string body
 

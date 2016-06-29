@@ -1,5 +1,6 @@
 (* Python generator *)
 open Codegen
+open Rpc.Types
 
 type t =
   | Block of t list
@@ -24,13 +25,12 @@ let fresh_id =
 
 (** [typecheck ty v] returns a python fragment which checks 
     	[v] has type [ty] *)
-let rec typecheck : type a.a Types.typ -> string -> t list = fun ty v ->
-  let open Types in
+let rec typecheck : type a.a typ -> string -> t list = fun ty v ->
   let open Printf in
   let raise_type_error =
-    Line (sprintf "raise (TypeError(\"%s\", repr(%s)))" (Types.ocaml_of_t ty) v) in
+    Line (sprintf "raise (TypeError(\"%s\", repr(%s)))" (Rpcmarshal.ocaml_of_t ty) v) in
   let handle_basic b =
-    let python_of_basic : type a. a Types.basic -> string = function
+    let python_of_basic : type a. a basic -> string = function
       | Int64   -> "0L"
       | Int32   -> "0"
       | Int     -> "0"
@@ -120,8 +120,7 @@ let rec typecheck : type a.a Types.typ -> string -> t list = fun ty v ->
         typecheck b (Printf.sprintf "%s[1]" v))
     ]
 
-let rec value_of : type a. a Types.typ -> string =
-  let open Types in
+let rec value_of : type a. a typ -> string =
   let open Printf in function
     | Basic Int64 -> "0L"
     | Basic Int -> "0L"
@@ -154,7 +153,6 @@ let rec value_of : type a. a Types.typ -> string =
 
 let exn_var myarg =
   let open Printf in
-  let open Types in
   let inner : type a b. (a, b) tag -> t list = function tag ->
     let has_arg = match tag.vcontents with | Unit -> false | _ -> true in  
     if not has_arg
@@ -181,7 +179,7 @@ let exn_var myarg =
   | BoxedDef { ty = Variant { variants } } ->
     List.concat (List.map (fun (BoxedTag t) -> inner t) variants)
   | BoxedDef { ty } ->
-    failwith (Printf.sprintf "Unable to handle non-variant exceptions (%s)" (Types.ocaml_of_t ty)) 
+    failwith (Printf.sprintf "Unable to handle non-variant exceptions (%s)" (Rpcmarshal.ocaml_of_t ty)) 
     
 
 
@@ -191,17 +189,17 @@ let skeleton_method unimplemented i (BoxedFunction m) =
 
   let inputs = List.filter
       (function
-        | Idl.Param.Boxed { typedef } ->
-            match typedef.Types.ty with
-            | Types.Unit -> false
+        | Idl.Param.Boxed { Idl.Param.typedef } ->
+            match typedef.ty with
+            | Unit -> false
             | _ -> true) inputs in
   
   let open Printf in
 
   let output_py (Idl.Param.Boxed a) =
-    match a.Idl.Param.typedef.Types.ty with
-    | Types.Unit -> []
-    | _ -> [ Line (sprintf "result[\"%s\"] = %s" a.Idl.Param.name (value_of a.Idl.Param.typedef.Types.ty)) ]
+    match a.Idl.Param.typedef.ty with
+    | Unit -> []
+    | _ -> [ Line (sprintf "result[\"%s\"] = %s" a.Idl.Param.name (value_of a.Idl.Param.typedef.ty)) ]
   in
   
   [
@@ -233,7 +231,7 @@ let example_stub_user i (BoxedFunction m) =
     Block [
       Line "c = xapi.connect()";
       Line (Printf.sprintf "results = c.%s.%s({ %s })" i.Interface.details.Idl.Interface.name m.Method.name
-              (String.concat ", " (List.map (fun (Idl.Param.Boxed a) -> sprintf "%s: %s" a.Idl.Param.name (value_of a.Idl.Param.typedef.Types.ty)) Method.(find_inputs m.ty))));
+              (String.concat ", " (List.map (fun (Idl.Param.Boxed a) -> sprintf "%s: %s" a.Idl.Param.name (value_of a.Idl.Param.typedef.ty)) Method.(find_inputs m.ty))));
       Line "print (repr(results))"
     ]
   ]
@@ -280,23 +278,23 @@ let server_of_interface i =
     let inputs = Method.(find_inputs m.ty) in
     let inputs = List.filter
         (function
-          | Idl.Param.Boxed { typedef } ->
-            match typedef.Types.ty with
-            | Types.Unit -> false
+          | Idl.Param.Boxed { Idl.Param.typedef } ->
+            match typedef.ty with
+            | Unit -> false
             | _ -> true) inputs in
     let output = Method.(find_output m.ty) in
     let extract_input (Idl.Param.Boxed arg) =
       [ Line (sprintf "if not(args.has_key('%s')):" arg.Idl.Param.name);
         Block [ Line (sprintf "raise UnmarshalException('argument missing', '%s', '')" arg.Idl.Param.name) ];
         Line (sprintf "%s = args[\"%s\"]" arg.Idl.Param.name arg.Idl.Param.name) ]
-      @ (typecheck arg.Idl.Param.typedef.Types.ty arg.Idl.Param.name) in
+      @ (typecheck arg.Idl.Param.typedef.ty arg.Idl.Param.name) in
     let check_output (Idl.Param.Boxed arg) =
-      match arg.Idl.Param.typedef.Types.ty with
-      | Types.Unit -> []
+      match arg.Idl.Param.typedef.ty with
+      | Unit -> []
       | _ ->
       (* The ocaml rpc-light doesn't actually support named results, instead we
          have single anonymous results only. *)
-        typecheck arg.Idl.Param.typedef.Types.ty "results" in
+        typecheck arg.Idl.Param.typedef.ty "results" in
     [
       Line (sprintf "def %s(self, args):" m.Method.name);
       Block ([
@@ -359,11 +357,10 @@ let commandline_parse i (BoxedFunction m) =
   let inputs = Method.(find_inputs m.ty) in
   let inputs = List.filter
       (function
-        | Idl.Param.Boxed { typedef } ->
-          match typedef.Types.ty with
-          | Types.Unit -> false
+        | Idl.Param.Boxed { Idl.Param.typedef } ->
+          match typedef.ty with
+          | Unit -> false
           | _ -> true) inputs in
-  let output = Method.(find_output m.ty) in
   [
     Line (sprintf "def _parse_%s(self):" m.Method.name);
     Block ([
@@ -379,8 +376,8 @@ let commandline_parse i (BoxedFunction m) =
         Line (sprintf "parser = argparse.ArgumentParser(description='%s')" m.Method.description);
         Line "parser.add_argument('-j', '--json', action='store_const', const=True, default=False, help='Read json from stdin, print json to stdout', required=False)";
       ] @ (
-        List.map (fun (Idl.Param.Boxed a) -> match a.Idl.Param.typedef.Types.ty with
-        | Types.Dict(_, _) ->
+        List.map (fun (Idl.Param.Boxed a) -> match a.Idl.Param.typedef.ty with
+        | Dict(_, _) ->
           Line (sprintf "parser.add_argument('--%s', default = {}, nargs=2, action=xapi.ListAction, help='%s')" a.Idl.Param.name a.Idl.Param.description)
         | _ ->
           Line (sprintf "parser.add_argument('%s', action='store', help='%s')" a.Idl.Param.name a.Idl.Param.description)

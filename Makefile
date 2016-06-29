@@ -37,5 +37,6 @@ uninstall: setup.data
 	ocamlfind remove ppx_deriving_rpc
 
 test:
+	make -C ppx_test
 	make -C tests
 

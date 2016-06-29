@@ -16,7 +16,7 @@ Library rpclib_core
   CompiledObject: best
   FindlibParent: rpclib
   Findlibname: core
-  Modules: Rpc, Idl, Types, Pythongen, Htmlgen, Codegen
+  Modules: Rpc, Idl, Rpcmarshal, Pythongen, Htmlgen, Codegen
   BuildDepends:	result, cow
 
 Library xml
@@ -72,7 +72,7 @@ Library ppx_deriving_rpc
 Library rpc_client_js
   Build$: flag(js)
   Install$: flag(js)
-  Path: lib
+  Path: js
   FindlibParent: rpclib
   Findlibname: js
   BuildDepends: js_of_ocaml, js_of_ocaml.syntax

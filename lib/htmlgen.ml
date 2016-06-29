@@ -1,4 +1,4 @@
-open Types
+open Rpc.Types
 open Idl
 open Codegen
 open Cow.Html
@@ -16,7 +16,6 @@ let rec html_of_t : type a.a typ -> string list =
     | String -> "string"
     | Char -> "char"
   in
-  let open Types in
   let print txt = [ txt ] in
   function
   | Basic b -> print (of_basic b)
@@ -35,7 +34,7 @@ let of_args args =
   let row_of_arg (is_in, Param.Boxed arg) =
     let name = arg.Param.name in
     let direction = if is_in then "in" else "out" in
-    let ty = html_of_t arg.Param.typedef.Types.ty |> List.map string in
+    let ty = html_of_t arg.Param.typedef.ty |> List.map string in
     let description = arg.Param.description in
     tag "tr"
       (list [
@@ -56,8 +55,8 @@ let of_args args =
 
 let sidebar x =
   let of_typedef (BoxedDef t) =
-    let target = Printf.sprintf "#a-%s" t.Types.name in
-    let name = t.Types.name in
+    let target = Printf.sprintf "#a-%s" t.name in
+    let name = t.name in
     tag "li" (a ~href:(Uri.of_string target) (string name))
   in
   let of_method iname (BoxedFunction m) =
@@ -118,19 +117,19 @@ let of_variant_tags : 'a boxed_tag list -> Cow.Html.t = fun all ->
 
 
 let of_type_decl i_opt (BoxedDef t) =
-  let anchor = Printf.sprintf "a-%s" t.Types.name in
-  let name = t.Types.name in
-  let defn = String.concat "" (html_of_t t.Types.ty) in
-  let description = t.Types.description in
+  let anchor = Printf.sprintf "a-%s" t.name in
+  let name = t.name in
+  let defn = String.concat "" (html_of_t t.ty) in
+  let description = t.description in
   let common =
     [ h4 ~id:anchor (string (Printf.sprintf "type %s = %s" name defn));
       p (string description) ]
   in
-  let rest = match t.Types.ty with
-    | Types.Struct structure ->
+  let rest = match t.ty with
+    | Struct structure ->
       [ p (string "Members:");
         of_struct_fields structure.fields ]
-    | Types.Variant variant ->
+    | Variant variant ->
       [ p (string "Constructors:");
         of_variant_tags variant.variants ]
     | _ -> [] in

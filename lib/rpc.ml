@@ -31,26 +31,98 @@ type t =
   | Dict of (string * t) list
   | Null
 
-type 'a error_or = ('a, string) Result.result
+module Monad = struct
+  type err = string
+  type 'a error_or = ('a, err) Result.result
+      
+  let string_of_error : 'a error_or -> string =
+    let open Result in
+    function | Error x -> x | Ok y -> "error_string called on Ok result"
+  let string_of_err : err -> string = function x -> x
+  let error_of_string : type a. string -> a error_or =
+    let open Result in
+    function s -> Error s
+                    
+  let bind m f =
+    match m with
+    | Result.Ok x -> f x
+    | Result.Error y -> Result.Error y
+  let return x = Result.Ok x
+  let (>>=) = bind
+  let rec map_bind f acc xs =
+    match xs with
+    | x :: xs -> f x >>= fun x -> map_bind f (x :: acc) xs
+    | [] -> Result.Ok (List.rev acc)
+  let lift f x = x >>= fun x' -> return (f x')
+end
 
-let bind m f =
-  match m with
-  | Result.Ok x -> f x
-  | Result.Error y -> Result.Error y
-let return x = Result.Ok x
-let (>>=) = bind
-let rec map_bind f acc xs =
-  match xs with
-  | x :: xs -> f x >>= fun x -> map_bind f (x :: acc) xs
-  | [] -> Result.Ok (List.rev acc)
-let lift f x = return (f x)
+  
+module Types = struct
+  type _ basic =
+    | Int : int basic
+    | Int32 : int32 basic
+    | Int64 : int64 basic
+    | Bool : bool basic
+    | Float : float basic
+    | String : string basic
+    | Char : char basic
+          
+  type _ typ =
+    | Basic : 'a basic -> 'a typ
+    | DateTime : string typ
+    | Array : 'a typ -> 'a array typ
+    | List : 'a typ -> 'a list typ
+    | Dict : 'a basic * 'b typ -> ('a * 'b) list typ
+    | Unit : unit typ
+    | Option : 'a typ -> 'a option typ
+    | Tuple : 'a typ * 'b typ -> ('a * 'b) typ
+    | Struct : 'a structure -> 'a structure_value typ
+    | Variant : 'a variant -> 'a variant_value typ
+        
+  (* A type definition has a name and description *)
+  and 'a def = { name: string; description: string; ty: 'a typ; }
+               
+  and boxed_def = BoxedDef : 'a def -> boxed_def
+    
+  and 'a structure_value = { vfields : (string * t) list }
+  and ('a, 's) field = {
+    fname : string;
+    fdescription : string;
+    field : 'a typ;
+  }
+  and 'a boxed_field = BoxedField : ('a, 's) field -> 's boxed_field
+  and 'a structure = {
+    sname : string;
+    mutable fields: 'a boxed_field list
+  }
+  and ('a, 's) tag = {
+    vname : string;
+    vdescription : string;
+    vcontents : 'a typ;
+  }
+  and 'a boxed_tag = BoxedTag : ('a, 's) tag -> 's boxed_tag
+  and 'a variant = {
+    mutable variants : 'a boxed_tag list
+  }
+  and 'a variant_value = { tag : string; contents: t }
+                         
+  let int    = { name="int";    ty=Basic Int;    description="Native integer" }
+  let int32  = { name="int32";  ty=Basic Int32;  description="32-bit integer"}
+  let int64  = { name="int64";  ty=Basic Int64;  description="64-bit integer"}
+  let bool   = { name="bool";   ty=Basic Bool;   description="Boolean"}
+  let float  = { name="float";  ty=Basic Float;  description="Floating-point number"}
+  let string = { name="string"; ty=Basic String; description="String"}
+  let char   = { name="char";   ty=Basic Char;   description="Char"}
+  let unit   = { name="unit";   ty=Unit;         description="Unit"}
+end
 
 exception Runtime_error of string * t
 exception Runtime_exception of string * string
 
-open Printf
 let map_strings sep fn l = String.concat sep (List.map fn l)
-let rec to_string t = match t with
+let rec to_string t =
+  let open Printf in
+  match t with
   | Int i      -> sprintf "I(%Li)" i
   | Int32 i    -> sprintf "I32(%li)" i
   | Bool b     -> sprintf "B(%b)" b
@@ -150,10 +222,10 @@ let unit_of_rpc = function
   | Null -> Result.Ok ()
   | x -> Result.Error (Printf.sprintf "Expected unit, got '%s'" (to_string x))
 let char_of_rpc x =
-  int_of_rpc x >>= fun x ->
-  if x < 0 || x > 255
-  then Result.Error (Printf.sprintf "Char out of range (%d)" x)
-  else Result.Ok (Char.chr x)
+  Monad.bind (int_of_rpc x) (fun x ->
+      if x < 0 || x > 255
+      then Result.Error (Printf.sprintf "Char out of range (%d)" x)
+      else Result.Ok (Char.chr x))
 let t_of_rpc t = Result.Ok t
 
 
@@ -178,7 +250,7 @@ type call = {
 let call name params = { name = name; params = params }
 
 let string_of_call call =
-  sprintf "-> %s(%s)" call.name (String.concat "," (List.map to_string call.params))
+  Printf.sprintf "-> %s(%s)" call.name (String.concat "," (List.map to_string call.params))
 
 type response = {
   success: bool;
@@ -186,7 +258,7 @@ type response = {
 }
 
 let string_of_response response =
-  sprintf "<- %s(%s)" (if response.success then "success" else "failure") (to_string response.contents)
+  Printf.sprintf "<- %s(%s)" (if response.success then "success" else "failure") (to_string response.contents)
 
 let success v = { success = true; contents = v }
 let failure v = { success = false; contents = v }
