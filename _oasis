@@ -76,5 +76,5 @@ Library rpc_client_js
   FindlibParent: rpclib
   Findlibname: js
   BuildDepends: js_of_ocaml, js_of_ocaml.syntax
-  Modules: Rpc_client_js
+  Modules: Rpc_client_js, Rpc_client_js_helper
 
