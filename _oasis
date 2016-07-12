@@ -16,7 +16,7 @@ Library rpclib_core
   CompiledObject: best
   FindlibParent: rpclib
   Findlibname: core
-  Modules: Rpc, Idl, Rpcmarshal, Pythongen, Htmlgen, Codegen
+  Modules: Rpc, Idl, Rpcmarshal, Pythongen, Htmlgen, Codegen, Markdowngen
   BuildDepends:	result, cow
 
 Library xml
