@@ -1,3 +1,5 @@
+type version = V1 | V2
+
 val list_iter_between : ('a -> unit) -> (unit -> 'b) -> 'a list -> unit
 val escape_string : string -> string
 val to_fct : Rpc.t -> (string -> unit) -> unit
@@ -5,11 +7,10 @@ val to_buffer : Rpc.t -> Buffer.t -> unit
 val to_string : Rpc.t -> string
 val to_a : empty:(unit -> 'a) -> append:('a -> string -> unit) -> Rpc.t -> 'a
 val new_id : unit -> int64
-val string_of_call : Rpc.call -> string
-val json_of_response : Rpc.response -> Rpc.t
-val string_of_response : Rpc.response -> string
-val a_of_response :
-  empty:(unit -> 'a) -> append:('a -> string -> unit) -> Rpc.response -> 'a
+val string_of_call: ?version:version -> Rpc.call -> string
+val json_of_response : version -> Rpc.response -> Rpc.t
+val string_of_response: ?version:version -> Rpc.response -> string
+val a_of_response : ?version:version -> empty:(unit -> 'a) -> append:('a -> string -> unit) -> Rpc.response -> 'a
 type error =
     Unexpected_char of int * char * string
   | Invalid_value of int * string * string
