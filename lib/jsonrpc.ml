@@ -17,6 +17,8 @@
 
 open Rpc
 
+type version = V1 | V2
+
 let rec list_iter_between f o = function
   | []   -> ()
   | [h]  -> f h
@@ -80,34 +82,66 @@ let new_id =
   let count = ref 0L in
   (fun () -> count := Int64.add 1L !count; !count)
 
-let string_of_call call =
-  let json = Dict [
-      "method", String call.name;
-      "params", Enum call.params;
-      "id", Int (new_id ());
-    ] in
+let string_of_call ?(version=V1) call =
+  let json =
+    match version with
+    | V1 ->
+      Dict [
+        "method", String call.name;
+        "params", Enum call.params;
+        "id", Int (new_id ());
+      ]
+    | V2 ->
+      let params =
+        match call.params with
+        | Dict x :: [] -> Dict x
+        | _ -> Enum call.params
+      in
+      Dict [
+        "jsonrpc", String "2.0";
+        "method", String call.name;
+        "params", params;
+        "id", Int (new_id ());
+      ]
+  in
   to_string json
 
-let json_of_response response =
+let json_of_response version response =
   if response.Rpc.success then
-    Dict [
-      "result", response.Rpc.contents;
-      "error", Null;
-      "id", Int 0L
-    ]
+    match version with
+    | V1 ->
+      Dict [
+        "result", response.Rpc.contents;
+        "error", Null;
+        "id", Int 0L
+      ]
+    | V2 ->
+      Dict [
+        "jsonrpc", String "2.0";
+        "result", response.Rpc.contents;
+        "id", Int 0L
+      ]
   else
-    Dict [
-      "result", Null;
-      "error", response.Rpc.contents;
-      "id", Int 0L
-    ]
+    match version with
+    | V1 ->
+      Dict [
+        "result", Null;
+        "error", response.Rpc.contents;
+        "id", Int 0L
+      ]
+    | V2 ->
+      Dict [
+        "jsonrpc", String "2.0";
+        "error", response.Rpc.contents;
+        "id", Int 0L
+      ]
 
-let string_of_response response =
-  let json = json_of_response response in
+let string_of_response ?(version=V1) response =
+  let json = json_of_response version response in
   to_string json
 
-let a_of_response ~empty ~append response =
-  let json = json_of_response response in
+let a_of_response ?(version=V1) ~empty ~append response =
+  let json = json_of_response version response in
   to_a ~empty ~append json
 
 type error =
@@ -504,22 +538,39 @@ let of_a ~next_char b =
 exception Malformed_method_request of string
 exception Malformed_method_response of string
 
-let get name dict =
+let get' name dict =
   if List.mem_assoc name dict then
-    List.assoc name dict
-  else begin
+    Some (List.assoc name dict)
+  else
+    None
+
+let get name dict =
+  match get' name dict with
+  | None ->
     if Rpc.get_debug ()
     then Printf.eprintf "%s was not found in the dictionary\n" name;
     let str = List.map (fun (n,_) -> Printf.sprintf "%s=..." n) dict in
     let str = Printf.sprintf "{%s}" (String.concat "," str) in
     raise (Malformed_method_request str)
-  end
+  | Some v -> v
 
 let call_of_string str =
   match of_string str with
   | Dict d ->
     let name = match get "method" d with String s -> s | _ -> raise (Malformed_method_request str) in
-    let params = match get "params" d with Enum l -> l | _ -> raise (Malformed_method_request str) in
+    let params =
+      match get' "jsonrpc" d with
+      | None ->
+        (match get "params" d with Enum l -> l | _ -> raise (Malformed_method_request str))
+      | Some (String "2.0") ->
+        begin match get "params" d with
+          | Enum l -> l
+          | Dict l -> [Dict l]
+          | _ -> raise (Malformed_method_request str)
+        end
+      | _ ->
+        raise (Malformed_method_request "jsonrpc")
+    in
     let (_:int64) = match get "id" d with Int i -> i | _ -> raise (Malformed_method_request str) in
     call name params
   | _ -> raise (Malformed_method_request str)
@@ -527,13 +578,27 @@ let call_of_string str =
 let response_of_stream str =
   match Parser.of_stream str with
   | Dict d ->
-    let result = get "result" d in
-    let error = get "error" d in
     let (_:int64) = match get "id" d with Int i -> i | _ -> raise (Malformed_method_response "id") in
-    begin match result, error with
-      | v, Null    -> success v
-      | Null, v    -> failure v
-      | x,y        -> raise (Malformed_method_response (Printf.sprintf "<result=%s><error=%s>" (Rpc.to_string x) (Rpc.to_string y)))
+    begin match get' "jsonrpc" d with
+    | None ->
+      let result = get "result" d in
+      let error = get "error" d in
+      begin match result, error with
+        | v, Null    -> success v
+        | Null, v    -> failure v
+        | x,y        -> raise (Malformed_method_response (Printf.sprintf "<result=%s><error=%s>" (Rpc.to_string x) (Rpc.to_string y)))
+      end
+    | Some (String "2.0") ->
+      let result = get' "result" d in
+      let error = get' "error" d in
+      begin match result, error with
+        | Some v, None    -> success v
+        | None, Some v    -> failure v
+        | Some x, Some y  -> raise (Malformed_method_response (Printf.sprintf "<result=%s><error=%s>" (Rpc.to_string x) (Rpc.to_string y)))
+        | None, None      -> raise (Malformed_method_response (Printf.sprintf "neither <result> nor <error> was found"))
+      end
+    | _ ->
+      raise (Malformed_method_response "jsonrpc")
     end
   | rpc -> raise (Malformed_method_response (Printf.sprintf "<response_of_stream(%s)>" (to_string rpc)))
 
