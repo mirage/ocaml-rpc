@@ -24,11 +24,13 @@ val of_fct : (unit -> char) -> Rpc.t
 val to_a : empty:(unit -> 'a) -> append:('a -> string -> unit) -> Rpc.t -> 'a
 val of_a : next_char:('a  -> char) -> 'a -> Rpc.t
 
-val string_of_call: Rpc.call -> string
+type version = V1 | V2
+
+val string_of_call: ?version:version -> Rpc.call -> string
 val call_of_string: string -> Rpc.call
 
-val string_of_response: Rpc.response -> string
+val string_of_response: ?version:version -> Rpc.response -> string
 val response_of_string: string -> Rpc.response
 val response_of_in_channel : in_channel -> Rpc.response
 
-val a_of_response : empty:(unit -> 'a) -> append:('a -> string -> unit) -> Rpc.response -> 'a
+val a_of_response : ?version:version -> empty:(unit -> 'a) -> append:('a -> string -> unit) -> Rpc.response -> 'a
