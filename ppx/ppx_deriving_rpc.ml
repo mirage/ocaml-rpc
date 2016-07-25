@@ -52,7 +52,7 @@ let attr_doc = attr_string "doc"
     
 (* Open the Rpc module *)
 let wrap_runtime decls =
-  [%expr let open! Rpc in let open! Result in let open! Monad in [%e decls]]
+  [%expr let open! Result in let open! Rpc.Monad in [%e decls]]
 
 module Of_rpc = struct
 
@@ -66,17 +66,17 @@ module Of_rpc = struct
 
   and expr_of_typ typ =
     match typ with
-    | { ptyp_desc = Ptyp_constr ( { txt = lid }, args ) } when
+    | { ptyp_desc = Ptyp_constr ( { txt = Lident id as lid }, args ) } when
         List.mem_assoc lid core_types ->
-      Exp.ident (mknoloc (Ppx_deriving.mangle_lid (`Suffix "of_rpc") lid))
+      Exp.ident (mknoloc (Ppx_deriving.mangle_lid (`Suffix "of_rpc") (Ldot (Lident "Rpc", id))))
 
     | { ptyp_desc = Ptyp_constr ( { txt = Lident "char" }, args ) } ->
-      [%expr char_of_rpc ]
+      [%expr Rpc.char_of_rpc ]
 
     | [%type: [%t? typ] list] -> [%expr
       function
       | Rpc.Enum l -> map_bind [%e expr_of_typ typ] [] l
-      | y -> error_of_string (Printf.sprintf "Expecting Rpc.Enum, but found '%s'" (to_string y)) ]
+      | y -> error_of_string (Printf.sprintf "Expecting Rpc.Enum, but found '%s'" (Rpc.to_string y)) ]
 
     | [%type: [%t? typ] array] -> [%expr
       function
@@ -84,14 +84,14 @@ module Of_rpc = struct
         map_bind [%e expr_of_typ typ] [] l
         >>= fun x ->
         return (Array.of_list x)
-      | y -> error_of_string (Printf.sprintf "Expecting Rpc.Enum, but found '%s'" (to_string y))]
+      | y -> error_of_string (Printf.sprintf "Expecting Rpc.Enum, but found '%s'" (Rpc.to_string y))]
 
     | {ptyp_desc = Ptyp_tuple typs } ->
       let pattern = List.mapi (fun i _ -> pvar (argn i)) typs in
       [%expr
         function
         | Rpc.Enum [%p plist pattern] -> [%e of_typ_fold tuple typs]
-        | y -> error_of_string (Printf.sprintf "Expecting Rpc.Enum, but found '%s'" (to_string y))]
+        | y -> error_of_string (Printf.sprintf "Expecting Rpc.Enum, but found '%s'" (Rpc.to_string y))]
 
     | [%type: [%t? typ] option] ->
       let e = expr_of_typ typ in
@@ -99,7 +99,7 @@ module Of_rpc = struct
         function
         | Rpc.Enum [] -> return None
         | Rpc.Enum [y] -> [%e e] y >>= fun z -> return (Some z)
-        | y -> error_of_string (Printf.sprintf "Expecting Rpc.Enum, but found '%s'" (to_string y))]
+        | y -> error_of_string (Printf.sprintf "Expecting Rpc.Enum, but found '%s'" (Rpc.to_string y))]
 
     | { ptyp_desc = Ptyp_constr ( { txt = lid }, args ) } ->
       let args = List.map expr_of_typ args in
@@ -147,8 +147,8 @@ module Of_rpc = struct
       in
       [%expr fun (rpc : Rpc.t) ->
              let rpc' = match rpc with
-               | Enum ((String x)::xs) -> Enum ((Rpc.String (String.lowercase x))::xs)
-               | String x -> String (String.lowercase x)
+               | Rpc.Enum ((Rpc.String x)::xs) -> Rpc.Enum ((Rpc.String (String.lowercase x))::xs)
+               | Rpc.String x -> Rpc.String (String.lowercase x)
                | y -> y in
              [%e Exp.match_ [%expr rpc'] (tag_cases @ [inherits_case])]]      
 
@@ -213,7 +213,7 @@ module Of_rpc = struct
                  let rec loop xs ([%p ptuple (List.mapi (fun i _ -> pvar (argn i)) labels)] as _state) =
                    [%e Exp.match_ [%expr xs] cases]
                  in loop d' [%e tuple thunks]
-               | y -> error_of_string (Printf.sprintf "Expecting Rpc.Dict, but found '%s'" (to_string y))]
+               | y -> error_of_string (Printf.sprintf "Expecting Rpc.Dict, but found '%s'" (Rpc.to_string y))]
       | Ptype_abstract, None ->
         failwith "Unhandled"
       | Ptype_open, _ ->
@@ -237,7 +237,7 @@ module Of_rpc = struct
             [%pat? y]
             [%expr error_of_string
                 (Printf.sprintf "Unhandled pattern when unmarshalling variant type: found '%s'"
-                   (to_string y))]
+                   (Rpc.to_string y))]
         in
         [%expr fun rpc ->
           let rpc' = Rpc.lowerfn rpc in
@@ -274,17 +274,17 @@ module Rpc_of = struct
             | Rtag (label, attrs, true, []) ->
               Exp.case
                 (Pat.variant label None)
-                [%expr String [%e str (attr_name label attrs)]]
+                [%expr Rpc.String [%e str (attr_name label attrs)]]
             | Rtag (label, attrs, false, [{ ptyp_desc = Ptyp_tuple typs }]) ->
               let l = list (List.mapi (fun i typ -> app (expr_of_typ  typ) [evar (argn i)]) typs) in
               Exp.case
                 (Pat.variant label (Some (ptuple (List.mapi (fun i _ -> pvar (argn i)) typs))))
-                [%expr Enum ( String ([%e str (attr_name label attrs)]) ::
-                                  [Enum [%e l]])]
+                [%expr Rpc.Enum ( Rpc.String ([%e str (attr_name label attrs)]) ::
+                                  [Rpc.Enum [%e l]])]
             | Rtag (label, attrs, false, [typ]) ->
               Exp.case
                 (Pat.variant label (Some [%pat? x]))
-                [%expr Enum ( (String ([%e str (attr_name label attrs)])) :: [ [%e expr_of_typ  typ] x])]
+                [%expr Rpc.Enum ( (Rpc.String ([%e str (attr_name label attrs)])) :: [ [%e expr_of_typ  typ] x])]
             | Rinherit ({ ptyp_desc = Ptyp_constr (tname, _) } as typ) ->
               Exp.case
                 [%pat? [%p Pat.type_ tname] as x]

@@ -151,13 +151,20 @@ let rec marshal : type a. a typ -> a -> Rpc.t = fun t v ->
       Rpc.Enum [ Rpc.String tag; contents ]
     end
     
-let getf : type t a. (a, t) field -> t structure_value -> a Rpc.Monad.error_or =
-  fun field v ->
-    let v = List.assoc field.fname v.vfields in
-    unmarshal field.field v
+let getf : type t a. ?default:a -> (a, t) field -> t structure_value -> a Rpc.Monad.error_or =
+  fun ?default field v ->
+    let exists = List.mem_assoc field.fname v.vfields in
+    match exists, default with
+    | true, _ ->
+      let v = List.assoc field.fname v.vfields in
+      unmarshal field.field v
+    | false, Some y ->
+      Result.Ok y
+    | _, _ ->
+      Rpc.Monad.error_of_string "Get field failed"
 
-let setf : type t a. (a, t) field -> t structure_value -> a -> t structure_value =
-  fun field str v ->
+let setf : type t a. (a, t) field -> a -> t structure_value -> t structure_value =
+  fun field v str ->
     { vfields = (field.fname, marshal field.field v) :: (List.filter (fun (name, _) -> name <> field.fname) str.vfields) }
 
 let mkvar : type t a. (a, t) tag -> a -> t variant_value =
