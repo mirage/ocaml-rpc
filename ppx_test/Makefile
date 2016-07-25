@@ -6,24 +6,17 @@ PACKS = lwt,lwt.unix,oUnit,result
 RPC = -I ../_build/lib
 RPCLINK = rpclib_core.cmxa rpclib.cmxa
 
-EXAMPLES = \
-	all_types \
-	test \
-	phantom \
-	xapi \
-	json \
-	option \
-	encoding \
-	dict \
-	variants \
-	client \
-	client_lwt
-
 PPXOPTS=-package ppx_deriving -ppxopt ppx_deriving,../_build/ppx/ppx_deriving_rpc.cma
 
+default: test tytest
+
 test: test.ml
-	$(OCAMLOPT) $(PPXOPTS) -linkpkg -package $(PACKS) $(RPC) $(RPCLINK) -o test test.ml
+	$(OCAMLOPT) $(PPXOPTS) -linkpkg -package $(PACKS) $(RPC) $(RPCLINK) -o test -dsource test.ml 2> test.gen.ml
 	./test
 
+tytest: tytest.ml
+	$(OCAMLOPT) $(PPXOPTS) -linkpkg -package $(PACKS) $(RPC) $(RPCLINK) -dsource -o tytest tytest.ml 2> tytest.gen.ml
+	./tytest
+
 clean:
-	rm -f test
+	rm -f test tytest

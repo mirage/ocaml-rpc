@@ -100,6 +100,7 @@ module Typ_of = struct
     let polymorphize = Ppx_deriving.poly_fun_of_type_decl type_decl in
     let typ_of_lid = Ppx_deriving.mangle_type_decl (`Prefix "typ_of") type_decl in
     let lid_of_structure = Ppx_deriving.mangle_type_decl (`Suffix "of_structure") type_decl in
+    let structure_of_lid = Ppx_deriving.mangle_type_decl (`Prefix "structure_of") type_decl in
     let param_of_lid = Ppx_deriving.mangle_type_decl (`Suffix "def") type_decl in
     let typ_of =
       match type_decl.ptype_kind, type_decl.ptype_manifest with
@@ -119,7 +120,7 @@ module Typ_of = struct
               record) fields in
         let boxed_fields = list (List.map (fun (_,field_name,_,_,_) ->
             [%expr BoxedField ([%e Exp.ident (lid field_name)])]) fields) in
-        let record = List.fold_left (fun expr (fname,field_name,_,_,def) -> 
+        let construct_record = List.fold_left (fun expr (fname,field_name,_,_,def) -> 
             match def with
             | Some d ->
               [%expr Rpcmarshal.getf ~default:[%e d] [%e evar field_name] _r >>= fun [%p pvar field_name] -> [%e expr]]
@@ -129,7 +130,14 @@ module Typ_of = struct
             [%expr return [%e Exp.record (List.map (fun (fname, field_name, _, _, _) ->
                 mknoloc (Lident fname), evar field_name) fields) None]]
             fields in
-        let of_structure = [%expr fun _r -> let open Rpc.Monad in [%e record]] in 
+        let deconstruct_record =
+          List.fold_left (fun expr (fname, field_name, _, _, _) ->
+              [%expr Rpcmarshal.setf [%e evar field_name]
+                  [%e Exp.field (evar "_r") (mknoloc (Lident fname))] [%e expr]])
+            [%expr { Rpc.Types.vfields=[] } ]
+            fields in
+        let of_structure = [%expr fun _r -> let open Rpc.Monad in [%e construct_record]] in 
+        let structure_of = [%expr fun _r -> [%e deconstruct_record]] in
         field_name_bindings @
         [ Vb.mk (pvar name)
             ([%expr let open Rpc.Types in ({ fields=[%e boxed_fields ]; sname=[%e str name] }
@@ -138,7 +146,9 @@ module Typ_of = struct
             (polymorphize
                ([%expr Rpc.Types.Struct [%e Exp.ident (lid name) ]])) ] @
         [ Vb.mk (pvar lid_of_structure)
-            of_structure]
+            of_structure ] @
+        [ Vb.mk (pvar structure_of_lid)
+            structure_of]
       | Ptype_abstract, None ->
         failwith "Unhandled"
       | Ptype_open, _ ->
