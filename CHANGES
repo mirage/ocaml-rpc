@@ -1,3 +1,6 @@
+1.6.0 (July 2016)
+* Add support for JSON-RPC v2
+
 1.5.4 (June 2015)
 * Fix struct_extend handling of option types (with test)
 * Add opam file for development
