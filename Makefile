@@ -16,6 +16,9 @@ install: setup.data
 
 clean:
 	$(SETUP) -clean $(CLEANFLAGS)
+	make -C ppx_test clean
+	make -C tests clean
+	make -C example clean
 
 distclean:
 	$(SETUP) -distclean $(DISTCLEANFLAGS)

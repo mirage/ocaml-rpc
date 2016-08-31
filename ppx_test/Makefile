@@ -19,4 +19,4 @@ tytest: tytest.ml
 	./tytest
 
 clean:
-	rm -f test tytest
+	rm -f test tytest *.cmxa *.cmo *.cmo *.o *~ *.gen.ml
