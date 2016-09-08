@@ -64,26 +64,38 @@ type vm = {
 (* The fields are created *)
 open Rpc.Types
        
-let vm_name_label : (string, vm) field = { fname="name_label"; fdescription=""; field=Basic String }
-let vm_name_description : (string, vm) field = { fname="name_description"; fdescription=""; field=Basic String }
+let vm_name_label : (string, vm) field = {
+  fname="name_label";
+  fdescription="";
+  field=Basic String;
+  fget = (fun f -> f.name_label);
+  fset = (fun v s -> {s with name_label = v})
+}
+let vm_name_description : (string, vm) field = {
+  fname="name_description";
+  fdescription="";
+  field=Basic String;
+  fget = (fun f -> f.name_description);
+  fset = (fun v s -> {s with name_description = v})
+}
 
-(* And a 'structure' type *)
-let vm : vm structure = { sname="vm"; fields = [ BoxedField vm_name_label; BoxedField vm_name_description ] }
+let constructor getter =
+  let open Rpc.Monad in
+  getter.g "name_label" (Basic String) >>= fun name_label ->
+  getter.g "name_description" (Basic String) >>= fun name_description ->
+  return { name_label; name_description }
+
+  (* And a 'structure' type *)
+let vm : vm structure = {
+  sname="vm";
+  fields = [ BoxedField vm_name_label; BoxedField vm_name_description ];
+  constructor;
+}
 
 (* vm <-> vm structure *)
 open Rpcmarshal
 open Rpc
 open Rpc.Monad
-
-let vm_of_vm_structure vm_struct =
-  getf vm_name_label vm_struct >>= fun name_label ->
-  getf vm_name_description vm_struct >>= fun name_description ->
-  Result.Ok { name_label; name_description }
-let vm_structure_of_vm vm =
-  let vm_structure = { vfields = [] } in
-  let vm_structure = setf vm_name_label vm.name_label vm_structure in
-  let vm_structure = setf vm_name_description vm.name_description vm_structure in
-  vm_structure
 
 (* tydesc *)
 let typ_of_vm = Struct vm
@@ -93,11 +105,16 @@ let vm_def = { name="vm"; description="VM record"; ty=typ_of_vm }
 (* Or we can create a variant type *)
              
 (* The tags are created first *)
-type exnt
-let errors : (string, exnt) tag = { vname="errors"; vdescription="Errors raised during an RPC invocation"; vcontents=Basic String }
+type exnt = | Errors of string
+let errors : (string, exnt) tag = { vname="errors"; vdescription="Errors raised during an RPC invocation"; vcontents=Basic String; vpreview = (fun (Errors s) -> Some s); vreview = (fun s -> Errors s) }
 
 (* And then we can create the 'variant' type *)
-let exnt : exnt variant = { variants = [ BoxedTag errors ] }
+let exnt : exnt variant = {
+  variants = [ BoxedTag errors ];
+  vconstructor = (fun s t ->
+      match s with
+      | "Errors" -> Rpc.Monad.bind (t.t (Basic String)) (fun s -> Rpc.Monad.return (Errors s))
+      | s -> Rpc.Monad.error_of_string (Printf.sprintf "Unknown tag '%s'" s))}
 let exnt_def = { name="exnt"; description="A variant type"; ty=Variant exnt }                        
 
 
@@ -121,14 +138,8 @@ module VMServer = VMRPC(GenServer)
 
 let _ =
   let open Rpc in
-  let impl vm =
-    match vm_of_vm_structure vm with
-    | Result.Ok vm' -> 
+  let impl vm' =
       Printf.printf "name=%s description=%s\n" vm'.name_label vm'.name_description;
-      ()
-    | Result.Error x ->
-      Printf.printf "Error with the VM!";
-      ()
   in
   
   let funcs = GenServer.empty () |> VMServer.start impl in
@@ -141,7 +152,7 @@ let _ =
   in
   
   let test () = 
-    let vm = vm_structure_of_vm { name_label="test"; name_description="description" } in
+    let vm = { name_label="test"; name_description="description" } in
     VMClient.start rpc vm
   in
   test ()
