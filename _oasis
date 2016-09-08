@@ -16,8 +16,8 @@ Library rpclib_core
   CompiledObject: best
   FindlibParent: rpclib
   Findlibname: core
-  Modules: Rpc, Idl, Rpcmarshal, Pythongen, Htmlgen, Codegen, Markdowngen
-  BuildDepends:	result, cow
+  Modules: Rpc, Idl, Rpcmarshal, Pythongen, Codegen, Markdowngen
+  BuildDepends:	result
 
 Library xml
   Path: lib
@@ -34,6 +34,22 @@ Library json
   Findlibname: json
   Modules: Jsonrpc
   BuildDepends:	rpclib.core
+
+Library cmdlinergen
+  Path: lib
+  CompiledObject: best
+  FindlibParent: rpclib
+  Findlibname: cmdliner
+  Modules: Cmdlinergen
+  BuildDepends: rpclib.core, rpclib.json, cmdliner
+
+Library htmlgen
+  Path: lib
+  CompiledObject: best
+  FindlibParent: rpclib
+  Findlibname: html
+  Modules: Htmlgen
+  BuildDepends: rpclib.core, cow
 
 Library pa_rpc
   Path: lib
@@ -53,7 +69,7 @@ Library unix
 Library rpclib
   Path: lib
   FindlibName: rpclib
-  BuildDepends: rpclib.xml, rpclib.json
+  BuildDepends: rpclib.xml
 
 Library idl
   Path: lib

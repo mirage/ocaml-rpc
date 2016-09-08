@@ -2,7 +2,7 @@ OCAMLC = ocamlfind ocamlc
 OCAMLOPT = ocamlfind ocamlopt
 OCAMLFLAGS = -annot -g
 
-PACKS = rpclib,lwt,lwt.unix
+PACKS = rpclib,lwt,lwt.unix,rpclib.json
 EXAMPLES = \
 	all_types \
 	phantom \
