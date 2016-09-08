@@ -1,3 +1,4 @@
+
 open Longident
 open Asttypes
 open Parsetree
@@ -46,7 +47,7 @@ module Typ_of = struct
         List.mem_assoc lid core_types -> List.assoc lid core_types
     | { ptyp_desc = Ptyp_constr ( { txt = Lident "char" }, args ) } ->
       [%expr Basic Char]
-    | [%type: (string * [%t? typ]) list] -> 
+    | [%type: (string * [%t? typ]) list] ->
       [%expr Dict (String, [%e expr_of_typ typ])]
     | [%type: [%t? typ] list] ->
       [%expr List [%e expr_of_typ  typ]]
@@ -99,8 +100,6 @@ module Typ_of = struct
     let mytype = Ppx_deriving.core_type_of_type_decl type_decl in
     let polymorphize = Ppx_deriving.poly_fun_of_type_decl type_decl in
     let typ_of_lid = Ppx_deriving.mangle_type_decl (`Prefix "typ_of") type_decl in
-    let lid_of_structure = Ppx_deriving.mangle_type_decl (`Suffix "of_structure") type_decl in
-    let structure_of_lid = Ppx_deriving.mangle_type_decl (`Prefix "structure_of") type_decl in
     let param_of_lid = Ppx_deriving.mangle_type_decl (`Suffix "def") type_decl in
     let typ_of =
       match type_decl.ptype_kind, type_decl.ptype_manifest with
@@ -112,7 +111,18 @@ module Typ_of = struct
               let rpc_name = attr_name fname pld_attributes in
               let default = attr_default pld_attributes in
               let field_name = String.concat "_" [name; fname] in
-              (fname, field_name, pld_type, [%expr let open Rpc.Types in [%e record ["fname", str rpc_name; "field", expr_of_typ pld_type; "fdescription", str (attr_doc "" pld_attributes)] ] ], default ))
+              let fget = [%expr fun _r -> [%e Exp.field (evar "_r") (mknoloc (Lident fname)) ] ] in
+              let fset = [%expr fun v s -> [%e record [fname, [%expr v]] ~over:([%expr s])]] in
+              (fname,
+               field_name,
+               pld_type,
+               [%expr let open Rpc.Types in
+                 [%e record ["fname", str rpc_name;
+                             "field", expr_of_typ pld_type;
+                             "fdescription", str (attr_doc "" pld_attributes);
+                             "fget", fget;
+                             "fset", fset;
+                            ] ] ], default ))
         in
         let field_name_bindings = List.map (fun (fname, field_name, typ, record, _) ->
             Vb.mk (Pat.constraint_ (pvar field_name)
@@ -120,35 +130,23 @@ module Typ_of = struct
               record) fields in
         let boxed_fields = list (List.map (fun (_,field_name,_,_,_) ->
             [%expr BoxedField ([%e Exp.ident (lid field_name)])]) fields) in
-        let construct_record = List.fold_left (fun expr (fname,field_name,_,_,def) -> 
+        let construct_record = List.fold_left (fun expr (fname,field_name,pld_type,_,def) ->
             match def with
             | Some d ->
-              [%expr Rpcmarshal.getf ~default:[%e d] [%e evar field_name] _r >>= fun [%p pvar field_name] -> [%e expr]]
+              [%expr getter.Rpc.Types.g (*~default:[%e d]*) [%e str field_name] [%e expr_of_typ pld_type] >>= fun [%p pvar field_name] -> [%e expr]]
             | None ->
-              [%expr Rpcmarshal.getf [%e evar field_name] _r >>= fun [%p pvar field_name] -> [%e expr]]         
+              [%expr getter.Rpc.Types.g [%e str field_name] [%e expr_of_typ pld_type] >>= fun [%p pvar field_name] -> [%e expr]]
           )
             [%expr return [%e Exp.record (List.map (fun (fname, field_name, _, _, _) ->
                 mknoloc (Lident fname), evar field_name) fields) None]]
             fields in
-        let deconstruct_record =
-          List.fold_left (fun expr (fname, field_name, _, _, _) ->
-              [%expr Rpcmarshal.setf [%e evar field_name]
-                  [%e Exp.field (evar "_r") (mknoloc (Lident fname))] [%e expr]])
-            [%expr { Rpc.Types.vfields=[] } ]
-            fields in
-        let of_structure = [%expr fun _r -> let open Rpc.Monad in [%e construct_record]] in 
-        let structure_of = [%expr fun _r -> [%e deconstruct_record]] in
         field_name_bindings @
         [ Vb.mk (pvar name)
-            ([%expr let open Rpc.Types in ({ fields=[%e boxed_fields ]; sname=[%e str name] }
+            ([%expr let open Rpc.Types in ({ fields=[%e boxed_fields ]; sname=[%e str name]; constructor = fun getter -> let open Rpc.Monad in [%e construct_record] }
                     : [%t mytype ] Rpc.Types.structure) ] ) ] @
         [ Vb.mk (pvar typ_of_lid)
             (polymorphize
-               ([%expr Rpc.Types.Struct [%e Exp.ident (lid name) ]])) ] @
-        [ Vb.mk (pvar lid_of_structure)
-            of_structure ] @
-        [ Vb.mk (pvar structure_of_lid)
-            structure_of]
+               ([%expr Rpc.Types.Struct [%e Exp.ident (lid name) ]])) ]
       | Ptype_abstract, None ->
         failwith "Unhandled"
       | Ptype_open, _ ->

@@ -26,7 +26,7 @@ module Interface : sig
   type description = {
     name : string;
     description : string;
-    version : int;
+    version : int; (* list; Use semantic versioning, most significant int is first in the list *)
   }
 end
 

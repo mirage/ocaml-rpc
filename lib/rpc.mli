@@ -64,29 +64,41 @@ module Types : sig
     | Unit : unit typ
     | Option : 'a typ -> 'a option typ
     | Tuple : 'a typ * 'b typ -> ('a * 'b) typ
-    | Struct : 'a structure -> 'a structure_value typ
-    | Variant : 'a variant -> 'a variant_value typ
+    | Struct : 'a structure -> 'a typ
+    | Variant : 'a variant -> 'a typ
   and 'a def = { name : string; description : string; ty : 'a typ; }
   and boxed_def = BoxedDef : 'a def -> boxed_def
-  and 'a structure_value = { vfields : (string * t) list; }
   and ('a, 's) field = {
     fname : string;
     fdescription : string;
     field : 'a typ;
+    fget : 's -> 'a;
+    fset : 'a -> 's -> 's;
   }
   and 'a boxed_field = BoxedField : ('a, 's) field -> 's boxed_field
+  and field_getter = {
+    g : 'a. string -> 'a typ -> 'a Monad.error_or
+  }
   and 'a structure = {
     sname : string;
     mutable fields : 'a boxed_field list;
+    constructor : field_getter -> 'a Monad.error_or;
   }
   and ('a, 's) tag = {
     vname : string;
     vdescription : string;
     vcontents : 'a typ;
+    vpreview : 's -> 'a option; (* Prism *)
+    vreview : 'a -> 's;
   }
   and 'a boxed_tag = BoxedTag : ('a, 's) tag -> 's boxed_tag
-  and 'a variant = { mutable variants : 'a boxed_tag list; }
-  and 'a variant_value = { tag : string; contents : t; }
+  and tag_getter = {
+    t : 'a. 'a typ -> 'a Monad.error_or
+  }
+  and 'a variant = {
+    mutable variants : 'a boxed_tag list;
+    vconstructor : string -> tag_getter -> 'a Monad.error_or;
+  }
   val int : int def
   val int32 : int32 def
   val int64 : int64 def

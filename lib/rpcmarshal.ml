@@ -1,6 +1,5 @@
 (* Basic type definitions *)
 open Rpc.Types
-       
 
 let rec unmarshal : type a. a typ -> Rpc.t -> a Rpc.Monad.error_or = fun t v ->
   let open Rpc in
@@ -41,7 +40,7 @@ let rec unmarshal : type a. a typ -> Rpc.t -> a Rpc.Monad.error_or = fun t v ->
           let vs = List.map snd xs in
           list_helper typ vs >>= fun vs ->
           return (List.combine keys vs)
-        | _ -> 
+        | _ ->
           error_of_string "Expecting something other than a Dict type"
         end
       | _ ->
@@ -63,50 +62,32 @@ let rec unmarshal : type a. a typ -> Rpc.t -> a Rpc.Monad.error_or = fun t v ->
       | Rpc.Enum list, _ ->
         error_of_string "Too many items in a tuple!"
       | _, _ ->
-        error_of_string "Expecting Rpc.Enum when unmarshalling a tuple"      
+        error_of_string "Expecting Rpc.Enum when unmarshalling a tuple"
     end
-  | Struct {sname; fields} -> begin
-      match v with
-      | Dict dict ->
-        (* Check each field is OK *)
-        List.fold_left (fun acc field ->
-            acc >>= fun acclist ->
-            let BoxedField f = field in
-            let k = f.fname in
-            if List.mem_assoc k dict
-            then
-              let v = List.assoc f.fname dict in
-              (unmarshal f.field v >>= fun _ -> Ok ((k, v)::acclist))
-            else
-              error_of_string (Printf.sprintf "Field '%s' not found when unmarshalling structure" f.fname))
-          (Ok [])
-          fields >>= fun vfields ->
-        Ok { vfields }
-      | _ -> 
-        error_of_string "Unhandled"
+  | Struct { constructor; sname } -> begin
+    match v with
+    | Rpc.Dict keys ->
+      constructor { g = (fun s ty ->
+          try
+            List.assoc s keys |> unmarshal ty
+          with Not_found ->
+            error_of_string
+              (Printf.sprintf
+                 "No value found for key: '%s' when unmarshalling '%s'" s sname)
+        ) }
+    | _ ->
+      error_of_string (Printf.sprintf "Expecting Rpc.Dict when unmarshalling a '%s'" sname)
     end
-  | Variant { variants } -> begin
-      match v with
-      | Rpc.String x ->
-        if not (List.exists (fun (BoxedTag t) -> t.vname = x) variants)
-        then error_of_string (Printf.sprintf "Unknown variant: %s" x)
-        else begin
-          let BoxedTag tag = List.find (fun (BoxedTag t) -> t.vname = x) variants in
-          match tag.vcontents with
-          | Unit -> Ok ({ tag=tag.vname; contents=Rpc.Null }) 
-          | _ -> error_of_string (Printf.sprintf "Tag '%s' expects contents, none received" x)
-        end
-      | Rpc.Enum ((Rpc.String x)::xs) -> begin
-          if not (List.exists (fun (BoxedTag t) -> t.vname = x) variants)
-          then error_of_string (Printf.sprintf "Unknown variant: %s" x)
-          else
-            let BoxedTag tag = List.find (fun (BoxedTag t) -> t.vname = x) variants in
-            unmarshal tag.vcontents (Rpc.Enum xs) >>= fun _ ->
-            Ok { tag=x; contents=Rpc.Enum xs }
-        end
-      | _ -> error_of_string "Expecting a string or Enum"
-    end
-    
+  | Variant { vconstructor; variants } ->
+    (match v with
+      | Rpc.String name -> Monad.return (name, Rpc.Null)
+      | Rpc.Enum [ Rpc.String name; contents ] -> Monad.return (name, contents)
+      | _ -> error_of_string "Expecting String or Enum when unmarshalling a variant")
+    >>= fun (name, contents) ->
+    let constr = { t = fun typ -> unmarshal typ contents } in
+    vconstructor name constr
+
+
 let rec marshal : type a. a typ -> a -> Rpc.t = fun t v ->
   let open Rpc in
   let open Monad in
@@ -140,36 +121,26 @@ let rec marshal : type a. a typ -> a -> Rpc.t = fun t v ->
     end
   | Tuple (x, y) ->
     Rpc.Enum [marshal x (fst v); marshal y (snd v)]
-  | Struct {sname; fields} -> begin
-      let fields = List.map (function          
+  | Struct { fields } -> begin
+      let fields = List.map (function
           | BoxedField f ->
-            (f.fname, List.assoc f.fname v.vfields)) fields
+            (f.fname, marshal f.field (f.fget v))) fields
       in Rpc.Dict fields
     end
-  | Variant _ -> begin
-      let { tag; contents } = v in
-      Rpc.Enum [ Rpc.String tag; contents ]
+  | Variant { variants } -> begin
+      List.fold_left (fun acc t ->
+          match t with
+          | BoxedTag t ->
+            match t.vpreview v with
+            | Some x -> begin
+                match marshal t.vcontents x with
+                | Rpc.Null ->
+                  Rpc.String t.vname
+                | y ->
+                  Rpc.Enum [ Rpc.String t.vname; y ]
+              end
+            | None -> acc) Rpc.Null variants
     end
-    
-let getf : type t a. ?default:a -> (a, t) field -> t structure_value -> a Rpc.Monad.error_or =
-  fun ?default field v ->
-    let exists = List.mem_assoc field.fname v.vfields in
-    match exists, default with
-    | true, _ ->
-      let v = List.assoc field.fname v.vfields in
-      unmarshal field.field v
-    | false, Some y ->
-      Result.Ok y
-    | _, _ ->
-      Rpc.Monad.error_of_string "Get field failed"
-
-let setf : type t a. (a, t) field -> a -> t structure_value -> t structure_value =
-  fun field v str ->
-    { vfields = (field.fname, marshal field.field v) :: (List.filter (fun (name, _) -> name <> field.fname) str.vfields) }
-
-let mkvar : type t a. (a, t) tag -> a -> t variant_value =
-  fun variant contents -> 
-  { tag = variant.vname; contents = marshal variant.vcontents contents }
 
 
 let ocaml_of_basic : type a. a basic -> string = function
@@ -194,13 +165,9 @@ let rec ocaml_of_t : type a. a typ -> string = function
     let fields = List.map (function
         | BoxedField f ->
           Printf.sprintf "%s: %s;" f.fname (ocaml_of_t f.field)) fields in
-    Printf.sprintf "{ %s }" (String.concat " " fields)            
+    Printf.sprintf "{ %s }" (String.concat " " fields)
   | Variant { variants } ->
     let tags = List.map (function
         | BoxedTag t ->
           Printf.sprintf "| %s (%s) (** %s *)" t.vname (ocaml_of_t t.vcontents) t.vdescription) variants in
     String.concat " " tags
-
-
-
-

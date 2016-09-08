@@ -34,7 +34,7 @@ type t =
 module Monad = struct
   type err = string
   type 'a error_or = ('a, err) Result.result
-      
+
   let string_of_error : 'a error_or -> string =
     let open Result in
     function | Error x -> x | Ok y -> "error_string called on Ok result"
@@ -42,7 +42,7 @@ module Monad = struct
   let error_of_string : type a. string -> a error_or =
     let open Result in
     function s -> Error s
-                    
+
   let bind m f =
     match m with
     | Result.Ok x -> f x
@@ -56,7 +56,7 @@ module Monad = struct
   let lift f x = x >>= fun x' -> return (f x')
 end
 
-  
+
 module Types = struct
   type _ basic =
     | Int : int basic
@@ -66,7 +66,7 @@ module Types = struct
     | Float : float basic
     | String : string basic
     | Char : char basic
-          
+
   type _ typ =
     | Basic : 'a basic -> 'a typ
     | DateTime : string typ
@@ -76,36 +76,46 @@ module Types = struct
     | Unit : unit typ
     | Option : 'a typ -> 'a option typ
     | Tuple : 'a typ * 'b typ -> ('a * 'b) typ
-    | Struct : 'a structure -> 'a structure_value typ
-    | Variant : 'a variant -> 'a variant_value typ
-        
+    | Struct : 'a structure -> 'a typ
+    | Variant : 'a variant -> 'a typ
+
   (* A type definition has a name and description *)
   and 'a def = { name: string; description: string; ty: 'a typ; }
-               
+
   and boxed_def = BoxedDef : 'a def -> boxed_def
-    
-  and 'a structure_value = { vfields : (string * t) list }
+
   and ('a, 's) field = {
     fname : string;
     fdescription : string;
     field : 'a typ;
+    fget : 's -> 'a; (* Lenses *)
+    fset : 'a -> 's -> 's;
   }
   and 'a boxed_field = BoxedField : ('a, 's) field -> 's boxed_field
+  and field_getter = {
+    g : 'a. string -> 'a typ -> 'a Monad.error_or
+  }
   and 'a structure = {
     sname : string;
-    mutable fields: 'a boxed_field list
+    mutable fields: 'a boxed_field list;
+    constructor : field_getter -> 'a Monad.error_or;
   }
   and ('a, 's) tag = {
     vname : string;
     vdescription : string;
     vcontents : 'a typ;
+    vpreview : 's -> 'a option;
+    vreview : 'a -> 's;
   }
   and 'a boxed_tag = BoxedTag : ('a, 's) tag -> 's boxed_tag
-  and 'a variant = {
-    mutable variants : 'a boxed_tag list
+  and tag_getter = {
+    t : 'a. 'a typ -> 'a Monad.error_or
   }
-  and 'a variant_value = { tag : string; contents: t }
-                         
+  and 'a variant = {
+    mutable variants : 'a boxed_tag list;
+    vconstructor : string -> tag_getter -> 'a Monad.error_or;
+  }
+
   let int    = { name="int";    ty=Basic Int;    description="Native integer" }
   let int32  = { name="int32";  ty=Basic Int32;  description="32-bit integer"}
   let int64  = { name="int64";  ty=Basic Int64;  description="64-bit integer"}
@@ -262,6 +272,3 @@ let string_of_response response =
 
 let success v = { success = true; contents = v }
 let failure v = { success = false; contents = v }
-
-
-      
