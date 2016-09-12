@@ -26,6 +26,8 @@ let attr_doc = attr_string "doc"
 let attr_default attrs =
   Ppx_deriving.attr ~deriver "default" attrs |> Ppx_deriving.Arg.(get_attr ~deriver expr)
 
+let argn = Printf.sprintf "a%d"
+
 (* For these types we have convertors in rpc.ml *)
 let core_types = List.map (fun (s, y) -> (Lident s, y))
     ["unit", [%expr Unit];
@@ -157,11 +159,26 @@ module Typ_of = struct
               let rpc_name = attr_key name pcd_attributes in
               let contents = match pcd_args with
                 | [] -> [%expr Unit]
-                | _ -> List.fold_right (fun t acc -> [%expr Tuple ([%e expr_of_typ  t], [%e acc])]) (List.tl pcd_args) [%expr [%e (expr_of_typ  (List.hd pcd_args))] ]
+                | _ -> List.fold_right (fun t acc ->
+                    [%expr Tuple ([%e expr_of_typ  t], [%e acc])])
+                    (List.tl pcd_args)
+                    [%expr [%e (expr_of_typ  (List.hd pcd_args))]]
               in
-              [%expr BoxedTag [%e record ["vname", str rpc_name; "vcontents", contents; "vdescription", str (attr_doc "" pcd_attributes)]]])
+              let args = List.mapi (fun i typ -> evar (argn i)) pcd_args in
+              let pattern = List.mapi (fun i _ -> pvar (argn i)) pcd_args in
+              let vpreview = Exp.function_ [
+                  Exp.case (pconstr name pattern) [%expr Some [%e tuple args ]];
+                  Exp.case (Pat.any ()) [%expr None]
+                ]
+              in
+              let vreview = Exp.function_ [Exp.case (ptuple pattern) (constr name args)] in
+              let variant = [%expr BoxedTag [%e record ["vname", str rpc_name; "vcontents", contents; "vdescription", str (attr_doc "" pcd_attributes); "vpreview", vpreview; "vreview", vreview]]] in
+              let vconstructor_case = Exp.case (Pat.constant (Const_string (name,None))) [%expr Rpc.Monad.bind (t.t [%e contents]) ([%e Exp.function_ [Exp.case (ptuple pattern) [%expr Rpc.Monad.return [%e (constr name args)]]]])] in
+              (variant, vconstructor_case))
         in
-        [ Vb.mk (pvar typ_of_lid) (polymorphize ([%expr Variant ({ variants=([%e list cases]); } : [%t mytype ] variant) ])) ]
+        let default = if List.length cases = 1 then [] else [Exp.case (Pat.any ()) [%expr Rpc.Monad.error_of_string (Printf.sprintf "Unknown tag '%s'" s)]] in
+        let vconstructor = [%expr fun s t -> [%e Exp.match_ (evar "s") ((List.map snd cases) @ default)]] in
+        [ Vb.mk (pvar typ_of_lid) (polymorphize ([%expr Variant ({ variants=([%e list (List.map fst cases)]); vconstructor=[%e vconstructor] } : [%t mytype ] variant) ])) ]
     in
     let doc = attr_doc "" type_decl.ptype_attributes in
     let name = type_decl.ptype_name.txt in
