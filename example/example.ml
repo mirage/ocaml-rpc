@@ -63,7 +63,7 @@ type vm = {
 
 (* The fields are created *)
 open Rpc.Types
-       
+
 let vm_name_label : (string, vm) field = {
   fname="name_label";
   fdescription="";
@@ -103,10 +103,10 @@ let vm_def = { name="vm"; description="VM record"; ty=typ_of_vm }
 
 
 (* Or we can create a variant type *)
-             
+
 (* The tags are created first *)
 type exnt = | Errors of string
-let errors : (string, exnt) tag = { vname="errors"; vdescription="Errors raised during an RPC invocation"; vcontents=Basic String; vpreview = (fun (Errors s) -> Some s); vreview = (fun s -> Errors s) }
+let errors : (string, exnt) tag = { vname="errors"; vdescription="Errors raised during an RPC invocation"; vcontents=Basic String; vpreview = (function (Errors s) -> Some s | _ -> None); vreview = (fun s -> Errors s) }
 
 (* And then we can create the 'variant' type *)
 let exnt : exnt variant = {
@@ -115,7 +115,7 @@ let exnt : exnt variant = {
       match s with
       | "Errors" -> Rpc.Monad.bind (t.t (Basic String)) (fun s -> Rpc.Monad.return (Errors s))
       | s -> Rpc.Monad.error_of_string (Printf.sprintf "Unknown tag '%s'" s))}
-let exnt_def = { name="exnt"; description="A variant type"; ty=Variant exnt }                        
+let exnt_def = { name="exnt"; description="A variant type"; ty=Variant exnt }
 
 
 (* This can then be used in RPCs *)
@@ -141,7 +141,7 @@ let _ =
   let impl vm' =
       Printf.printf "name=%s description=%s\n" vm'.name_label vm'.name_description;
   in
-  
+
   let funcs = GenServer.empty () |> VMServer.start impl in
 
   let rpc rpc =
@@ -150,8 +150,8 @@ let _ =
     Printf.printf "Marshalled RPC type: '%s'\n" (string_of_response response);
     Result.Ok response
   in
-  
-  let test () = 
+
+  let test () =
     let vm = { name_label="test"; name_description="description" } in
     VMClient.start rpc vm
   in
@@ -160,17 +160,15 @@ let _ =
 (* Let's create some python *)
 
 module Code=VMRPC(Codegen)
-    
+
 (* Generate some python *)
 let _ =
   let interface = Code.(interface |> start) in
   let open Codegen.Interfaces in
-  let interfaces = 
+  let interfaces =
     empty "interfaces" "The test VM RPC interface"
       "This is an example of the ocaml-rpc code generator"
   in
   let interfaces = add_interface interfaces interface in
   let interfaces = register_exn interfaces exnt_def in
   Pythongen.of_interfaces (add_interface interfaces interface) |> Pythongen.string_of_ts |> Printf.printf "%s\n"
-
-   

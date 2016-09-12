@@ -42,7 +42,7 @@ type persistent = bool [@@deriving rpcty] [@@doc
 
 
 (* Create some handy parameters for use in the function definitions below *)
-let uri = Param.mk ~description:"A URI which represents how to access the volume disk data." Common.uri_def 
+let uri = Param.mk ~description:"A URI which represents how to access the volume disk data." uri_def
 let persistent = Param.mk persistent_def
 let domain = Param.mk ~description:"An opaque string which represents the Xen domain." domain_def
 let backend = Param.mk backend_def
@@ -57,7 +57,7 @@ module Datapath(R: RPC) = struct
        description=
          "Xapi will call the functions here on VM start/shutdown/suspend/resume/migrate. Every function is idempotent. Every function takes a domain parameter which allows the implementation to track how many domains are currently using the volume.";
        version=1}
-  
+
   let open_ =
     declare "open"
       "[open uri persistent] is called before a disk is attached to a VM. If persistent is true then care should be taken to persist all writes to the disk. If persistent is false then the implementation should configure a temporary location for writes so they can be thrown away on [close]."
@@ -109,8 +109,8 @@ module Data (R : RPC) = struct
     failed : bool [@doc "[failed] will be set to true if the operation has failed for some reason"];
     progress : float option [@doc "[progress] will be returned for a copy operation, and ranges between 0 and 1"];
   } [@@deriving rpcty] [@@doc "Status information for on-going tasks"]
-  
-  let remote = Param.mk ~name:"remote" ~description:"A URI which represents how to access a remote volume disk data." uri_def 
+
+  let remote = Param.mk ~name:"remote" ~description:"A URI which represents how to access a remote volume disk data." uri_def
   let operation = Param.mk operation_def
   let blocklist = Param.mk blocklist_def
   let copy = declare "copy"

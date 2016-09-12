@@ -4,7 +4,7 @@ open Parsetree
 open Location
 open Ast_helper
 open Ast_convenience
-    
+
 let deriver = "rpc"
 
 
@@ -20,7 +20,7 @@ let core_types = List.map (fun (s, y) -> (Lident s, y))
      "float", [%expr Basic Float];
      "bool", [%expr Basic Bool]]
 
-(* [is_option typ] returns true if the type 'typ' is an option type. 
+(* [is_option typ] returns true if the type 'typ' is an option type.
    This is required because of the slightly odd way we serialise records containing optional fields. *)
 let is_option typ =
   match typ with
@@ -49,7 +49,7 @@ let attr_name  = attr_string "name"
 
 (* Documentation for variants / record members *)
 let attr_doc = attr_string "doc"
-    
+
 (* Open the Rpc module *)
 let wrap_runtime decls =
   [%expr let open! Result in let open! Rpc.Monad in [%e decls]]
@@ -150,7 +150,7 @@ module Of_rpc = struct
                | Rpc.Enum ((Rpc.String x)::xs) -> Rpc.Enum ((Rpc.String (String.lowercase x))::xs)
                | Rpc.String x -> Rpc.String (String.lowercase x)
                | y -> y in
-             [%e Exp.match_ [%expr rpc'] (tag_cases @ [inherits_case])]]      
+             [%e Exp.match_ [%expr rpc'] (tag_cases @ [inherits_case])]]
 
     | { ptyp_desc = Ptyp_any } ->
       failwith "Ptyp_any not handled"
@@ -245,7 +245,7 @@ module Of_rpc = struct
     in to_rpc
 end
 
-  
+
 module Rpc_of = struct
   let rec expr_of_typ typ =
     match typ with
@@ -294,7 +294,7 @@ module Rpc_of = struct
                 deriver (Ppx_deriving.string_of_core_type typ))
       in
       Exp.function_ cases
-        
+
     | { ptyp_desc = Ptyp_any } ->
       failwith "Ptyp_any not handled"
     | { ptyp_desc = Ptyp_var name } ->
@@ -335,7 +335,7 @@ module Rpc_of = struct
               else
                 [%expr Some ([%e str rpc_name],
                              [%e (expr_of_typ  pld_type)] [%e Exp.field (evar "x") (mknoloc (Lident name))])]) in
-        
+
         [%expr fun x -> Rpc.Dict (List.fold_right (fun x acc -> match x with | Some x -> x::acc | None -> acc) [%e list fields] []) ]
       | Ptype_abstract, None ->
         failwith "Unhandled"
@@ -355,11 +355,11 @@ module Rpc_of = struct
                 in
                 Exp.case (pconstr name pattern) rpc_of)
         in
-        Exp.function_ cases              
+        Exp.function_ cases
     in
     to_rpc
 
-  
+
 end
 
 
@@ -387,5 +387,3 @@ let () =
            [Str.value Recursive
               (List.concat (List.map (rpc_strs_of_type ~options ~path) type_decls))])
        ());
-
-

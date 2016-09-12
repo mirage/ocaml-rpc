@@ -2,7 +2,7 @@ OCAMLC = ocamlfind ocamlc
 OCAMLOPT = ocamlfind ocamlopt
 OCAMLFLAGS = -annot -g -thread
 
-PACKS = lwt,lwt.unix,result
+PACKS = lwt,lwt.unix,result,cmdliner,rpclib.cmdliner,rpclib.json
 RPC = -I ../_build/lib
 RPCLINK = rpclib_core.cmxa rpclib.cmxa
 
@@ -21,4 +21,4 @@ example3: example3_idl.ml example3_client.ml
 	$(OCAMLOPT) $(OCAMLFLAGS) -linkpkg -package $(PACKS),threads,ppx_deriving_rpc,rpclib -o example3 example3_idl.ml example3_client.ml
 
 clean:
-	rm -f example example2 *.cmx *.cmi *.cmo *.o example.gen.ml *~
+	rm -f example example2 example3 *.cmx *.cmi *.cmo *.o example.gen.ml *~ *.annot

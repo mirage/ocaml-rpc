@@ -5,6 +5,7 @@ module Server=API(GenServer)
 
 let query () =
   let open Datatypes.Query in
+  Printf.printf "Received query API call\n%!";
   let result = {
     name = "Example2 server";
     vendor = "This is the example server showing how to use the ocaml-rpc IDL";
@@ -12,13 +13,13 @@ let query () =
     features = ["defaults";"upgradability"];
     instance_id = string_of_int (Random.int 1000)
   } in
-  structure_of result
+  result
 
 let diagnostics () =
   "This should be the diagnostics of the server"
 
 let test i s1 s2 =
-  Printf.printf "%Ld %s %s\n" i s1 s2;
+  Printf.printf "%Ld %s %s\n%!" i s1 s2;
   query ()
 
 let finally f g =
