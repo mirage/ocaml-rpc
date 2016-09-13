@@ -10,7 +10,7 @@ let rec unmarshal : type a. a typ -> Rpc.t -> a Rpc.Monad.error_or = fun t v ->
         match acc, unmarshal typ v with
         | (Ok a), (Ok v) -> Ok (v::a)
         | _ -> error_of_string "Failed to unmarshal array")
-      (Ok []) l
+      (Ok []) l |> function | Ok x -> Ok (List.rev x) | y -> y
   in
   match t with
   | Basic Int -> int_of_rpc v
@@ -34,21 +34,25 @@ let rec unmarshal : type a. a typ -> Rpc.t -> a Rpc.Monad.error_or = fun t v ->
   | Dict (basic, typ) -> begin
       match v with
       | Dict xs -> begin
-        match basic with
-        | String ->
-          let keys = List.map fst xs in
-          let vs = List.map snd xs in
-          list_helper typ vs >>= fun vs ->
-          return (List.combine keys vs)
-        | _ ->
-          error_of_string "Expecting something other than a Dict type"
+          match basic with
+          | String ->
+            let keys = List.map fst xs in
+            let vs = List.map snd xs in
+            list_helper typ vs >>= fun vs ->
+            return (List.combine keys vs)
+          | _ ->
+            error_of_string "Expecting something other than a Dict type"
         end
       | _ ->
         error_of_string "Unhandled"
     end
   | Unit -> unit_of_rpc v
-  | Option _ ->
-    error_of_string "Unhandled"
+  | Option t -> begin
+      match v with
+      | Enum [x] -> unmarshal t x >>= fun x -> return (Some x)
+      | Enum [] -> return None
+      | y -> error_of_string (Printf.sprintf "Expecting an Enum value, got '%s'" (Rpc.to_string y))
+    end
   | Tuple (t1, t2) -> begin
       match v, t2 with
       | Rpc.Enum list, Tuple (_, _) ->
@@ -65,24 +69,30 @@ let rec unmarshal : type a. a typ -> Rpc.t -> a Rpc.Monad.error_or = fun t v ->
         error_of_string "Expecting Rpc.Enum when unmarshalling a tuple"
     end
   | Struct { constructor; sname } -> begin
-    match v with
-    | Rpc.Dict keys ->
-      constructor { g = (fun s ty ->
-          try
-            List.assoc s keys |> unmarshal ty
-          with Not_found ->
-            error_of_string
-              (Printf.sprintf
-                 "No value found for key: '%s' when unmarshalling '%s'" s sname)
-        ) }
-    | _ ->
-      error_of_string (Printf.sprintf "Expecting Rpc.Dict when unmarshalling a '%s'" sname)
+      match v with
+      | Rpc.Dict keys' ->
+        let keys = List.map (fun (s,v) -> (String.lowercase s, v)) keys' in
+        constructor { g = (
+            let x : type a. string -> a typ -> a Rpc.Monad.error_or = fun s ty ->
+              let s = String.lowercase s in
+              match ty with
+              | Option x -> begin try List.assoc s keys |> unmarshal x >>= fun o -> return (Some o) with _ -> return None end
+              | y ->
+                try List.assoc s keys |> unmarshal y
+                with Not_found ->
+                  error_of_string
+                    (Printf.sprintf
+                       "No value found for key: '%s' when unmarshalling '%s'" s sname)
+            in x
+          ) }
+      | _ ->
+        error_of_string (Printf.sprintf "Expecting Rpc.Dict when unmarshalling a '%s'" sname)
     end
   | Variant { vconstructor; variants } ->
     (match v with
-      | Rpc.String name -> Monad.return (name, Rpc.Null)
-      | Rpc.Enum [ Rpc.String name; contents ] -> Monad.return (name, contents)
-      | _ -> error_of_string "Expecting String or Enum when unmarshalling a variant")
+     | Rpc.String name -> Monad.return (name, Rpc.Null)
+     | Rpc.Enum [ Rpc.String name; contents ] -> Monad.return (name, contents)
+     | _ -> error_of_string "Expecting String or Enum when unmarshalling a variant")
     >>= fun (name, contents) ->
     let constr = { t = fun typ -> unmarshal typ contents } in
     vconstructor name constr
@@ -112,8 +122,8 @@ let rec marshal : type a. a typ -> a -> Rpc.t = fun t v ->
   | Dict (basic, typ) ->
     Rpc.Enum (List.map (fun (k,v) -> Rpc.Enum [ rpc_of_basic basic k; marshal typ v ]) v)
   | Unit -> rpc_of_unit v
-  | Option _ ->
-    failwith "Unhandled"
+  | Option ty ->
+    Rpc.Enum (match v with | Some x -> [marshal ty x] | None -> [])
   | Tuple (x, (Tuple (_,_) as y)) -> begin
       match marshal y (snd v) with
       | Rpc.Enum xs -> Rpc.Enum ((marshal x (fst v))::xs)
@@ -122,9 +132,16 @@ let rec marshal : type a. a typ -> a -> Rpc.t = fun t v ->
   | Tuple (x, y) ->
     Rpc.Enum [marshal x (fst v); marshal y (snd v)]
   | Struct { fields } -> begin
-      let fields = List.map (function
-          | BoxedField f ->
-            (f.fname, marshal f.field (f.fget v))) fields
+      let fields = List.fold_left (fun acc f ->
+          match f with
+          | BoxedField f -> begin
+              let value = marshal f.field (f.fget v) in
+              match f.field, value with
+              | Option _, Rpc.Enum [] -> acc
+              | Option _, Rpc.Enum [x] -> (f.fname, x)::acc
+              | _, _ -> (f.fname, value)::acc
+            end
+        ) [] fields
       in Rpc.Dict fields
     end
   | Variant { variants } -> begin

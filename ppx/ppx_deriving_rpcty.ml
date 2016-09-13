@@ -44,57 +44,48 @@ module Typ_of = struct
     [%expr let open! Rpc.Types in [%e decls]]
 
   let rec expr_of_typ  typ =
-    match typ with
-    | { ptyp_desc = Ptyp_constr ( { txt = lid }, args ) } when
-        List.mem_assoc lid core_types -> List.assoc lid core_types
-    | { ptyp_desc = Ptyp_constr ( { txt = Lident "char" }, args ) } ->
-      [%expr Basic Char]
-    | [%type: (string * [%t? typ]) list] ->
-      [%expr Dict (String, [%e expr_of_typ typ])]
-    | [%type: [%t? typ] list] ->
-      [%expr List [%e expr_of_typ  typ]]
-    | [%type: [%t? typ] array] ->
-      [%expr Array [%e expr_of_typ  typ]]
-    | {ptyp_desc = Ptyp_tuple typs } ->
-      List.fold_right (fun t acc -> [%expr Tuple ([%e expr_of_typ  t], [%e acc])]) (List.tl typs) [%expr [%e (expr_of_typ  (List.hd typs))] ]
-    | [%type: [%t? typ] option] ->
-      [%expr Option [%e expr_of_typ  typ]]
-    | { ptyp_desc = Ptyp_constr ( { txt = lid }, args ) } ->
-      [%expr [%e Exp.ident (mknoloc (Ppx_deriving.mangle_lid (`Prefix "typ_of") lid))]]
-    | { ptyp_desc = Ptyp_variant (fields, _, _); ptyp_loc } ->
-      let mk n t d = [%expr BoxedTag ([%e record ["vname", n; "vcontents", t; "vdescription", d]])] in
-      let cases =
-        fields |> List.map (fun field ->
-            match field with
-            | Rtag (label, attrs, true, []) ->
-              mk (str (attr_key label attrs)) [%expr Unit] (str (attr_doc "" attrs))
-            | Rtag (label, attrs, false, [{ ptyp_desc = Ptyp_tuple typs }]) ->
-              mk (str (attr_key label attrs)) [%expr Tuple [%e list (List.map (expr_of_typ ) typs)]] (str (attr_doc "" attrs))
-            | Rtag (label, attrs, false, [typ]) ->
-              mk (str (attr_key label attrs)) (expr_of_typ  typ) (str (attr_doc "" attrs))
-            | _ ->
-              raise_errorf ~loc:ptyp_loc "%s cannot be derived for %s"
-                deriver (Ppx_deriving.string_of_core_type typ))
-      in
-      [%expr Variant ({ variants=[%e list cases]; })]
-    | { ptyp_desc = Ptyp_any } ->
-      failwith "Ptyp_any not handled"
-    | { ptyp_desc = Ptyp_var name } ->
-      [%expr [%e evar ("poly_"^name)]]
-    | { ptyp_desc = Ptyp_poly (_, _) } ->
-      failwith "Ptyp_poly not handled"
-    | { ptyp_desc = Ptyp_extension _ } ->
-      failwith "Ptyp_extension not handled"
-    | { ptyp_desc = Ptyp_arrow (_, _, _) } ->
-      failwith "Ptyp_arrow not handled"
-    | { ptyp_desc = Ptyp_object (_, _) } ->
-      failwith "Ptyp_object not handled"
-    | { ptyp_desc = Ptyp_alias (_, _) } ->
-      failwith "Ptyp_alias not handled"
-    | { ptyp_desc = Ptyp_class (_, _) } ->
-      failwith "Ptyp_class not handled"
-    | { ptyp_desc = Ptyp_package _ } ->
-      failwith "Ptyp_package not handled"
+    let expr =
+      match typ with
+      | { ptyp_desc = Ptyp_constr ( { txt = lid }, args ) } when
+          List.mem_assoc lid core_types -> List.assoc lid core_types
+      | { ptyp_desc = Ptyp_constr ( { txt = Lident "char" }, args ) } ->
+        [%expr Basic Char]
+      | [%type: (string * [%t? typ]) list] ->
+        [%expr Dict (String, [%e expr_of_typ typ])]
+      | [%type: [%t? typ] list] ->
+        [%expr List [%e expr_of_typ  typ]]
+      | [%type: [%t? typ] array] ->
+        [%expr Array [%e expr_of_typ  typ]]
+      | {ptyp_desc = Ptyp_tuple typs } ->
+        let typs = List.rev typs in
+        List.fold_right (fun t acc -> [%expr Tuple ([%e expr_of_typ  t], [%e acc])]) (List.tl typs) [%expr [%e (expr_of_typ  (List.hd typs))] ]
+      | [%type: [%t? typ] option] ->
+        [%expr Option [%e expr_of_typ typ]]
+      | { ptyp_desc = Ptyp_constr ( { txt = lid }, args ) } ->
+        [%expr [%e Exp.ident (mknoloc (Ppx_deriving.mangle_lid (`Prefix "typ_of") lid))]]
+      | { ptyp_desc = Ptyp_variant (fields, _, _); ptyp_loc } ->
+        failwith "Ptyp_variant not handled"
+      | { ptyp_desc = Ptyp_any } ->
+        failwith "Ptyp_any not handled"
+      | { ptyp_desc = Ptyp_var name } ->
+        [%expr [%e evar ("poly_"^name)]]
+      | { ptyp_desc = Ptyp_poly (_, _) } ->
+        failwith "Ptyp_poly not handled"
+      | { ptyp_desc = Ptyp_extension _ } ->
+        failwith "Ptyp_extension not handled"
+      | { ptyp_desc = Ptyp_arrow (_, _, _) } ->
+        failwith "Ptyp_arrow not handled"
+      | { ptyp_desc = Ptyp_object (_, _) } ->
+        failwith "Ptyp_object not handled"
+      | { ptyp_desc = Ptyp_alias (_, _) } ->
+        failwith "Ptyp_alias not handled"
+      | { ptyp_desc = Ptyp_class (_, _) } ->
+        failwith "Ptyp_class not handled"
+      | { ptyp_desc = Ptyp_package _ } ->
+        failwith "Ptyp_package not handled"
+    in
+    wrap_runtime expr
+
   (*  | _ -> failwith "Error"*)
 
   let str_of_type ~options ~path type_decl =
@@ -110,12 +101,13 @@ module Typ_of = struct
       | Ptype_record labels, _ ->
         let fields =
           labels |> List.map (fun { pld_name = { txt = fname }; pld_type; pld_attributes } ->
-              let rpc_name = attr_name fname pld_attributes in
+              let rpc_name = attr_key fname pld_attributes in
               let default = attr_default pld_attributes in
               let field_name = String.concat "_" [name; fname] in
               let fget = [%expr fun _r -> [%e Exp.field (evar "_r") (mknoloc (Lident fname)) ] ] in
               let fset = [%expr fun v s -> [%e record [fname, [%expr v]] ~over:([%expr s])]] in
               (fname,
+               rpc_name,
                field_name,
                pld_type,
                [%expr let open Rpc.Types in
@@ -126,20 +118,20 @@ module Typ_of = struct
                              "fset", fset;
                             ] ] ], default ))
         in
-        let field_name_bindings = List.map (fun (fname, field_name, typ, record, _) ->
+        let field_name_bindings = List.map (fun (fname, _, field_name, typ, record, _) ->
             Vb.mk (Pat.constraint_ (pvar field_name)
                      ([%type: (_, [%t mytype]) Rpc.Types.field]))
               record) fields in
-        let boxed_fields = list (List.map (fun (_,field_name,_,_,_) ->
+        let boxed_fields = list (List.map (fun (_,_,field_name,_,_,_) ->
             [%expr BoxedField ([%e Exp.ident (lid field_name)])]) fields) in
-        let construct_record = List.fold_left (fun expr (fname,field_name,pld_type,_,def) ->
+        let construct_record = List.fold_left (fun expr (fname,rpc_name,field_name,pld_type,_,def) ->
             match def with
             | Some d ->
-              [%expr getter.Rpc.Types.g (*~default:[%e d]*) [%e str field_name] [%e expr_of_typ pld_type] >>= fun [%p pvar field_name] -> [%e expr]]
+              [%expr getter.Rpc.Types.g (*~default:[%e d]*) [%e str rpc_name] [%e expr_of_typ pld_type] >>= fun [%p pvar field_name] -> [%e expr]]
             | None ->
-              [%expr getter.Rpc.Types.g [%e str field_name] [%e expr_of_typ pld_type] >>= fun [%p pvar field_name] -> [%e expr]]
+              [%expr getter.Rpc.Types.g [%e str rpc_name] [%e expr_of_typ pld_type] >>= fun [%p pvar field_name] -> [%e expr]]
           )
-            [%expr return [%e Exp.record (List.map (fun (fname, field_name, _, _, _) ->
+            [%expr return [%e Exp.record (List.map (fun (fname, _, field_name, _, _, _) ->
                 mknoloc (Lident fname), evar field_name) fields) None]]
             fields in
         field_name_bindings @
@@ -156,7 +148,8 @@ module Typ_of = struct
       | Ptype_variant constrs, _ ->
         let cases =
           constrs |> List.map (fun { pcd_name = { txt = name }; pcd_args; pcd_attributes } ->
-              let rpc_name = attr_key name pcd_attributes in
+              let rpc_name = attr_name name pcd_attributes in
+              let lower_rpc_name = String.lowercase rpc_name in
               let contents = match pcd_args with
                 | [] -> [%expr Unit]
                 | _ -> List.fold_right (fun t acc ->
@@ -173,16 +166,16 @@ module Typ_of = struct
               in
               let vreview = Exp.function_ [Exp.case (ptuple pattern) (constr name args)] in
               let variant = [%expr BoxedTag [%e record ["vname", str rpc_name; "vcontents", contents; "vdescription", str (attr_doc "" pcd_attributes); "vpreview", vpreview; "vreview", vreview]]] in
-              let vconstructor_case = Exp.case (Pat.constant (Const_string (name,None))) [%expr Rpc.Monad.bind (t.t [%e contents]) ([%e Exp.function_ [Exp.case (ptuple pattern) [%expr Rpc.Monad.return [%e (constr name args)]]]])] in
+              let vconstructor_case = Exp.case (Pat.constant (Const_string (lower_rpc_name,None))) [%expr Rpc.Monad.bind (t.t [%e contents]) ([%e Exp.function_ [Exp.case (ptuple pattern) [%expr Rpc.Monad.return [%e (constr name args)]]]])] in
               (variant, vconstructor_case))
         in
         let default = if List.length cases = 1 then [] else [Exp.case (Pat.any ()) [%expr Rpc.Monad.error_of_string (Printf.sprintf "Unknown tag '%s'" s)]] in
-        let vconstructor = [%expr fun s t -> [%e Exp.match_ (evar "s") ((List.map snd cases) @ default)]] in
-        [ Vb.mk (pvar typ_of_lid) (polymorphize ([%expr Variant ({ variants=([%e list (List.map fst cases)]); vconstructor=[%e vconstructor] } : [%t mytype ] variant) ])) ]
+        let vconstructor = [%expr fun s' t -> let s = String.lowercase s' in [%e Exp.match_ (evar "s") ((List.map snd cases) @ default)]] in
+        [ Vb.mk (pvar typ_of_lid) (wrap_runtime (polymorphize ([%expr Variant ({ variants=([%e list (List.map fst cases)]); vconstructor=[%e vconstructor] } : [%t mytype ] variant) ]))) ]
     in
     let doc = attr_doc "" type_decl.ptype_attributes in
     let name = type_decl.ptype_name.txt in
-    typ_of @ [Vb.mk (pvar param_of_lid) (wrap_runtime (record ["name", str name; "description", str doc; "ty", Exp.ident (lid typ_of_lid)]))]
+    typ_of @ [Vb.mk (pvar param_of_lid) (wrap_runtime (polymorphize (record ["name", str name; "description", str doc; "ty", Ppx_deriving.poly_apply_of_type_decl type_decl (Exp.ident (lid typ_of_lid))])))]
 
 end
 
