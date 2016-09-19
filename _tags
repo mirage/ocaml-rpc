@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: dc2162f9bb77bddd3c04bff5106828fc)
+# DO NOT EDIT (digest: 15a68f21c4ecf379916884bb859d7883)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -38,6 +38,7 @@ true: annot, bin_annot
 "lib/idl.cmxs": use_idl
 <lib/*.ml{,i,y}>: pkg_camlp4
 <lib/*.ml{,i,y}>: pkg_result
+<lib/*.ml{,i,y}>: pkg_rresult
 <lib/*.ml{,i,y}>: pkg_xmlm
 <lib/*.ml{,i,y}>: use_rpclib
 <lib/*.ml{,i,y}>: use_rpclib_core

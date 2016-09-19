@@ -17,7 +17,7 @@ Library rpclib_core
   FindlibParent: rpclib
   Findlibname: core
   Modules: Rpc, Idl, Rpcmarshal, Pythongen, Codegen, Markdowngen
-  BuildDepends:	result
+  BuildDepends:	result, rresult
 
 Library xml
   Path: lib

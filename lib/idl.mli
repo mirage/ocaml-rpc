@@ -1,6 +1,6 @@
 (** The Idl module is for declaring the types and documentation for RPC calls *)
 
-(** The Param module is associated with parameters to RPCs. RPCs are defined in terms of 
+(** The Param module is associated with parameters to RPCs. RPCs are defined in terms of
     'a Param.t values. *)
 module Param : sig
 
@@ -31,9 +31,9 @@ module Interface : sig
 end
 
 (** The RPC module type is the standard module signature that the various
-    specialization modules must conform to. *)   
+    specialization modules must conform to. *)
 module type RPC = sig
-  
+
   (** The description is dependent on the module. *)
   type description
   val describe : Interface.description -> description
@@ -46,7 +46,7 @@ module type RPC = sig
   (** This is for inserting a type in between the function application
       and its result. For example, this could be an Lwt.t, meaning that
       the result of a function application is a thread *)
-  type 'a comp
+  type ('a, 'b) comp
 
   (** The GADT specifying the type of the RPC *)
   type _ fn
@@ -55,7 +55,7 @@ module type RPC = sig
   val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
 
   (** This defines the return type of an RPC *)
-  val returning : 'a Param.t -> 'a comp fn
+  val returning : ('a Param.t * 'b Param.t) -> ('a, 'b) comp fn
 
   (** [declare name description typ] is how an RPC is declared to the
       module implementing the functionality. The return type is dependent
@@ -74,48 +74,48 @@ module GenClient : sig
       an rpc function, which might send the RPC across the network,
       and returns a function of type 'a, in this case (int -> string
       -> bool). *)
-  type 'a res = (Rpc.call -> Rpc.response Rpc.Monad.error_or) -> 'a
+  type 'a rpcfn = Rpc.call -> (Rpc.response, 'a) Result.result
+  type ('a, 'b) res = ('b rpcfn) -> 'a
 
   (** Our functions return a Result.result type, which either contains
       the result of the Rpc, or an error message indicating a problem
       happening at the transport level *)
-  type 'a comp = 'a Rpc.Monad.error_or
+  type ('a, 'b) comp = ('a, 'b) Result.result
 
   type _ fn
   val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
-  val returning : 'a Param.t -> 'a comp fn
-  val declare : string -> string -> 'a fn -> 'a res
+  val returning : 'a Param.t -> ([> `Msg of string] as 'b) Param.t -> ('a, 'b) comp fn
+  val declare : string -> string -> 'a fn -> Rresult.R.msg rpcfn -> 'a
 end
 
 module GenServer : sig
   type description = Interface.description
   val describe : Interface.description -> description
 
-  (** 'funcs' is a Hashtbl type that is used to hold the implementations of 
+  (** 'funcs' is a Hashtbl type that is used to hold the implementations of
       the RPCs *)
-  type funcs = (string, Rpc.call -> Rpc.response Rpc.Monad.error_or) Hashtbl.t
+  type 'a rpcfn = Rpc.call -> (Rpc.response, [> `Msg of string] as 'a) Result.result
+  type 'a funcs = (string, 'a rpcfn) Hashtbl.t
 
   (** The result of a declaration of an RPC is a function type that takes
       as first parameter the implementation of the RPC, and as second
       parameter the 'funcs' object that is accumulating each implementation.
       When all the implementations have been added to the 'funcs' object,
       it can be passed to the 'server' function below *)
-  type 'a res = 'a -> funcs -> funcs
+  type ('a, 'b) res = 'a -> 'b funcs -> 'b funcs
 
   (** No error handling done server side yet *)
-  type 'a comp = 'a
+  type ('a, 'b) comp = ('a, 'b) Result.result
   type _ fn
 
   (** The 'empty' method here can be used to obtain an initial 'funcs' object
       to accumulate the implementations in *)
-  val empty : unit -> funcs
+  val empty : unit -> 'a funcs
 
   (** [server funcs] is a function that can be used to respond to RPC calls *)
-  val server : funcs -> Rpc.call -> Rpc.response Rpc.Monad.error_or
+  val server : 'a funcs -> Rpc.call -> (Rpc.response, [> Rresult.R.msg] as 'a) Result.result
 
   val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
-  val returning : 'a Param.t -> 'a comp fn
-  val declare : string -> string -> 'a fn -> 'a res
+  val returning : ('a Param.t * ([> `Msg of string ] as 'b) Param.t) -> ('a, 'b) comp fn
+  val declare : string -> string -> 'a fn -> ('a, 'b) res
 end
-
-

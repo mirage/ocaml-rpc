@@ -1,4 +1,4 @@
-PKG ppx_deriving ppx_tools rpclib ppx_tools.metaquot result cow cmdliner
+PKG ppx_deriving ppx_tools rpclib ppx_tools.metaquot result cow cmdliner rresult
 S ppx
 S lib
 S tests

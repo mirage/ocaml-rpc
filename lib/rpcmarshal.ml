@@ -1,16 +1,18 @@
 (* Basic type definitions *)
 open Rpc.Types
 
-let rec unmarshal : type a. a typ -> Rpc.t -> a Rpc.Monad.error_or = fun t v ->
+type err = [ `Msg of string ]
+
+let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result  = fun t v ->
   let open Rpc in
-  let open Monad in
   let open Result in
+  let open Rresult.R in
   let list_helper typ l =
     List.fold_left (fun acc v ->
         match acc, unmarshal typ v with
         | (Ok a), (Ok v) -> Ok (v::a)
-        | _ -> error_of_string "Failed to unmarshal array")
-      (Ok []) l |> function | Ok x -> Ok (List.rev x) | y -> y
+        | _ -> Error (Rresult.R.msg "Failed to unmarshal array"))
+                 (Ok []) l >>| List.rev
   in
   match t with
   | Basic Int -> int_of_rpc v
@@ -19,17 +21,17 @@ let rec unmarshal : type a. a typ -> Rpc.t -> a Rpc.Monad.error_or = fun t v ->
   | Basic Bool -> bool_of_rpc v
   | Basic Float -> float_of_rpc v
   | Basic String -> string_of_rpc v
-  | Basic Char -> lift Char.chr (int_of_rpc v)
+  | Basic Char -> (int_of_rpc v) >>| Char.chr
   | DateTime -> dateTime_of_rpc v
   | Array typ -> begin
       match v with
-      | Enum xs -> lift Array.of_list (list_helper typ xs)
-      | _ -> error_of_string "Expecting Array"
+      | Enum xs -> (list_helper typ xs) >>| Array.of_list
+      | _ -> Rresult.R.error_msg "Expecting Array"
     end
   | List typ -> begin
       match v with
       | Enum xs -> list_helper typ xs
-      | _ -> error_of_string "Expecting array"
+      | _ -> Rresult.R.error_msg "Expecting array"
     end
   | Dict (basic, typ) -> begin
       match v with
@@ -41,17 +43,17 @@ let rec unmarshal : type a. a typ -> Rpc.t -> a Rpc.Monad.error_or = fun t v ->
             list_helper typ vs >>= fun vs ->
             return (List.combine keys vs)
           | _ ->
-            error_of_string "Expecting something other than a Dict type"
+            Rresult.R.error_msg "Expecting something other than a Dict type"
         end
       | _ ->
-        error_of_string "Unhandled"
+        Rresult.R.error_msg "Unhandled"
     end
   | Unit -> unit_of_rpc v
   | Option t -> begin
       match v with
       | Enum [x] -> unmarshal t x >>= fun x -> return (Some x)
       | Enum [] -> return None
-      | y -> error_of_string (Printf.sprintf "Expecting an Enum value, got '%s'" (Rpc.to_string y))
+      | y -> Rresult.R.error_msg (Printf.sprintf "Expecting an Enum value, got '%s'" (Rpc.to_string y))
     end
   | Tuple (t1, t2) -> begin
       match v, t2 with
@@ -64,35 +66,35 @@ let rec unmarshal : type a. a typ -> Rpc.t -> a Rpc.Monad.error_or = fun t v ->
         unmarshal t2 y >>= fun v2 ->
         Ok (v1,v2)
       | Rpc.Enum list, _ ->
-        error_of_string "Too many items in a tuple!"
+        Rresult.R.error_msg "Too many items in a tuple!"
       | _, _ ->
-        error_of_string "Expecting Rpc.Enum when unmarshalling a tuple"
+        error_msg "Expecting Rpc.Enum when unmarshalling a tuple"
     end
   | Struct { constructor; sname } -> begin
       match v with
       | Rpc.Dict keys' ->
         let keys = List.map (fun (s,v) -> (String.lowercase s, v)) keys' in
         constructor { g = (
-            let x : type a. string -> a typ -> a Rpc.Monad.error_or = fun s ty ->
+            let x : type a. string -> a typ -> (a, Rresult.R.msg) Result.result  = fun s ty ->
               let s = String.lowercase s in
               match ty with
               | Option x -> begin try List.assoc s keys |> unmarshal x >>= fun o -> return (Some o) with _ -> return None end
               | y ->
                 try List.assoc s keys |> unmarshal y
                 with Not_found ->
-                  error_of_string
+                  error_msg
                     (Printf.sprintf
                        "No value found for key: '%s' when unmarshalling '%s'" s sname)
             in x
           ) }
       | _ ->
-        error_of_string (Printf.sprintf "Expecting Rpc.Dict when unmarshalling a '%s'" sname)
+        error_msg (Printf.sprintf "Expecting Rpc.Dict when unmarshalling a '%s'" sname)
     end
   | Variant { vconstructor; variants } ->
     (match v with
-     | Rpc.String name -> Monad.return (name, Rpc.Null)
-     | Rpc.Enum [ Rpc.String name; contents ] -> Monad.return (name, contents)
-     | _ -> error_of_string "Expecting String or Enum when unmarshalling a variant")
+     | Rpc.String name -> ok (name, Rpc.Null)
+     | Rpc.Enum [ Rpc.String name; contents ] -> ok (name, contents)
+     | _ -> error_msg "Expecting String or Enum when unmarshalling a variant")
     >>= fun (name, contents) ->
     let constr = { t = fun typ -> unmarshal typ contents } in
     vconstructor name constr
@@ -100,7 +102,6 @@ let rec unmarshal : type a. a typ -> Rpc.t -> a Rpc.Monad.error_or = fun t v ->
 
 let rec marshal : type a. a typ -> a -> Rpc.t = fun t v ->
   let open Rpc in
-  let open Monad in
   let open Result in
   let rpc_of_basic : type a. a basic -> a -> Rpc.t = fun t v ->
     match t with

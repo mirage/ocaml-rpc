@@ -28,21 +28,6 @@ type t =
   | Dict of (string * t) list
   | Null
 
-module Monad : sig
-  type err
-  type 'a error_or = ('a, err) Result.result
-
-  val string_of_error : 'a error_or -> string
-  val string_of_err : err -> string
-  val error_of_string : string -> 'a error_or
-
-  val bind : 'a error_or -> ('a -> 'b error_or) -> 'b error_or
-  val return : 'a -> 'a error_or
-  val (>>=) : 'a error_or -> ('a -> 'b error_or) -> 'b error_or
-  val map_bind : ('a -> 'b error_or) -> 'b list -> 'a list -> ('b list) error_or
-  val lift : ('a -> 'b) -> 'a error_or -> 'b error_or
-end
-    
 val to_string : t -> string
 
 (** {2 Type declarations} *)
@@ -77,12 +62,12 @@ module Types : sig
   }
   and 'a boxed_field = BoxedField : ('a, 's) field -> 's boxed_field
   and field_getter = {
-    g : 'a. string -> 'a typ -> 'a Monad.error_or
+    g : 'a. string -> 'a typ -> ('a, Rresult.R.msg) Result.result;
   }
   and 'a structure = {
     sname : string;
     mutable fields : 'a boxed_field list;
-    constructor : field_getter -> 'a Monad.error_or;
+    constructor : field_getter -> ('a, Rresult.R.msg) Result.result;
   }
   and ('a, 's) tag = {
     vname : string;
@@ -93,11 +78,11 @@ module Types : sig
   }
   and 'a boxed_tag = BoxedTag : ('a, 's) tag -> 's boxed_tag
   and tag_getter = {
-    t : 'a. 'a typ -> 'a Monad.error_or
+    t : 'a. 'a typ -> ('a, Rresult.R.msg) Result.result;
   }
   and 'a variant = {
     mutable variants : 'a boxed_tag list;
-    vconstructor : string -> tag_getter -> 'a Monad.error_or;
+    vconstructor : string -> tag_getter -> ('a, Rresult.R.msg) Result.result;
   }
   val int : int def
   val int32 : int32 def
@@ -111,34 +96,34 @@ end
 
 (** {2 Basic constructors} *)
 
-val int64_of_rpc : t -> int64 Monad.error_or
+val int64_of_rpc : t -> (int64, Rresult.R.msg) Result.result
 val rpc_of_int64 : int64 -> t
 
-val int32_of_rpc : t -> int32 Monad.error_or
+val int32_of_rpc : t -> (int32, Rresult.R.msg) Result.result
 val rpc_of_int32 : int32 -> t
 
-val int_of_rpc : t -> int Monad.error_or
+val int_of_rpc : t -> (int, Rresult.R.msg) Result.result
 val rpc_of_int : int -> t
 
-val bool_of_rpc : t -> bool Monad.error_or
+val bool_of_rpc : t -> (bool, Rresult.R.msg) Result.result
 val rpc_of_bool : bool -> t
 
-val float_of_rpc : t -> float Monad.error_or
+val float_of_rpc : t -> (float, Rresult.R.msg) Result.result
 val rpc_of_float : float -> t
 
-val string_of_rpc : t -> string Monad.error_or
+val string_of_rpc : t -> (string, Rresult.R.msg) Result.result
 val rpc_of_string : string -> t
 
-val dateTime_of_rpc : t -> string Monad.error_or
+val dateTime_of_rpc : t -> (string, Rresult.R.msg) Result.result
 val rpc_of_dateTime : string -> t
 
-val t_of_rpc : t -> t Monad.error_or (* For consistency!? *)
+val t_of_rpc : t -> (t, Rresult.R.msg) Result.result (* For consistency!? *)
 val rpc_of_t : t -> t
 
-val unit_of_rpc : t -> unit Monad.error_or
+val unit_of_rpc : t -> (unit, Rresult.R.msg) Result.result
 val rpc_of_unit : unit -> t
 
-val char_of_rpc : t -> char Monad.error_or
+val char_of_rpc : t -> (char, Rresult.R.msg) Result.result
 val rpc_of_char : char -> t
 
 (** {2 Backwards compatibility module} *)
@@ -193,5 +178,3 @@ val lowerfn : t -> t
  *  [Rpc.t] which contains all key-value pairs from [rpc1], as well as all
  *  key-value pairs from [rpc2] for which the key does not exist in [rpc1]. *)
 val struct_extend : t -> t -> t
-
-

@@ -14,7 +14,7 @@ module Param = struct
 
 end
 
-module Interface = struct 
+module Interface = struct
   type description = {
     name : string;
     description : string;
@@ -25,13 +25,13 @@ end
 module type RPC = sig
   type description
   type 'a res
-  type 'a comp
+  type ('a, 'b) comp
   type _ fn
 
   val describe : Interface.description -> description
 
   val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
-  val returning : 'a Param.t -> 'a comp fn
+  val returning : ('a Param.t * 'b Param.t) -> ('a, 'b) comp fn
   val declare : string -> string -> 'a fn -> 'a res
 end
 
@@ -46,27 +46,38 @@ module GenClient = struct
   type description = Interface.description
   let describe x = x
 
-  type 'a comp = 'a Rpc.Monad.error_or
-  type rpcfn = Rpc.call -> Rpc.response Rpc.Monad.error_or
-  type 'a res = rpcfn -> 'a
-    
+  type ('a, 'b) comp = ('a, 'b) Result.result
+  type 'a rpcfn = Rpc.call -> (Rpc.response, 'a) Result.result
+  type ('a, 'b) res = ('b rpcfn) -> 'a
+
   type _ fn =
     | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
-    | Returning : 'a Param.t -> 'a comp fn
+    | Returning : ('a Param.t * ([> `Msg of string] as 'b) Param.t) -> ('a, 'b) comp fn
 
-  let returning a = Returning a
+  let returning a err = Returning (a, err)
   let (@->) = fun t f -> Function (t, f)
 
-  let declare name _ ty (rpc : rpcfn) =
+  let declare name _ ty (rpc : 'c rpcfn) =
     let rec inner : type b. (string * Rpc.t) list -> b fn -> b = fun cur ->
       function
       | Function (t, f) ->
         fun v -> inner ((t.Param.name, Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v) :: cur) f
-      | Returning t ->
+      | Returning (t, e) ->
         let call = Rpc.call name [(Rpc.Dict cur)] in
-        Rpc.Monad.bind (rpc call) (fun response ->
-        Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty response.Rpc.contents)
-    in inner [] ty   
+        match (rpc call) with
+        | Result.Ok r -> begin
+          if r.Rpc.success
+          then
+            let x = Rresult.R.open_error_msg (Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty r.Rpc.contents)
+            in x
+          else
+            let y = Rpcmarshal.unmarshal e.Param.typedef.Rpc.Types.ty r.Rpc.contents in
+            match y  with
+            | Result.Ok x -> Result.Error x
+            | Result.Error y -> Rresult.R.open_error_msg (Result.Error y)
+          end
+        | Result.Error y -> Rresult.R.open_error_msg (Result.Error y)
+    in inner [] ty
 end
 
 module GenServer = struct
@@ -74,45 +85,51 @@ module GenServer = struct
 
   type description = Interface.description
   let describe x = x
-      
-  type 'a comp = 'a
-  type rpcfn = Rpc.call -> Rpc.response Rpc.Monad.error_or
-  type funcs = (string, rpcfn) Hashtbl.t
-  type 'a res = 'a -> funcs -> funcs
-    
+
+  type ('a, 'b) comp = ('a, 'b) Result.result
+  type 'a rpcfn = Rpc.call -> (Rpc.response, [> `Msg of string] as 'a) Result.result
+  type 'a funcs = (string, 'a rpcfn) Hashtbl.t
+  type ('a, 'b) res = 'a -> 'b funcs -> 'b funcs
+
   type _ fn =
     | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
-    | Returning : 'a Param.t -> 'a comp fn
-        
+    | Returning : ('a Param.t * ([> `Msg of string] as 'b) Param.t) -> ('a, 'b) comp fn
+
   let returning a = Returning a
   let (@->) = fun t f -> Function (t, f)
 
-  let empty : unit -> funcs = fun () -> Hashtbl.create 20
-  
-  let declare name _ ty impl functions =
-    let open Rpc.Monad in
+  let empty : unit -> 'a funcs = fun () -> Hashtbl.create 20
+
+  let declare : string -> string -> 'a fn -> ('a, [> `Msg of string] as 'b) res = fun name _ ty impl functions ->
+    let open Rresult.R in
     let get_named_args call =
       match call.params with
       | [Dict x] -> return x
-      | _ -> error_of_string "All arguments must be named currently"
+      | _ -> error_msg "All arguments must be named currently"
     in
 
     let get_arg args name =
       if not (List.mem_assoc name args)
-      then (error_of_string "Argument missing")
+      then (error_msg "Argument missing")
       else (return (List.assoc name args))
     in
 
     let rpcfn =
-      let rec inner : type a. a fn -> a -> call -> response Monad.error_or = fun f impl call ->
-        get_named_args call >>= fun args ->
+      let rec inner : type a. a fn -> a -> call -> (response, [> Rresult.R.msg]) Result.result = fun f impl call ->
+        let x = open_error_msg (get_named_args call) in
+        x >>= fun args ->
         match f with
         | Function (t, f) ->
-          get_arg args t.Param.name >>= fun arg_rpc ->
-          Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty arg_rpc >>= fun arg ->
+          let y = get_arg args t.Param.name in
+          y >>= fun arg_rpc ->
+          let z = Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty arg_rpc in
+          open_error_msg z >>= fun arg ->
           inner f (impl arg) call
-        | Returning t ->
-          return (success (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty impl))
+        | Returning (t,e) -> begin
+          match impl with
+          | Result.Ok x -> open_error_msg (return (success (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty x)))
+          | Result.Error y -> open_error_msg (return (failure (Rpcmarshal.marshal e.Param.typedef.Rpc.Types.ty y)))
+          end
       in inner ty impl
     in
 
@@ -120,10 +137,10 @@ module GenServer = struct
 
     functions
 
-  let server funcs call : response Monad.error_or =
+  let server funcs call : (response, [> Rresult.R.msg]) Result.result =
     try
       let fn = Hashtbl.find funcs call.name in
       fn call
     with _ ->
-      Rpc.Monad.error_of_string "Unknown RPC"    
+      Rresult.R.error_msg "Unknown RPC"
 end

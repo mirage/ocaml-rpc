@@ -31,32 +31,6 @@ type t =
   | Dict of (string * t) list
   | Null
 
-module Monad = struct
-  type err = string
-  type 'a error_or = ('a, err) Result.result
-
-  let string_of_error : 'a error_or -> string =
-    let open Result in
-    function | Error x -> x | Ok y -> "error_string called on Ok result"
-  let string_of_err : err -> string = function x -> x
-  let error_of_string : type a. string -> a error_or =
-    let open Result in
-    function s -> Error s
-
-  let bind m f =
-    match m with
-    | Result.Ok x -> f x
-    | Result.Error y -> Result.Error y
-  let return x = Result.Ok x
-  let (>>=) = bind
-  let rec map_bind f acc xs =
-    match xs with
-    | x :: xs -> f x >>= fun x -> map_bind f (x :: acc) xs
-    | [] -> Result.Ok (List.rev acc)
-  let lift f x = x >>= fun x' -> return (f x')
-end
-
-
 module Types = struct
   type _ basic =
     | Int : int basic
@@ -93,12 +67,12 @@ module Types = struct
   }
   and 'a boxed_field = BoxedField : ('a, 's) field -> 's boxed_field
   and field_getter = {
-    g : 'a. string -> 'a typ -> 'a Monad.error_or
+    g : 'a. string -> 'a typ -> ('a, Rresult.R.msg) Result.result;
   }
   and 'a structure = {
     sname : string;
     mutable fields: 'a boxed_field list;
-    constructor : field_getter -> 'a Monad.error_or;
+    constructor : field_getter -> ('a, Rresult.R.msg) Result.result;
   }
   and ('a, 's) tag = {
     vname : string;
@@ -109,11 +83,11 @@ module Types = struct
   }
   and 'a boxed_tag = BoxedTag : ('a, 's) tag -> 's boxed_tag
   and tag_getter = {
-    t : 'a. 'a typ -> 'a Monad.error_or
+    t : 'a. 'a typ -> ('a, Rresult.R.msg) Result.result;
   }
   and 'a variant = {
     mutable variants : 'a boxed_tag list;
-    vconstructor : string -> tag_getter -> 'a Monad.error_or;
+    vconstructor : string -> tag_getter -> ('a, Rresult.R.msg) Result.result;
   }
 
   let int    = { name="int";    ty=Basic Int;    description="Native integer" }
@@ -191,52 +165,54 @@ module ExnProducing = struct
     | x -> failwith (Printf.sprintf "Expected unit, got '%s'" (to_string x))
 end
 
+open Rresult
+
 let int64_of_rpc = function
-  | Int i    -> Result.Ok i
+  | Int i    -> R.ok i
   | String s -> begin
-      try Result.Ok (Int64.of_string s)
-      with _ -> Result.Error (Printf.sprintf "Expected int64, got string '%s'" s)
+      try R.ok (Int64.of_string s)
+      with _ -> R.error_msg (Printf.sprintf "Expected int64, got string '%s'" s)
     end
-  | x -> Result.Error (Printf.sprintf "Expected int64, got '%s'" (to_string x))
+  | x -> R.error_msg (Printf.sprintf "Expected int64, got '%s'" (to_string x))
 let int32_of_rpc = function
-  | Int i    -> Result.Ok (Int64.to_int32 i)
+  | Int i    -> R.ok (Int64.to_int32 i)
   | String s -> begin
-      try Result.Ok (Int32.of_string s)
-      with _ -> Result.Error (Printf.sprintf "Expected int32, got string '%s'" s)
+      try R.ok (Int32.of_string s)
+      with _ -> R.error_msg (Printf.sprintf "Expected int32, got string '%s'" s)
     end
-  | x -> Result.Error (Printf.sprintf "Expected int32, got '%s'" (to_string x))
+  | x -> R.error_msg (Printf.sprintf "Expected int32, got '%s'" (to_string x))
 let int_of_rpc = function
-  | Int i    -> Result.Ok (Int64.to_int i)
+  | Int i    -> R.ok (Int64.to_int i)
   | String s -> begin
-      try Result.Ok (int_of_string s)
-      with _ -> Result.Error (Printf.sprintf "Expected int, got string '%s'" s)
+      try R.ok (int_of_string s)
+      with _ -> R.error_msg (Printf.sprintf "Expected int, got string '%s'" s)
     end
-  | x -> Result.Error (Printf.sprintf "Expected int, got '%s'" (to_string x))
+  | x -> R.error_msg (Printf.sprintf "Expected int, got '%s'" (to_string x))
 let bool_of_rpc = function
-  | Bool b -> Result.Ok b
-  | x -> Result.Error (Printf.sprintf "Expected bool, got '%s'" (to_string x))
+  | Bool b -> R.ok b
+  | x -> R.error_msg (Printf.sprintf "Expected bool, got '%s'" (to_string x))
 let float_of_rpc = function
-  | Float f  -> Result.Ok f
+  | Float f  -> R.ok f
   | String s -> begin
-      try Result.Ok (float_of_string s)
-      with _ -> Result.Error (Printf.sprintf "Expected float, got string '%s'" s)
+      try R.ok (float_of_string s)
+      with _ -> R.error_msg (Printf.sprintf "Expected float, got string '%s'" s)
     end
-  | x -> Result.Error (Printf.sprintf "Expected float, got '%s'" (to_string x))
+  | x -> R.error_msg (Printf.sprintf "Expected float, got '%s'" (to_string x))
 let string_of_rpc = function
-  | String s -> Result.Ok s
-  | x -> Result.Error (Printf.sprintf "Expected string, got '%s'" (to_string x))
+  | String s -> R.ok s
+  | x -> R.error_msg (Printf.sprintf "Expected string, got '%s'" (to_string x))
 let dateTime_of_rpc = function
-  | DateTime s -> Result.Ok s
-  | x -> Result.Error (Printf.sprintf "Expected DateTime, got '%s'" (to_string x))
+  | DateTime s -> R.ok s
+  | x -> R.error_msg (Printf.sprintf "Expected DateTime, got '%s'" (to_string x))
 let unit_of_rpc = function
-  | Null -> Result.Ok ()
-  | x -> Result.Error (Printf.sprintf "Expected unit, got '%s'" (to_string x))
+  | Null -> R.ok ()
+  | x -> R.error_msg (Printf.sprintf "Expected unit, got '%s'" (to_string x))
 let char_of_rpc x =
-  Monad.bind (int_of_rpc x) (fun x ->
+  Rresult.R.bind (int_of_rpc x) (fun x ->
       if x < 0 || x > 255
-      then Result.Error (Printf.sprintf "Char out of range (%d)" x)
-      else Result.Ok (Char.chr x))
-let t_of_rpc t = Result.Ok t
+      then R.error_msg (Printf.sprintf "Char out of range (%d)" x)
+      else R.ok (Char.chr x))
+let t_of_rpc t = R.ok t
 
 
 let lowerfn = function | String s -> String (lower s) | Enum (String s::ss) -> Enum ((String (lower s))::ss) | x -> x
