@@ -2,10 +2,13 @@ open Idl
 open Rpc
 open Example3_idl
 
+module PCmdGen = Cmdlinergen.Gen ()
+module DCmdGen = Cmdlinergen.Gen ()
+
 module PClient=Datapath(GenClient)
-module PCmds=Datapath(Cmdlinergen)
+module PCmds=Datapath(PCmdGen)
 module DClient=Data(GenClient)
-module DCmds=Data(Cmdlinergen)
+module DCmds=Data(DCmdGen)
 
 let default_cmd =
   let doc = "a cli for an API" in
@@ -40,19 +43,6 @@ let binary_rpc path (call: Rpc.call) : Rpc.response Rpc.Monad.error_or =
 let cli () =
   let open Rpc.Monad in
   let rpc = binary_rpc "path" in
-  Cmdliner.Term.eval_choice default_cmd [(*server_cmd;*)
-    PCmds.open_ rpc;
-    PCmds.attach rpc;
-    PCmds.activate rpc;
-    PCmds.deactivate rpc;
-    PCmds.detach rpc;
-    PCmds.close rpc;
-    DCmds.copy rpc;
-    DCmds.mirror rpc;
-    DCmds.stat rpc;
-    DCmds.cancel rpc;
-    DCmds.destroy rpc;
-    DCmds.ls rpc;
-  ]
+  Cmdliner.Term.eval_choice default_cmd (List.map (fun t -> t rpc) (!PCmdGen.terms @ !DCmdGen.terms))
 
 let _ = cli ()
