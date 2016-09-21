@@ -6,7 +6,7 @@ module Client=API(GenClient)
 module Cmds=API(C)
 
 (* Use a binary 16-byte length to frame RPC messages *)
-let binary_rpc path (call: Rpc.call) : Rpc.response Rpc.Monad.error_or =
+let binary_rpc path (call: Rpc.call) : Rpc.response =
   let sockaddr = Unix.ADDR_UNIX path in
   let s = Unix.socket Unix.PF_UNIX Unix.SOCK_STREAM 0 in
   Unix.connect s sockaddr;
@@ -23,7 +23,7 @@ let binary_rpc path (call: Rpc.call) : Rpc.response Rpc.Monad.error_or =
   let msg_buf = String.make len '\000' in
   really_input ic msg_buf 0 len;
   let (response: Rpc.response) = Jsonrpc.response_of_string msg_buf in
-  Rpc.Monad.return response
+  response
 
 let default_cmd =
   let doc = "a cli for an API" in
@@ -36,7 +36,6 @@ let server_cmd =
   Cmdliner.Term.info "server" ~doc
 
 let cli () =
-  let open Rpc.Monad in
   let rpc = binary_rpc Example2_idl.sockpath in
   Cmdliner.Term.eval_choice default_cmd (server_cmd :: List.map (fun t -> t rpc) !C.terms)
 (*  Client.query (binary_rpc sockpath) () >>= fun result_s ->

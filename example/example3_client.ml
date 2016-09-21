@@ -16,7 +16,7 @@ let default_cmd =
   Cmdliner.Term.info "cli" ~version:"1.6.1" ~doc
 
 (* Use a binary 16-byte length to frame RPC messages *)
-let binary_rpc path (call: Rpc.call) : Rpc.response Rpc.Monad.error_or =
+let binary_rpc path (call: Rpc.call) : Rpc.response =
   let sockaddr = Unix.ADDR_UNIX path in
   let s = Unix.socket Unix.PF_UNIX Unix.SOCK_STREAM 0 in
   Unix.connect s sockaddr;
@@ -33,7 +33,7 @@ let binary_rpc path (call: Rpc.call) : Rpc.response Rpc.Monad.error_or =
   let msg_buf = String.make len '\000' in
   really_input ic msg_buf 0 len;
   let (response: Rpc.response) = Jsonrpc.response_of_string msg_buf in
-  Rpc.Monad.return response
+  response
 
 (*let server_cmd =
   let doc = "Start the server" in
@@ -41,7 +41,6 @@ let binary_rpc path (call: Rpc.call) : Rpc.response Rpc.Monad.error_or =
   Cmdliner.Term.info "server" ~doc*)
 
 let cli () =
-  let open Rpc.Monad in
   let rpc = binary_rpc "path" in
   Cmdliner.Term.eval_choice default_cmd (List.map (fun t -> t rpc) (!PCmdGen.terms @ !DCmdGen.terms))
 

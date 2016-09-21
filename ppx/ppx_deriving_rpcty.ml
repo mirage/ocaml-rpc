@@ -136,7 +136,7 @@ module Typ_of = struct
             fields in
         field_name_bindings @
         [ Vb.mk (pvar name)
-            ([%expr let open Rpc.Types in ({ fields=[%e boxed_fields ]; sname=[%e str name]; constructor = fun getter -> let open Rpc.Monad in [%e construct_record] }
+            ([%expr let open Rpc.Types in ({ fields=[%e boxed_fields ]; sname=[%e str name]; constructor = fun getter -> let open Rresult.R in [%e construct_record] }
                     : [%t mytype ] Rpc.Types.structure) ] ) ] @
         [ Vb.mk (pvar typ_of_lid)
             (polymorphize
@@ -166,10 +166,10 @@ module Typ_of = struct
               in
               let vreview = Exp.function_ [Exp.case (ptuple pattern) (constr name args)] in
               let variant = [%expr BoxedTag [%e record ["vname", str rpc_name; "vcontents", contents; "vdescription", str (attr_doc "" pcd_attributes); "vpreview", vpreview; "vreview", vreview]]] in
-              let vconstructor_case = Exp.case (Pat.constant (Const_string (lower_rpc_name,None))) [%expr Rpc.Monad.bind (t.t [%e contents]) ([%e Exp.function_ [Exp.case (ptuple pattern) [%expr Rpc.Monad.return [%e (constr name args)]]]])] in
+              let vconstructor_case = Exp.case (Pat.constant (Const_string (lower_rpc_name,None))) [%expr Rresult.R.bind (t.t [%e contents]) ([%e Exp.function_ [Exp.case (ptuple pattern) [%expr Rresult.R.ok [%e (constr name args)]]]])] in
               (variant, vconstructor_case))
         in
-        let default = if List.length cases = 1 then [] else [Exp.case (Pat.any ()) [%expr Rpc.Monad.error_of_string (Printf.sprintf "Unknown tag '%s'" s)]] in
+        let default = if List.length cases = 1 then [] else [Exp.case (Pat.any ()) [%expr Rresult.R.error_msg (Printf.sprintf "Unknown tag '%s'" s)]] in
         let vconstructor = [%expr fun s' t -> let s = String.lowercase s' in [%e Exp.match_ (evar "s") ((List.map snd cases) @ default)]] in
         [ Vb.mk (pvar typ_of_lid) (wrap_runtime (polymorphize ([%expr Variant ({ variants=([%e list (List.map fst cases)]); vconstructor=[%e vconstructor] } : [%t mytype ] variant) ]))) ]
     in

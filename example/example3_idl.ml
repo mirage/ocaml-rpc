@@ -61,30 +61,30 @@ module Datapath(R: RPC) = struct
   let open_ =
     declare "open"
       "[open uri persistent] is called before a disk is attached to a VM. If persistent is true then care should be taken to persist all writes to the disk. If persistent is false then the implementation should configure a temporary location for writes so they can be thrown away on [close]."
-      (uri @-> persistent @-> returning unit)
+      (uri @-> persistent @-> returning unit exn_def)
   let attach =
     declare "attach"
       "[attach uri domain] prepares a connection between the storage named by [uri] and the Xen domain with id [domain]. The return value is the information needed by the Xen toolstack to setup the shared-memory blkfront protocol. Note that the same volume may be simultaneously attached to multiple hosts for example over a migrate. If an implementation needs to perform an explicit handover, then it should implement [activate] and [deactivate]. This function is idempotent."
-      (uri @-> domain @-> returning backend)
+      (uri @-> domain @-> returning backend exn_def)
   let activate =
     declare "activate"
       "[activate uri domain] is called just before a VM needs to read or write its disk. This is an opportunity for an implementation which needs to perform an explicit volume handover to do it. This function is called in the migration downtime window so delays here will be noticeable to users and should be minimised. This function is idempotent."
-      (uri @-> domain @-> returning unit)
+      (uri @-> domain @-> returning unit exn_def)
 
   let deactivate =
     declare "deactivate"
       "[deactivate uri domain] is called as soon as a VM has finished reading or writing its disk. This is an opportunity for an implementation which needs to perform an explicit volume handover to do it. This function is called in the migration downtime window so delays here will be noticeable to users and should be minimised. This function is idempotent."
-      (uri @-> domain @-> returning unit)
+      (uri @-> domain @-> returning unit exn_def)
 
   let detach =
     declare "detach"
       "[detach uri domain] is called sometime after a VM has finished reading or writing its disk. This is an opportunity to clean up any resources associated with the disk. This function is called outside the migration downtime window so can be slow without affecting users. This function is idempotent. This function should never fail. If an implementation is unable to perform some cleanup right away then it should queue the action internally. Any error result represents a bug in the implementation."
-      (uri @-> domain @-> returning unit)
+      (uri @-> domain @-> returning unit exn_def)
 
   let close =
     declare "close"
       "[close uri] is called after a disk is detached and a VM shutdown. This is an opportunity to throw away writes if the disk is not persistent."
-      (uri @-> returning unit)
+      (uri @-> returning unit exn_def)
 
 end
 
@@ -115,27 +115,27 @@ module Data (R : RPC) = struct
   let blocklist = Param.mk blocklist_def
   let copy = declare "copy"
       "[copy uri domain remote blocks] copies [blocks] from the local disk to a remote URI. This may be called as part of a Volume Mirroring operation, and hence may need to cooperate with whatever process is currently mirroring writes to ensure data integrity is maintained"
-      (uri @-> domain @-> remote @-> blocklist @-> returning operation)
+      (uri @-> domain @-> remote @-> blocklist @-> returning operation exn_def)
 
   let mirror = declare "mirror"
       "[mirror uri domain remote] starts mirroring new writes to the volume to a remote URI (usually NBD). This is called as part of a volume mirroring process"
-      (uri @-> domain @-> remote @-> returning operation)
+      (uri @-> domain @-> remote @-> returning operation exn_def)
 
   let status = Param.mk status_def
   let stat = declare "stat"
       "[stat operation] returns the current status of [operation]. For a copy operation, this will contain progress information."
-      (operation @-> returning status)
+      (operation @-> returning status exn_def)
 
   let cancel = declare "cancel"
       "[cancel operation] cancels a long-running operation. Note that the call may return before the operation has finished."
-      (operation @-> returning unit)
+      (operation @-> returning unit exn_def)
 
   let destroy = declare "destroy"
       "[destroy operation] destroys the information about a long-running operation. This should fail when run against an operation that is still in progress."
-      (operation @-> returning unit)
+      (operation @-> returning unit exn_def)
 
   let operations = Param.mk operations_def
   let ls = declare "ls"
       "[ls] returns a list of all current operations"
-      (unit @-> returning operations)
+      (unit @-> returning operations exn_def)
 end

@@ -172,7 +172,7 @@ val get_debug : unit -> bool
 
 (** Helper *)
 val lowerfn : t -> t
-
+val map_bind : ('a -> ('b, 'c) Result.result) -> 'b list -> 'a list -> ('b list, 'c) Result.result
 (** [struct_extend rpc1 rpc2] first checks that [rpc1] and [rpc2] are both
  *  dictionaries. If this is the case then [struct_extend] will create a new
  *  [Rpc.t] which contains all key-value pairs from [rpc1], as well as all

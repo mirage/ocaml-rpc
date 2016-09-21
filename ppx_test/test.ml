@@ -1,11 +1,13 @@
 (* All the ppx tests *)
 open OUnit
 
+let string_of_err = function `Msg x -> x
+
 let check_marshal_unmarshal : 'a * Rpc.t * ('a -> Rpc.t) * (Rpc.t -> ('a,_) Result.result) -> unit = fun (x, r, marshal, unmarshal) ->
   let r' = marshal x in
   let x' = unmarshal r in
   (match x' with
-  | Result.Error e -> Printf.printf "Found Error when expecting OK: %s\n%!" (Rpc.Monad.string_of_err e)
+  | Result.Error e -> Printf.printf "Found Error when expecting OK: %s\n%!" (string_of_err e)
   | Result.Ok y -> Printf.printf "OK: (%s)\n%!" (marshal y |> Rpc.to_string));
   assert_equal (Result.Ok x) x';
   if r <> r' then begin
@@ -13,12 +15,12 @@ let check_marshal_unmarshal : 'a * Rpc.t * ('a -> Rpc.t) * (Rpc.t -> ('a,_) Resu
   end;
   assert_equal r r'
 
-let check_unmarshal_error : (Rpc.t -> 'a Rpc.Monad.error_or) -> Rpc.t -> unit = fun unmarshal t ->
+let check_unmarshal_error : (Rpc.t -> ('a, [> `Msg of string] as 'b) Result.result) -> Rpc.t -> unit = fun unmarshal t ->
   match unmarshal t with
   | Result.Ok _ -> assert_equal false true
-  | Result.Error e -> Printf.printf "%s\n" (Rpc.Monad.string_of_err e)
+  | Result.Error e -> Printf.printf "%s\n" (string_of_err e)
 
-let check_unmarshal_ok : 'a -> (Rpc.t -> 'a Rpc.Monad.error_or) -> Rpc.t -> unit = fun x unmarshal r ->
+let check_unmarshal_ok : 'a -> (Rpc.t -> ('a, [> `Msg of string] as 'b) Result.result) -> Rpc.t -> unit = fun x unmarshal r ->
   match unmarshal r with
   | Result.Ok x' -> assert_equal x x'
   | Result.Error _ -> assert_equal false true
@@ -125,12 +127,12 @@ let test_variant2 () =
 let test_variant_case () =
   check_unmarshal_ok VNone test_variant_of_rpc (Rpc.String "vnone")
 let test_bad_variant_case () =
-  check_unmarshal_error test_variant_of_rpc (Rpc.Enum [Rpc.String "vtwo"; Rpc.Int 5L]) 
+  check_unmarshal_error test_variant_of_rpc (Rpc.Enum [Rpc.String "vtwo"; Rpc.Int 5L])
 
 type test_variant_name = VThree of int [@name "bob"] | VFour [@name "lofty"] [@@deriving rpc]
-let test_variant_name () = 
+let test_variant_name () =
   check_marshal_unmarshal (VThree 5, Rpc.Enum [Rpc.String "bob"; Rpc.Int 5L], rpc_of_test_variant_name, test_variant_name_of_rpc)
-let test_variant_name2 () = 
+let test_variant_name2 () =
   check_marshal_unmarshal (VFour, Rpc.String "lofty", rpc_of_test_variant_name, test_variant_name_of_rpc)
 
 type test_record = {
@@ -176,7 +178,7 @@ let test_polyvar2 () =
 let test_polyvar3 () =
   check_marshal_unmarshal (`thRee (4,5), Rpc.Enum [Rpc.String "thRee"; Rpc.Enum [ Rpc.Int 4L; Rpc.Int 5L]], rpc_of_test_polyvar, test_polyvar_of_rpc)
 let test_polyvar_case () =
-  check_unmarshal_ok (`thRee (4,5)) test_polyvar_of_rpc (Rpc.Enum [Rpc.String "THREE"; Rpc.Enum [ Rpc.Int 4L; Rpc.Int 5L]]) 
+  check_unmarshal_ok (`thRee (4,5)) test_polyvar_of_rpc (Rpc.Enum [Rpc.String "THREE"; Rpc.Enum [ Rpc.Int 4L; Rpc.Int 5L]])
 
 type test_pvar_inherit = [ `four of string | test_polyvar ] [@@deriving rpc]
 let test_pvar_inherit () =
@@ -247,5 +249,3 @@ let suite =
 
 let _ =
   run_test_tt_main suite
-
-

@@ -14,9 +14,10 @@ module MyAPI(R : RPC) = struct
   let i1 = Param.mk ~name:"i1" ~description:"Parameter i1" Rpc.Types.int
   let s1 = Param.mk ~name:"s1" ~description:"Parameter s1" Rpc.Types.string
   let b1 = Param.mk Rpc.Types.bool
+  let e1 = Idl.DefaultError.def
 
-  let api1 = declare "api1" "Description of API 1" (i1 @-> s1 @-> returning b1)
-  let api2 = declare "api2" "Description of API 2" (s1 @-> returning i1)
+  let api1 = declare "api1" "Description of API 1" (i1 @-> s1 @-> returning b1 e1)
+  let api2 = declare "api2" "Description of API 2" (s1 @-> returning i1 e1)
 
 end
 
@@ -26,24 +27,24 @@ module Server=MyAPI(GenServer)
 
 
 let _ =
-  let open Rpc.Monad in
+  let open Rresult.R in
 
   (* The server is used by associating the RPC declarations with their implementations: *)
   let funcs =
     GenServer.empty ()
-    |> Server.api1 (fun i s -> Printf.printf "Received '%d' and '%s': returning '%b'\n" i s true; true)
-    |> Server.api2 (fun s -> Printf.printf "Received '%s': returning '%d'\n%!" s 56; 56)
+    |> Server.api1 (fun i s -> Printf.printf "Received '%d' and '%s': returning '%b'\n" i s true; ok true)
+    |> Server.api2 (fun s -> Printf.printf "Received '%s': returning '%d'\n%!" s 56; ok 56)
   in
 
   (* The Server then has a 'server' function that can be used to service RPC requests *)
-  let rpc_fn : Rpc.call -> Rpc.response Rpc.Monad.error_or = GenServer.server funcs in
+  let rpc_fn : Rpc.call -> Rpc.response = GenServer.server funcs in
 
   (* Wrap this in something to print out the marshalled call and response *)
   let rpc rpc =
     Printf.printf "Marshalled RPC call: '%s'\n" (Rpc.string_of_call rpc);
-    rpc_fn rpc >>= fun response ->
+    let response = rpc_fn rpc in
     Printf.printf "Marshalled RPC type: '%s'\n" (Rpc.string_of_response response);
-    Result.Ok response
+    response
   in
 
   (* This RPC function can actually be passed directly into the client for a short-circuit
@@ -80,7 +81,7 @@ let vm_name_description : (string, vm) field = {
 }
 
 let constructor getter =
-  let open Rpc.Monad in
+  let open Rresult.R in
   getter.g "name_label" (Basic String) >>= fun name_label ->
   getter.g "name_description" (Basic String) >>= fun name_description ->
   return { name_label; name_description }
@@ -92,11 +93,6 @@ let vm : vm structure = {
   constructor;
 }
 
-(* vm <-> vm structure *)
-open Rpcmarshal
-open Rpc
-open Rpc.Monad
-
 (* tydesc *)
 let typ_of_vm = Struct vm
 let vm_def = { name="vm"; description="VM record"; ty=typ_of_vm }
@@ -106,22 +102,30 @@ let vm_def = { name="vm"; description="VM record"; ty=typ_of_vm }
 
 (* The tags are created first *)
 type exnt = | Errors of string
-let errors : (string, exnt) tag = { vname="errors"; vdescription="Errors raised during an RPC invocation"; vcontents=Basic String; vpreview = (function (Errors s) -> Some s | _ -> None); vreview = (fun s -> Errors s) }
+let errors : (string, exnt) Rpc.Types.tag = Rpc.Types.{
+    vname = "errors";
+    vdescription = "Errors raised during an RPC invocation";
+    vcontents = Basic String;
+    vpreview = (function (Errors s) -> Some s);
+    vreview = (fun s -> Errors s)
+  }
 
 (* And then we can create the 'variant' type *)
-let exnt : exnt variant = {
+let exnt : exnt variant = Rpc.Types.{
   variants = [ BoxedTag errors ];
   vconstructor = (fun s t ->
       match s with
-      | "Errors" -> Rpc.Monad.bind (t.t (Basic String)) (fun s -> Rpc.Monad.return (Errors s))
-      | s -> Rpc.Monad.error_of_string (Printf.sprintf "Unknown tag '%s'" s))}
+      | "Errors" -> Rresult.R.map errors.vreview (t.t (Basic String))
+      | s -> Rresult.R.error_msg (Printf.sprintf "Unknown tag '%s'" s))
+  }
 let exnt_def = { name="exnt"; description="A variant type"; ty=Variant exnt }
 
 
 (* This can then be used in RPCs *)
 
 let p = Param.mk ~name:"vm" ~description:"Example structure" vm_def
-let u = Param.mk Types.unit
+let err = exnt_def
+let u = Param.mk Rpc.Types.unit
 
 module VMRPC (R : RPC) = struct
   open R
@@ -129,7 +133,7 @@ module VMRPC (R : RPC) = struct
   let interface = describe Idl.Interface.({name="Vm"; description="My VM API"; version=1})
 
   let start = declare "start" "Start a VM"
-      (p @-> returning u)
+      (p @-> returning u err)
 end
 
 module VMClient = VMRPC(GenClient)
@@ -137,18 +141,18 @@ module VMServer = VMRPC(GenServer)
 
 
 let _ =
-  let open Rpc in
+  let open Rresult.R in
   let impl vm' =
-      Printf.printf "name=%s description=%s\n" vm'.name_label vm'.name_description;
+    Printf.printf "name=%s description=%s\n" vm'.name_label vm'.name_description; ok ()
   in
 
   let funcs = GenServer.empty () |> VMServer.start impl in
 
   let rpc rpc =
-    Printf.printf "Marshalled RPC call: '%s'\n" (string_of_call rpc);
-    GenServer.server funcs rpc >>= fun response ->
-    Printf.printf "Marshalled RPC type: '%s'\n" (string_of_response response);
-    Result.Ok response
+    Printf.printf "Marshalled RPC call: '%s'\n" (Rpc.string_of_call rpc);
+    let response = GenServer.server funcs rpc in
+    Printf.printf "Marshalled RPC type: '%s'\n" (Rpc.string_of_response response);
+    response
   in
 
   let test () =
@@ -156,19 +160,3 @@ let _ =
     VMClient.start rpc vm
   in
   test ()
-
-(* Let's create some python *)
-
-module Code=VMRPC(Codegen)
-
-(* Generate some python *)
-let _ =
-  let interface = Code.(interface |> start) in
-  let open Codegen.Interfaces in
-  let interfaces =
-    empty "interfaces" "The test VM RPC interface"
-      "This is an example of the ocaml-rpc code generator"
-  in
-  let interfaces = add_interface interfaces interface in
-  let interfaces = register_exn interfaces exnt_def in
-  Pythongen.of_interfaces (add_interface interfaces interface) |> Pythongen.string_of_ts |> Printf.printf "%s\n"

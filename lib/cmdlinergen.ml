@@ -6,14 +6,14 @@ module Gen () = struct
   let describe x = x
 
   type 'a comp = 'a
-  type rpcfn = Rpc.call -> Rpc.response Rpc.Monad.error_or
+  type 'a rpcfn = Rpc.call -> Rpc.response
   type 'a res = unit
 
   type _ fn =
     | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
-    | Returning : 'a Param.t -> 'a comp fn
+    | Returning : ('a Param.t * 'b Rpc.Types.def) -> ('a, 'b) Result.result comp fn
 
-  let returning a = Returning a
+  let returning a b = Returning (a,b)
   let (@->) = fun t f -> Function (t, f)
 
   let pos = ref 0
@@ -115,13 +115,13 @@ module Gen () = struct
           let term = term_of_param t in
           let term = Cmdliner.Term.(const (fun x acc -> (t.Param.name, x)::acc) $ term $ cur) in
           inner term f
-        | Returning ty ->
+        | Returning (ty, err) ->
           let run args =
             let call = Rpc.call name [(Rpc.Dict args)] in
-            ignore (Rpc.Monad.bind (rpc call) (function response ->
-              match response.Rpc.contents with
-              | x -> Printf.printf "%s\n" (Rpc.to_string x);
-                Rpc.Monad.return ()))
+            let response = rpc call in
+            match response.Rpc.contents with
+            | x -> Printf.printf "%s\n" (Rpc.to_string x);
+              ()
           in
           Cmdliner.Term.(const (fun args -> run args) $ cur)
       in

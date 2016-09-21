@@ -13,10 +13,10 @@ let query () =
     features = ["defaults";"upgradability"];
     instance_id = string_of_int (Random.int 1000)
   } in
-  result
+  Result.Ok result
 
 let diagnostics () =
-  "This should be the diagnostics of the server"
+  Result.Ok "This should be the diagnostics of the server"
 
 let test i s1 s2 =
   Printf.printf "%Ld %s %s\n%!" i s1 s2;
@@ -73,7 +73,7 @@ let serve_requests rpcfn path =
   done
 
 let start_server () =
-  let open Rpc.Monad in
+  let open Rresult in
 
   let funcs =
     GenServer.empty ()
@@ -85,9 +85,5 @@ let start_server () =
   let rpc_fn = GenServer.server funcs in
 
   let process x =
-    let r = lift Jsonrpc.string_of_response (rpc_fn (Jsonrpc.call_of_string x)) in
-    match r with
-    | Result.Ok r -> r
-    | Result.Error r -> "Error"
-  in
+    Jsonrpc.string_of_response (rpc_fn (Jsonrpc.call_of_string x)) in
   serve_requests process sockpath

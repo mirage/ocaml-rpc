@@ -1,5 +1,6 @@
 open OUnit
 
+let string_of_err = function | `Msg x -> x
 let rec canonicalise r =
   match r with
   | Rpc.Dict x -> Rpc.Dict (List.sort (fun (s1,_) (s2,_) -> compare s1 s2) x |> List.map (fun (x,y) -> (x,canonicalise y)))
@@ -10,7 +11,7 @@ let check_marshal_unmarshal : 'a * Rpc.t * 'a Rpc.Types.typ -> unit = fun (x,r,t
   let r' = Rpcmarshal.marshal typ x in
   let x' = Rpcmarshal.unmarshal typ r in
   (match x' with
-  | Result.Error e -> Printf.printf "\nFound Error when expecting OK: %s\n%!" (Rpc.Monad.string_of_err e)
+  | Result.Error e -> Printf.printf "\nFound Error when expecting OK: %s\n%!" (string_of_err e)
   | Result.Ok y -> Printf.printf "\nOK: (%s)\n%!" (Rpcmarshal.marshal typ y |> Rpc.to_string));
   assert_equal (Result.Ok x) x';
   if (canonicalise r) <> (canonicalise r') then begin
@@ -21,7 +22,7 @@ let check_marshal_unmarshal : 'a * Rpc.t * 'a Rpc.Types.typ -> unit = fun (x,r,t
 let check_unmarshal_error : 'a Rpc.Types.typ -> Rpc.t -> unit = fun typ t ->
   match Rpcmarshal.unmarshal typ t with
   | Result.Ok _ -> assert_equal false true
-  | Result.Error e -> Printf.printf "%s\n" (Rpc.Monad.string_of_err e)
+  | Result.Error e -> Printf.printf "%s\n" (string_of_err e)
 
 let check_unmarshal_ok : 'a -> 'a Rpc.Types.typ -> Rpc.t -> unit = fun x typ r ->
   match Rpcmarshal.unmarshal typ r with

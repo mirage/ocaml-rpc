@@ -52,7 +52,7 @@ let attr_doc = attr_string "doc"
 
 (* Open the Rpc module *)
 let wrap_runtime decls =
-  [%expr let open! Result in let open! Rpc.Monad in [%e decls]]
+  [%expr let open! Result in let open! Rresult.R in [%e decls]]
 
 module Of_rpc = struct
 
@@ -75,23 +75,23 @@ module Of_rpc = struct
 
     | [%type: [%t? typ] list] -> [%expr
       function
-      | Rpc.Enum l -> map_bind [%e expr_of_typ typ] [] l
-      | y -> error_of_string (Printf.sprintf "Expecting Rpc.Enum, but found '%s'" (Rpc.to_string y)) ]
+      | Rpc.Enum l -> Rpc.map_bind [%e expr_of_typ typ] [] l
+      | y -> Rresult.R.error_msg (Printf.sprintf "Expecting Rpc.Enum, but found '%s'" (Rpc.to_string y)) ]
 
     | [%type: [%t? typ] array] -> [%expr
       function
       | Rpc.Enum l ->
-        map_bind [%e expr_of_typ typ] [] l
+        Rpc.map_bind [%e expr_of_typ typ] [] l
         >>= fun x ->
         return (Array.of_list x)
-      | y -> error_of_string (Printf.sprintf "Expecting Rpc.Enum, but found '%s'" (Rpc.to_string y))]
+      | y -> Rresult.R.error_msg (Printf.sprintf "Expecting Rpc.Enum, but found '%s'" (Rpc.to_string y))]
 
     | {ptyp_desc = Ptyp_tuple typs } ->
       let pattern = List.mapi (fun i _ -> pvar (argn i)) typs in
       [%expr
         function
         | Rpc.Enum [%p plist pattern] -> [%e of_typ_fold tuple typs]
-        | y -> error_of_string (Printf.sprintf "Expecting Rpc.Enum, but found '%s'" (Rpc.to_string y))]
+        | y -> Rresult.R.error_msg (Printf.sprintf "Expecting Rpc.Enum, but found '%s'" (Rpc.to_string y))]
 
     | [%type: [%t? typ] option] ->
       let e = expr_of_typ typ in
@@ -99,7 +99,7 @@ module Of_rpc = struct
         function
         | Rpc.Enum [] -> return None
         | Rpc.Enum [y] -> [%e e] y >>= fun z -> return (Some z)
-        | y -> error_of_string (Printf.sprintf "Expecting Rpc.Enum, but found '%s'" (Rpc.to_string y))]
+        | y -> Rresult.R.error_msg (Printf.sprintf "Expecting Rpc.Enum, but found '%s'" (Rpc.to_string y))]
 
     | { ptyp_desc = Ptyp_constr ( { txt = lid }, args ) } ->
       let args = List.map expr_of_typ args in
@@ -142,7 +142,7 @@ module Of_rpc = struct
             [%expr
               match [%e expr_of_typ typ] rpc with
               | Ok result -> Ok (result :> [%t toplevel_typ])
-              | Error _ -> [%e expr]]) [%expr error_of_string "Unknown tag/contents"] |>
+              | Error _ -> [%e expr]]) [%expr Rresult.R.error_msg "Unknown tag/contents"] |>
         Exp.case [%pat? _]
       in
       [%expr fun (rpc : Rpc.t) ->
@@ -204,7 +204,7 @@ module Of_rpc = struct
           labels |> List.map (fun { pld_name = { txt = name }; pld_type; pld_attributes } ->
               if is_option pld_type
               then [%expr return None]
-              else [%expr error_of_string (Printf.sprintf "undefined field: expecting '%s'" [%e str name])])
+              else [%expr Rresult.R.error_msg (Printf.sprintf "undefined field: expecting '%s'" [%e str name])])
         in
         [%expr fun x ->
                match x with
@@ -213,7 +213,7 @@ module Of_rpc = struct
                  let rec loop xs ([%p ptuple (List.mapi (fun i _ -> pvar (argn i)) labels)] as _state) =
                    [%e Exp.match_ [%expr xs] cases]
                  in loop d' [%e tuple thunks]
-               | y -> error_of_string (Printf.sprintf "Expecting Rpc.Dict, but found '%s'" (Rpc.to_string y))]
+               | y -> Rresult.R.error_msg (Printf.sprintf "Expecting Rpc.Dict, but found '%s'" (Rpc.to_string y))]
       | Ptype_abstract, None ->
         failwith "Unhandled"
       | Ptype_open, _ ->
@@ -235,7 +235,7 @@ module Of_rpc = struct
         let default =
           Exp.case
             [%pat? y]
-            [%expr error_of_string
+            [%expr Rresult.R.error_msg
                 (Printf.sprintf "Unhandled pattern when unmarshalling variant type: found '%s'"
                    (Rpc.to_string y))]
         in

@@ -217,6 +217,11 @@ let t_of_rpc t = R.ok t
 
 let lowerfn = function | String s -> String (lower s) | Enum (String s::ss) -> Enum ((String (lower s))::ss) | x -> x
 
+let rec map_bind f acc xs =
+  match xs with
+  | x :: xs -> f x >>= fun x -> map_bind f (x :: acc) xs
+  | [] -> Result.Ok (List.rev acc)
+
 let struct_extend rpc default_rpc =
   match rpc, default_rpc with
   | Dict real, Dict default_fields ->
