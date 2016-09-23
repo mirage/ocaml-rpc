@@ -159,17 +159,17 @@ module Typ_of = struct
               in
               let args = List.mapi (fun i typ -> evar (argn i)) pcd_args in
               let pattern = List.mapi (fun i _ -> pvar (argn i)) pcd_args in
-              let vpreview = Exp.function_ [
+              let vpreview_default = if List.length constrs = 1 then [] else [Exp.case (Pat.any ()) [%expr None]] in
+              let vpreview = Exp.function_ ([
                   Exp.case (pconstr name pattern) [%expr Some [%e tuple args ]];
-                  Exp.case (Pat.any ()) [%expr None]
-                ]
+                ] @ vpreview_default)
               in
               let vreview = Exp.function_ [Exp.case (ptuple pattern) (constr name args)] in
               let variant = [%expr BoxedTag [%e record ["vname", str rpc_name; "vcontents", contents; "vdescription", str (attr_doc "" pcd_attributes); "vpreview", vpreview; "vreview", vreview]]] in
               let vconstructor_case = Exp.case (Pat.constant (Const_string (lower_rpc_name,None))) [%expr Rresult.R.bind (t.t [%e contents]) ([%e Exp.function_ [Exp.case (ptuple pattern) [%expr Rresult.R.ok [%e (constr name args)]]]])] in
               (variant, vconstructor_case))
         in
-        let default = if List.length cases = 1 then [] else [Exp.case (Pat.any ()) [%expr Rresult.R.error_msg (Printf.sprintf "Unknown tag '%s'" s)]] in
+        let default = [Exp.case (Pat.any ()) [%expr Rresult.R.error_msg (Printf.sprintf "Unknown tag '%s'" s)]] in
         let vconstructor = [%expr fun s' t -> let s = String.lowercase s' in [%e Exp.match_ (evar "s") ((List.map snd cases) @ default)]] in
         [ Vb.mk (pvar typ_of_lid) (wrap_runtime (polymorphize ([%expr Variant ({ variants=([%e list (List.map fst cases)]); vconstructor=[%e vconstructor] } : [%t mytype ] variant) ]))) ]
     in
