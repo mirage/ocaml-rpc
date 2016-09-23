@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 15a68f21c4ecf379916884bb859d7883)
+# DO NOT EDIT (digest: 14c994ca72d9e427aa306d3ea0b7b4e3)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -27,11 +27,18 @@ true: annot, bin_annot
 # Library htmlgen
 "lib/htmlgen.cmxs": use_htmlgen
 <lib/*.ml{,i,y}>: pkg_cow
-# Library pa_rpc
-"lib/pa_rpc.cmxs": use_pa_rpc
+# Library rpclib_lwt
+"lib/rpclib_lwt.cmxs": use_rpclib_lwt
+<lib/*.ml{,i,y}>: pkg_lwt
+# Library rpclib_async
+"lib/rpclib_async.cmxs": use_rpclib_async
+<lib/*.ml{,i,y}>: pkg_async
+<lib/*.ml{,i,y}>: pkg_threads
+# Library rpclib_syntax
+"lib/rpclib_syntax.cmxs": use_rpclib_syntax
 <lib/*.ml{,i,y}>: pkg_type_conv
-# Library unix
-"lib/unix.cmxs": use_unix
+# Library rpclib_unix
+"lib/rpclib_unix.cmxs": use_rpclib_unix
 # Library rpclib
 "lib/rpclib.cmxs": use_rpclib
 # Library idl

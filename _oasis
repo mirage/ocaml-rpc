@@ -51,7 +51,21 @@ Library htmlgen
   Modules: Htmlgen
   BuildDepends: rpclib.core, cow
 
-Library pa_rpc
+Library rpclib_lwt
+  Path: lib
+  FindlibParent: rpclib
+  FindlibName: lwt
+  Modules: Rpc_lwt
+  BuildDepends: rpclib.core,lwt
+
+Library rpclib_async
+  Path: lib
+  FindlibParent: rpclib
+  FindlibName: async
+  Modules: Rpc_async
+  BuildDepends: threads,rpclib.core,async
+
+Library rpclib_syntax
   Path: lib
   FindlibParent: rpclib
   FindlibName: syntax
@@ -59,7 +73,7 @@ Library pa_rpc
   Modules: Pa_rpc, P4_rpc, Pa_module_conv
   BuildDepends: type_conv, result
 
-Library unix
+Library rpclib_unix
   Path: lib
   FindlibParent: rpclib
   FindlibName: unix
