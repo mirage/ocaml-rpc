@@ -248,4 +248,5 @@ let suite =
   ]
 
 let _ =
-  run_test_tt_main suite
+  let results = run_test_tt_main suite in
+  if List.exists (function | RSuccess _ -> false | _ -> true) results then exit 1

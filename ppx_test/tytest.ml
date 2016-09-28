@@ -151,6 +151,25 @@ let test_poly () =
   let (x : int test_poly) = [1;2;3] in
   check_marshal_unmarshal (x, Rpc.Enum [Rpc.Int 1L; Rpc.Int 2L; Rpc.Int 3L], (typ_of_test_poly (Rpc.Types.Basic Rpc.Types.Int)))
 
+type nested = {
+  variant : test_variant_name;
+  var2 : test_variant;
+  record : test_record_opt;
+  rec2 : test_record;
+} [@@deriving rpcty]
+
+let fakegen () =
+  let fake ty =
+    let fake = Rpc_genfake.genall ty in
+    let ss = List.map (fun f -> Rpcmarshal.marshal ty f |> Jsonrpc.to_string) fake in
+    let test2 = List.map (fun json -> Rpcmarshal.unmarshal ty (Jsonrpc.of_string json) ) ss in
+    List.iter2 (function a -> function (Result.Ok b) -> assert(a=b); () | _ -> assert false) fake test2;
+    List.iter (fun s -> Printf.printf "%s\n" s) ss
+  in
+  fake typ_of_test_record_opt;
+  fake typ_of_test_variant_name;
+  fake typ_of_nested
+
 let suite =
   "basic_tests" >:::
   [
@@ -202,7 +221,10 @@ let suite =
     "record_opt4" >:: test_record_opt4;
     "record_attrs" >:: test_record_attrs;
     "poly" >:: test_poly;
+    "fakegen" >:: fakegen;
   ]
 
 let _ =
-  run_test_tt_main suite
+  Random.self_init ();
+  let results = run_test_tt_main suite in
+  if List.exists (function | RSuccess _ -> false | _ -> true) results then exit 1
