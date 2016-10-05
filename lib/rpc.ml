@@ -31,6 +31,18 @@ type t =
   | Dict of (string * t) list
   | Null
 
+
+module Version = struct
+  type t = int * int * int
+
+  let compare (x,y,z) (x',y',z') =
+    let cmp a b fn () =
+      let c = compare a b in
+      if c<>0 then c else fn ()
+    in cmp x x' (cmp y y' (cmp z z' (fun () -> 0))) ()
+
+end
+
 module Types = struct
   type _ basic =
     | Int : int basic
@@ -61,6 +73,7 @@ module Types = struct
   and ('a, 's) field = {
     fname : string;
     fdescription : string;
+    fversion : Version.t option;
     field : 'a typ;
     fget : 's -> 'a; (* Lenses *)
     fset : 'a -> 's -> 's;
@@ -77,6 +90,7 @@ module Types = struct
   and ('a, 's) tag = {
     vname : string;
     vdescription : string;
+    vversion : Version.t option;
     vcontents : 'a typ;
     vpreview : 's -> 'a option;
     vreview : 'a -> 's;

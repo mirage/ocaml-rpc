@@ -68,6 +68,7 @@ open Rpc.Types
 let vm_name_label : (string, vm) field = {
   fname="name_label";
   fdescription="";
+  fversion=None;
   field=Basic String;
   fget = (fun f -> f.name_label);
   fset = (fun v s -> {s with name_label = v})
@@ -75,6 +76,7 @@ let vm_name_label : (string, vm) field = {
 let vm_name_description : (string, vm) field = {
   fname="name_description";
   fdescription="";
+  fversion=None;
   field=Basic String;
   fget = (fun f -> f.name_description);
   fset = (fun v s -> {s with name_description = v})
@@ -105,6 +107,7 @@ type exnt = | Errors of string
 let errors : (string, exnt) Rpc.Types.tag = Rpc.Types.{
     vname = "errors";
     vdescription = "Errors raised during an RPC invocation";
+    vversion = None;
     vcontents = Basic String;
     vpreview = (function (Errors s) -> Some s);
     vreview = (fun s -> Errors s)
@@ -130,7 +133,7 @@ let u = Param.mk Rpc.Types.unit
 module VMRPC (R : RPC) = struct
   open R
 
-  let interface = describe Idl.Interface.({name="Vm"; description="My VM API"; version=1})
+  let interface = describe Idl.Interface.({name="Vm"; description="My VM API"; version=(1,0,0)})
 
   let start = declare "start" "Start a VM"
       (p @-> returning u err)

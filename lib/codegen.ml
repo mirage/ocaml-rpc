@@ -1,11 +1,11 @@
 open Rpc.Types
 
 type 'a comp = 'a
-  
+
 type _ fn =
   | Function : 'a Idl.Param.t * 'b fn -> ('a -> 'b) fn
   | Returning : 'a Idl.Param.t -> 'a comp fn
-      
+
 module Method = struct
   type 'a t = {
     name : string;
@@ -17,7 +17,7 @@ module Method = struct
     match m with
     | Function (x,y) -> (Idl.Param.Boxed x) :: find_inputs y
     | Returning _ -> []
-                     
+
   let rec find_output : type a. a fn -> Idl.Param.boxed = fun m ->
     match m with
     | Returning x -> Idl.Param.Boxed x
@@ -26,7 +26,7 @@ end
 
 type boxed_fn =
   | BoxedFunction : 'a Method.t -> boxed_fn
-    
+
 module Interface = struct
   include Idl.Interface
 
@@ -34,7 +34,7 @@ module Interface = struct
     details : Idl.Interface.description;
     methods : boxed_fn list;
   }
-  
+
   let prepend_arg : t -> 'a Idl.Param.t -> t = fun interface param ->
     let prepend : type b. b fn -> ('a -> b) fn = fun arg ->
       Function (param, arg)
@@ -61,7 +61,7 @@ let describe i =
   if String.capitalize n <> n then failwith "Interface names must be capitalized";
   Interface.({details=i; methods=[]})
 
-  
+
 module Interfaces = struct
   type t = {
     name : string;
@@ -70,14 +70,14 @@ module Interfaces = struct
     type_decls : boxed_def list;
     interfaces : Interface.t list;
     exn_decls : boxed_def;
-  }  
-  
+  }
+
   let empty name title description =
     { name; title; description; exn_decls=BoxedDef int64; type_decls=[]; interfaces=[] }
-    
+
   let register_exn is es =
     { is with exn_decls=BoxedDef es }
-    
+
   let add_interface is i =
     let typedefs = Interface.all_types i in
     let new_typedefs = List.filter
@@ -86,17 +86,16 @@ module Interfaces = struct
                (fun (BoxedDef def') ->
                   match def with
                   | BoxedDef d -> def'.name = d.name) is.type_decls)) typedefs in
-    
+
     { is with type_decls = new_typedefs @ is.type_decls; interfaces = i :: is.interfaces }
-    
+
 end
 
 type 'a res = Interface.t -> Interface.t
-                               
+
 let returning a = Returning a
 let (@->) = fun t f -> Function (t, f)
-        
+
 let declare name description ty interface =
   let m = BoxedFunction Method.({name; description; ty}) in
   Interface.({interface with methods = interface.methods @ [m]})
-

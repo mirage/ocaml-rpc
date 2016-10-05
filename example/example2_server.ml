@@ -86,4 +86,5 @@ let start_server () =
 
   let process x =
     Jsonrpc.string_of_response (rpc_fn (Jsonrpc.call_of_string x)) in
+
   serve_requests process sockpath

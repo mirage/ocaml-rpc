@@ -10,6 +10,7 @@ module Param : sig
     name : string;
     description : string;
     typedef : 'a Rpc.Types.def;
+    version : Rpc.Version.t option;
   }
 
   (** We box parameters to put them into lists *)
@@ -18,7 +19,7 @@ module Param : sig
   (** [mk ~name ~description typ] creates a Param.t out of a type definition
       from the Types module. If the name or description are omitted, the name
       or description from the type definition will be inherited *)
-  val mk : ?name:string -> ?description:string -> 'a Rpc.Types.def -> 'a t
+  val mk : ?name:string -> ?description:string -> ?version:Rpc.Version.t -> 'a Rpc.Types.def -> 'a t
 end
 
 (** An interface is a collection of RPC declarations. *)
@@ -26,7 +27,7 @@ module Interface : sig
   type description = {
     name : string;
     description : string;
-    version : int; (* list; Use semantic versioning, most significant int is first in the list *)
+    version : Rpc.Version.t;
   }
 end
 

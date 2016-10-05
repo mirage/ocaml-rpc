@@ -11,7 +11,8 @@ type uri = string [@@deriving rpcty] [@@doc
 
 type blocklist = {
   blocksize : int
-      [@doc "size of the individual blocks"];
+      [@doc "size of the individual blocks"]
+      [@version (1,1,0)];
   ranges : (int64 * int64) list
       [@doc "list of block ranges, where a range is a (start,length) pair, measured in units of [blocksize]"];
 } [@@deriving rpcty] [@@doc "List of blocks for copying"]
@@ -56,7 +57,7 @@ module Datapath(R: RPC) = struct
       {Idl.Interface.name = "Datapath";
        description=
          "Xapi will call the functions here on VM start/shutdown/suspend/resume/migrate. Every function is idempotent. Every function takes a domain parameter which allows the implementation to track how many domains are currently using the volume.";
-       version=1}
+       version=(1,0,0)}
 
   let open_ =
     declare "open"
@@ -96,7 +97,7 @@ module Data (R : RPC) = struct
       Idl.Interface.({
           name = "Data";
           description="This interface is used for long-running data operations such as copying the contents of volumes or mirroring volumes to remote destinations";
-          version=1})
+          version=(1,0,0)})
 
   type operation =
     | Copy of uri * uri [@doc "Copy (src,dst) represents an on-going copy operation from the [src] URI to the [dst] URI"]

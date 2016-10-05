@@ -30,6 +30,12 @@ type t =
 
 val to_string : t -> string
 
+module Version : sig
+  type t = int * int * int
+
+  val compare : t -> t -> int
+end
+
 (** {2 Type declarations} *)
 module Types : sig
   type _ basic =
@@ -56,6 +62,7 @@ module Types : sig
   and ('a, 's) field = {
     fname : string;
     fdescription : string;
+    fversion : Version.t option;
     field : 'a typ;
     fget : 's -> 'a;
     fset : 'a -> 's -> 's;
@@ -72,6 +79,7 @@ module Types : sig
   and ('a, 's) tag = {
     vname : string;
     vdescription : string;
+    vversion : Version.t option;
     vcontents : 'a typ;
     vpreview : 's -> 'a option; (* Prism *)
     vreview : 'a -> 's;

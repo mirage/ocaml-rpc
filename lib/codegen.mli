@@ -15,7 +15,7 @@ module Interface :
       Idl.Interface.description = {
       name : string;
       description : string;
-      version : int;
+      version : Rpc.Version.t;
     }
     type t = {
       details : Idl.Interface.description;

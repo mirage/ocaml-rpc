@@ -23,6 +23,10 @@ let attr_name  = attr_string "name"
 (* Documentation for variants / record members *)
 let attr_doc = attr_string "doc"
 
+(* Version information *)
+let attr_version attrs =
+  Ppx_deriving.attr ~deriver "version" attrs |> Ppx_deriving.Arg.(get_attr ~deriver expr)
+
 let attr_default attrs =
   Ppx_deriving.attr ~deriver "default" attrs |> Ppx_deriving.Arg.(get_attr ~deriver expr)
 
@@ -114,6 +118,7 @@ module Typ_of = struct
                  [%e record ["fname", str rpc_name;
                              "field", expr_of_typ pld_type;
                              "fdescription", str (attr_doc "" pld_attributes);
+                             "fversion", (match attr_version pld_attributes with | Some v -> [%expr Some [%e v]] | None -> [%expr None]);
                              "fget", fget;
                              "fset", fset;
                             ] ] ], default ))
@@ -165,7 +170,13 @@ module Typ_of = struct
                 ] @ vpreview_default)
               in
               let vreview = Exp.function_ [Exp.case (ptuple pattern) (constr name args)] in
-              let variant = [%expr BoxedTag [%e record ["vname", str rpc_name; "vcontents", contents; "vdescription", str (attr_doc "" pcd_attributes); "vpreview", vpreview; "vreview", vreview]]] in
+              let variant = [%expr BoxedTag [%e record [
+                  "vname", str rpc_name;
+                  "vcontents", contents;
+                  "vversion", (match attr_version pcd_attributes with | Some v -> [%expr Some [%e v]] | None -> [%expr None]);
+                  "vdescription", str (attr_doc "" pcd_attributes);
+                  "vpreview", vpreview;
+                  "vreview", vreview]]] in
               let vconstructor_case = Exp.case (Pat.constant (Const_string (lower_rpc_name,None))) [%expr Rresult.R.bind (t.t [%e contents]) ([%e Exp.function_ [Exp.case (ptuple pattern) [%expr Rresult.R.ok [%e (constr name args)]]]])] in
               (variant, vconstructor_case))
         in
@@ -181,7 +192,6 @@ end
 
 let rpcty_strs_of_type ~options ~path type_decl =
   Typ_of.str_of_type ~options ~path type_decl
-
 
 let () =
   let open Ppx_deriving in

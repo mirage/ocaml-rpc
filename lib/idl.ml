@@ -1,16 +1,18 @@
+
 module Param = struct
   type 'a t = {
     name : string;
     description : string;
     typedef : 'a Rpc.Types.def;
+    version : Rpc.Version.t option;
   }
 
   type boxed = Boxed : 'a t -> boxed
 
-  let mk ?name ?description typedef =
+  let mk ?name ?description ?version typedef =
     let name = match name with Some n -> n | None -> typedef.Rpc.Types.name in
     let description = match description with Some d -> d | None -> typedef.Rpc.Types.description in
-    {name; description; typedef}
+    {name; description; version; typedef}
 
 end
 
@@ -18,7 +20,7 @@ module Interface = struct
   type description = {
     name : string;
     description : string;
-    version : int;
+    version : Rpc.Version.t;
   }
 end
 
@@ -151,6 +153,7 @@ module DefaultError = struct
   let internalerror : (string, t) Rpc.Types.tag = Rpc.Types.{
       vname="InternalError";
       vdescription="Internal Error";
+      vversion=Some (1,0,0);
       vcontents=Basic String;
       vpreview = (function (InternalError s) -> Some s);
       vreview = (fun s -> InternalError s)
