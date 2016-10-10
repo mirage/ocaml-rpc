@@ -73,7 +73,7 @@ module Types : sig
   }
   and 'a structure = {
     sname : string;
-    mutable fields : 'a boxed_field list;
+    fields : 'a boxed_field list;
     constructor : field_getter -> ('a, Rresult.R.msg) Result.result;
   }
   and ('a, 's) tag = {
@@ -89,7 +89,7 @@ module Types : sig
     t : 'a. 'a typ -> ('a, Rresult.R.msg) Result.result;
   }
   and 'a variant = {
-    mutable variants : 'a boxed_tag list;
+    variants : 'a boxed_tag list;
     vconstructor : string -> tag_getter -> ('a, Rresult.R.msg) Result.result;
   }
   val int : int def
