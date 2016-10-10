@@ -22,7 +22,7 @@ end
 module API(R : RPC) = struct
   open R
 
-  let query_p = Param.mk ~name:"query" ~description:"Parameter i1" Datatypes.Query.def
+  let query_p = Param.mk ~name:"query" ~description:"Parameter i1" Datatypes.Query.t
   let unit_p = Param.mk Types.unit
   let string_p = Param.mk Types.string
 
@@ -30,7 +30,7 @@ module API(R : RPC) = struct
   let vm_p = Param.mk ~name:"vm" ~description:"VM uuid" Types.string
   let vm_description = Param.mk ~name:"description" ~description:"Description" Types.string
 
-  let err = Datatypes.err_def
+  let err = Datatypes.err
 
   let query = declare
       "query"

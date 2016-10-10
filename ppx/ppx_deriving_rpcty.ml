@@ -97,7 +97,6 @@ module Typ_of = struct
     let mytype = Ppx_deriving.core_type_of_type_decl type_decl in
     let polymorphize = Ppx_deriving.poly_fun_of_type_decl type_decl in
     let typ_of_lid = Ppx_deriving.mangle_type_decl (`Prefix "typ_of") type_decl in
-    let param_of_lid = Ppx_deriving.mangle_type_decl (`Suffix "def") type_decl in
     let typ_of =
       match type_decl.ptype_kind, type_decl.ptype_manifest with
       | Ptype_abstract, Some manifest ->
@@ -140,12 +139,14 @@ module Typ_of = struct
                 mknoloc (Lident fname), evar field_name) fields) None]]
             fields in
         field_name_bindings @
-        [ Vb.mk (pvar name)
-            ([%expr let open Rpc.Types in ({ fields=[%e boxed_fields ]; sname=[%e str name]; constructor = fun getter -> let open Rresult.R in [%e construct_record] }
-                    : [%t mytype ] Rpc.Types.structure) ] ) ] @
         [ Vb.mk (pvar typ_of_lid)
             (polymorphize
-               ([%expr Rpc.Types.Struct [%e Exp.ident (lid name) ]])) ]
+               (wrap_runtime
+                  [%expr Struct ({
+                      fields=[%e boxed_fields ];
+                      sname=[%e str name];
+                      constructor = fun getter -> let open Rresult.R in [%e construct_record]
+                    } : [%t mytype ] Rpc.Types.structure)])) ]
       | Ptype_abstract, None ->
         failwith "Unhandled"
       | Ptype_open, _ ->
@@ -186,7 +187,7 @@ module Typ_of = struct
     in
     let doc = attr_doc "" type_decl.ptype_attributes in
     let name = type_decl.ptype_name.txt in
-    typ_of @ [Vb.mk (pvar param_of_lid) (wrap_runtime (polymorphize (record ["name", str name; "description", str doc; "ty", Ppx_deriving.poly_apply_of_type_decl type_decl (Exp.ident (lid typ_of_lid))])))]
+    typ_of @ [Vb.mk (pvar name) (wrap_runtime (polymorphize (record ["name", str name; "description", str doc; "ty", Ppx_deriving.poly_apply_of_type_decl type_decl (Exp.ident (lid typ_of_lid))])))]
 
 end
 
