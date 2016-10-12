@@ -100,6 +100,7 @@ module Types : sig
   val string : string def
   val char : char def
   val unit : unit def
+  val default_types : boxed_def list
 end
 
 (** {2 Basic constructors} *)

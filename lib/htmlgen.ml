@@ -2,7 +2,7 @@ open Rpc.Types
 open Idl
 open Codegen
 open Cow.Html
-    
+
 
 
 (* Printable string of type *)
@@ -66,7 +66,7 @@ let sidebar x =
   in
   let of_interface i =
     let name = i.Interface.details.Idl.Interface.name in
-    [tag "li" ~cls:"docs-nav-title" (string name)] @ 
+    [tag "li" ~cls:"docs-nav-title" (string name)] @
     List.map (of_method i.Interface.details.Idl.Interface.name) i.Interface.methods
   in
   div ~cls:"large-3 medium-3 columns" (
@@ -113,7 +113,7 @@ let of_variant_tags : 'a boxed_tag list -> Cow.Html.t = fun all ->
                       tag "th" (string "Type");
                       tag "th" (string "Description");
                     ]));
-            tag "tbody" (list (List.map of_row all)) ])    
+            tag "tbody" (list (List.map of_row all)) ])
 
 
 let of_type_decl i_opt (BoxedDef t) =
@@ -217,7 +217,7 @@ let of_exception ts =
     </table>
   >>
 *)
-    
+
 let of_interfaces x =
   let name = x.Interfaces.name in
   let description = x.Interfaces.description in
@@ -230,13 +230,10 @@ let of_interfaces x =
               ([
                 h1 (string name);
                 p (string description);
-              ] @ 
+              ] @
                 List.concat (List.map (of_type_decl None) x.Interfaces.type_decls)
                 @
                 List.concat (List.map (of_interface x) x.Interfaces.interfaces)))]))
-    
+
 
 let to_string x = Cow.Html.to_string (of_interfaces x)
-
-
-

@@ -1,9 +1,9 @@
 open Idl
 open Example2_idl
 
-module C = Cmdlinergen.Gen ()
-module Client=API(GenClient)
-module Cmds=API(C)
+module Client = API(GenClient)
+module C      = Cmdlinergen.Gen ()
+module Cmds   = API(C)
 
 (* Use a binary 16-byte length to frame RPC messages *)
 let binary_rpc path (call: Rpc.call) : Rpc.response =
@@ -38,8 +38,3 @@ let server_cmd =
 let cli () =
   let rpc = binary_rpc Example2_idl.sockpath in
   Cmdliner.Term.eval_choice default_cmd (server_cmd :: List.map (fun t -> t rpc) !C.terms)
-(*  Client.query (binary_rpc sockpath) () >>= fun result_s ->
-  Datatypes.Query.of_structure result_s >>= fun result ->
-  Printf.fprintf stdout "Result: %s\n" (Jsonrpc.to_string (Rpcmarshal.marshal Datatypes.Query.typ_of result_s));
-  Printf.fprintf stdout "Result.vendor = %s\n" result.Datatypes.Query.vendor;
-    return ()*)

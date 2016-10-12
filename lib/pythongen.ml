@@ -23,7 +23,7 @@ let fresh_id =
     incr counter;
     "tmp_" ^ (string_of_int !counter)
 
-(** [typecheck ty v] returns a python fragment which checks 
+(** [typecheck ty v] returns a python fragment which checks
     	[v] has type [ty] *)
 let rec typecheck : type a.a typ -> string -> t list = fun ty v ->
   let open Printf in
@@ -75,7 +75,7 @@ let rec typecheck : type a.a typ -> string -> t list = fun ty v ->
     let pylist = sprintf "[%s]" (String.concat "," (List.map (fun s -> sprintf "\"%s\"" s) all_tags)) in
     [ Line (sprintf "if %s[0] not in %s:" v pylist);
       Block [ raise_type_error ] ] @ check_contents
-      
+
   | Array t ->
     let id = fresh_id () in
     [
@@ -154,7 +154,7 @@ let rec value_of : type a. a typ -> string =
 let exn_var myarg =
   let open Printf in
   let inner : type a b. (a, b) tag -> t list = function tag ->
-    let has_arg = match tag.vcontents with | Unit -> false | _ -> true in  
+    let has_arg = match tag.vcontents with | Unit -> false | _ -> true in
     if not has_arg
     then
       [
@@ -172,15 +172,15 @@ let exn_var myarg =
               [ Line (sprintf "Rpc_light_failure.__init__(self, \"%s\", [ arg_0 ])" tag.vname )
               ] @ (typecheck tag.vcontents "arg_0")
               @ [ Line "self.arg_0 = arg_0" ])])
-          
+
       ]
   in
   match myarg with
   | BoxedDef { ty = Variant { variants } } ->
     List.concat (List.map (fun (BoxedTag t) -> inner t) variants)
   | BoxedDef { ty } ->
-    failwith (Printf.sprintf "Unable to handle non-variant exceptions (%s)" (Rpcmarshal.ocaml_of_t ty)) 
-    
+    failwith (Printf.sprintf "Unable to handle non-variant exceptions (%s)" (Rpcmarshal.ocaml_of_t ty))
+
 
 
 let skeleton_method unimplemented i (BoxedFunction m) =
@@ -193,7 +193,7 @@ let skeleton_method unimplemented i (BoxedFunction m) =
             match typedef.ty with
             | Unit -> false
             | _ -> true) inputs in
-  
+
   let open Printf in
 
   let output_py (Idl.Param.Boxed a) =
@@ -201,7 +201,7 @@ let skeleton_method unimplemented i (BoxedFunction m) =
     | Unit -> []
     | _ -> [ Line (sprintf "result[\"%s\"] = %s" a.Idl.Param.name (value_of a.Idl.Param.typedef.ty)) ]
   in
-  
+
   [
     Line (sprintf "def %s(self%s):" m.Method.name (String.concat "" (List.map (fun x -> ", " ^ x) (List.map (fun (Idl.Param.Boxed x) -> x.Idl.Param.name) inputs))));
     Block ([
@@ -312,7 +312,7 @@ let server_of_interface i =
           ) @ [
             Line "return results"
           ])
-    ] in    
+    ] in
   let dispatch_method first (BoxedFunction m) =
     [ Line (sprintf "%sif method == \"%s.%s\":" (if first then "" else "el") i.Interface.details.Idl.Interface.name m.Method.name);
       Block [ Line (sprintf "return success(self.%s(args))" m.Method.name) ]
@@ -436,9 +436,9 @@ let of_interfaces i =
   [
     Line "from xapi import *";
     Line "import traceback";
-  ] @ (
-    try exn_var i.Interfaces.exn_decls with e -> Printf.fprintf stderr "Error while handling %s" i.Interfaces.name; raise e
-      ) @ (
+  ] (* @ (
+        try exn_var i.Interfaces.exn_decls with e -> Printf.fprintf stderr "Error while handling %s" i.Interfaces.name; raise e
+    ) *) @ (
     List.fold_left (fun acc i -> acc @
                                  (server_of_interface i) @ (skeleton_of_interface i) @ (test_impl_of_interface i) @ (commandline_of_interface i)
                    ) [] i.Interfaces.interfaces

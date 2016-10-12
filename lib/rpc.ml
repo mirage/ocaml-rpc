@@ -112,6 +112,9 @@ module Types = struct
   let string = { name="string"; ty=Basic String; description="String"}
   let char   = { name="char";   ty=Basic Char;   description="Char"}
   let unit   = { name="unit";   ty=Unit;         description="Unit"}
+  let default_types = [BoxedDef int; BoxedDef int32; BoxedDef int64;
+                       BoxedDef bool; BoxedDef float; BoxedDef string;
+                       BoxedDef char; BoxedDef unit]
 end
 
 exception Runtime_error of string * t

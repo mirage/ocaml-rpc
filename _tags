@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 14c994ca72d9e427aa306d3ea0b7b4e3)
+# DO NOT EDIT (digest: c65a95a523925454ac31a4b9eace2025)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -23,10 +23,12 @@ true: annot, bin_annot
 # Library cmdlinergen
 "lib/cmdlinergen.cmxs": use_cmdlinergen
 <lib/*.ml{,i,y}>: pkg_cmdliner
-<lib/*.ml{,i,y}>: use_json
 # Library htmlgen
 "lib/htmlgen.cmxs": use_htmlgen
 <lib/*.ml{,i,y}>: pkg_cow
+# Library markdowngen
+"lib/markdowngen.cmxs": use_markdowngen
+<lib/*.ml{,i,y}>: use_json
 # Library rpclib_lwt
 "lib/rpclib_lwt.cmxs": use_rpclib_lwt
 <lib/*.ml{,i,y}>: pkg_lwt

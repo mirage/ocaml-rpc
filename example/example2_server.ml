@@ -3,6 +3,7 @@ open Example2_idl
 
 module Server=API(GenServer)
 
+(* Implementations of the methods *)
 let query () =
   let open Datatypes.Query in
   Printf.printf "Received query API call\n%!";
@@ -22,6 +23,7 @@ let test i s1 s2 =
   Printf.printf "%Ld %s %s\n%!" i s1 s2;
   query ()
 
+(* Utility and general non-specific server bits and bobs *)
 let finally f g =
   try
     let result = f () in

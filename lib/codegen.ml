@@ -1,26 +1,24 @@
 open Rpc.Types
 
-type 'a comp = 'a
-
-type _ fn =
-  | Function : 'a Idl.Param.t * 'b fn -> ('a -> 'b) fn
-  | Returning : 'a Idl.Param.t -> 'a comp fn
+type _ outerfn =
+  | Function : 'a Idl.Param.t * 'b outerfn -> ('a -> 'b) outerfn
+  | Returning : ('a Idl.Param.t * 'b Rpc.Types.def) -> ('a, 'b) Result.result outerfn
 
 module Method = struct
   type 'a t = {
     name : string;
     description : string;
-    ty : 'a fn
+    ty : 'a outerfn
   }
 
-  let rec find_inputs : type a. a fn -> Idl.Param.boxed list = fun m ->
+  let rec find_inputs : type a. a outerfn -> Idl.Param.boxed list = fun m ->
     match m with
     | Function (x,y) -> (Idl.Param.Boxed x) :: find_inputs y
     | Returning _ -> []
 
-  let rec find_output : type a. a fn -> Idl.Param.boxed = fun m ->
+  let rec find_output : type a. a outerfn -> Idl.Param.boxed = fun m ->
     match m with
-    | Returning x -> Idl.Param.Boxed x
+    | Returning (x,y) -> Idl.Param.Boxed x
     | Function (x,y) -> find_output y
 end
 
@@ -36,7 +34,7 @@ module Interface = struct
   }
 
   let prepend_arg : t -> 'a Idl.Param.t -> t = fun interface param ->
-    let prepend : type b. b fn -> ('a -> b) fn = fun arg ->
+    let prepend : type b. b outerfn -> ('a -> b) outerfn = fun arg ->
       Function (param, arg)
     in
     {interface with methods = List.map (fun (BoxedFunction m) ->
@@ -54,13 +52,6 @@ module Interface = struct
     in setify types
 end
 
-type description = Interface.t
-
-let describe i =
-  let n = i.Interface.name in
-  if String.capitalize n <> n then failwith "Interface names must be capitalized";
-  Interface.({details=i; methods=[]})
-
 
 module Interfaces = struct
   type t = {
@@ -69,16 +60,12 @@ module Interfaces = struct
     description : string;
     type_decls : boxed_def list;
     interfaces : Interface.t list;
-    exn_decls : boxed_def;
   }
 
   let empty name title description =
-    { name; title; description; exn_decls=BoxedDef int64; type_decls=[]; interfaces=[] }
+    { name; title; description; type_decls=[]; interfaces=[] }
 
-  let register_exn is es =
-    { is with exn_decls=BoxedDef es }
-
-  let add_interface is i =
+  let add_interface i is =
     let typedefs = Interface.all_types i in
     let new_typedefs = List.filter
         (fun def -> not
@@ -91,11 +78,34 @@ module Interfaces = struct
 
 end
 
-type 'a res = Interface.t -> Interface.t
+exception Interface_not_described
 
-let returning a = Returning a
-let (@->) = fun t f -> Function (t, f)
+module Gen () = struct
+  type 'a comp = 'a
+  type 'a fn = 'a outerfn
+  type 'a res = unit
+  type description = Interface.t
 
-let declare name description ty interface =
-  let m = BoxedFunction Method.({name; description; ty}) in
-  Interface.({interface with methods = interface.methods @ [m]})
+  let interface = ref None
+
+  let describe i =
+    let n = i.Interface.name in
+    if String.capitalize n <> n then failwith "Interface names must be capitalized";
+    let i = Interface.({details=i; methods=[]}) in
+    interface := Some i;
+    i
+
+  let returning a b  = Returning (a,b)
+  let (@->) = fun t f -> Function (t, f)
+
+  let declare : string -> string -> 'a fn -> 'a res = fun name description ty ->
+    let m = BoxedFunction Method.({name; description; ty}) in
+    match !interface with
+    | Some i -> interface := Some (Interface.({i with methods = i.methods @ [m]}))
+    | None -> raise Interface_not_described
+
+  let get_interface () =
+    match !interface with
+    | None -> raise Interface_not_described
+    | Some x -> x
+end

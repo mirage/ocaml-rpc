@@ -124,7 +124,7 @@ open Rpc.Types
    functions. *)
 let vm_name_label : (string, vm) field = {
   fname="name_label";
-  fdescription="";
+  fdescription="The name of the VM.";
   fversion=None;
   field=Basic String;
   fget = (fun f -> f.name_label);
@@ -132,7 +132,7 @@ let vm_name_label : (string, vm) field = {
 }
 let vm_name_description : (string, vm) field = {
   fname="name_description";
-  fdescription="";
+  fdescription="The description of the VM.";
   fversion=None;
   field=Basic String;
   fget = (fun f -> f.name_description);
@@ -154,23 +154,33 @@ let constructor getter =
   getter.g "name_description" (Basic String) >>= fun name_description ->
   return { name_label; name_description }
 
-(* And finally we define a value of type `vm structure` here that uses the
-   values defined above. *)
-let vm : vm structure = {
+(* These values are combined to define a value of type `vm structure` here *)
+let vm_structure : vm structure = {
   sname="vm";
   fields = [ BoxedField vm_name_label; BoxedField vm_name_description ];
   constructor;
 }
 
-(* tydesc *)
-let typ_of_vm = Struct vm
-let vm_def = { name="vm"; description="VM record"; ty=typ_of_vm }
+let typ_of_vm = Struct vm_structure
+
+(* Finally we create a value of type `vm structure def`, which names and
+   describes the type *)
+let vm = {
+  name="vm";
+  description="This record contains the static properties of a VM object,
+such as the name, description and other useful bits and pieces. Runtime
+properties are part of some different record.";
+  ty=typ_of_vm }
 
 
-(* Or we can create a variant type *)
-
-(* The tags are created first *)
+(* Or we can create a variant type in a very similar way. As an example,
+   we define a type `exnt` here: *)
 type exnt = | Errors of string
+
+(* And create values representing the tags first (only one for this type
+   definition). Once again, `name`, `description`, `version` and `contents` are
+   similar to those defined for the fields, and `preview` and `review` are
+   the prism functions (similar to the lens functions for the fields above). *)
 let errors : (string, exnt) Rpc.Types.tag = Rpc.Types.{
     vname = "errors";
     vdescription = "Errors raised during an RPC invocation";
@@ -181,52 +191,96 @@ let errors : (string, exnt) Rpc.Types.tag = Rpc.Types.{
   }
 
 (* And then we can create the 'variant' type *)
-let exnt : exnt variant = Rpc.Types.{
+let exnt_variant : exnt variant = Rpc.Types.{
   variants = [ BoxedTag errors ];
   vconstructor = (fun s t ->
       match s with
       | "Errors" -> Rresult.R.map errors.vreview (t.t (Basic String))
       | s -> Rresult.R.error_msg (Printf.sprintf "Unknown tag '%s'" s))
   }
-let exnt_def = { name="exnt"; description="A variant type"; ty=Variant exnt }
 
+(* And finally we name and describe the type in an `exnt variant def` type *)
+let exnt = { name="exnt"; description="A variant type"; ty=Variant exnt_variant }
 
-(* This can then be used in RPCs *)
+(* Note that all of the above can be automatically derived using the
+   ppx_deriving_rpcty ppx. See later examples for descriptions of these *)
 
-let p = Param.mk ~name:"vm" ~description:"Example structure" vm_def
-let err = exnt_def
-let u = Param.mk Rpc.Types.unit
+(* These new types can then be used in RPCs *)
+let p   = Param.mk ~name:"vm" ~description:"Example structure" vm
+let u   = Param.mk Rpc.Types.unit
+let err = exnt
 
 module VMRPC (R : RPC) = struct
   open R
 
-  let interface = describe Idl.Interface.({name="Vm"; description="My VM API"; version=(1,0,0)})
+(* We can declare some more information about the interface here for more
+   interesting uses of these declarations - for example, the documentation
+   generator or Cmdliner term generator *)
+  let interface = describe Idl.Interface.({
+      name="VM";
+      description="The VM interface is used to perform power-state operations
+on virtual machines. It doesn't do anything else in this implementation as it
+is purely being used as an example of how to declare an interface.";
+      version=(1,0,0)})
 
-  let start = declare "start" "Start a VM"
+  let start = declare "start" "Start a VM. This method should be idempotent,
+and you can start the same VM as many times as you like."
       (p @-> returning u err)
 end
 
+(* Once again we generate a client and server module *)
 module VMClient = VMRPC(GenClient)
 module VMServer = VMRPC(GenServer)
 
-
 let _ =
   let open Rresult.R in
-  let impl vm' =
-    Printf.printf "name=%s description=%s\n" vm'.name_label vm'.name_description; ok ()
-  in
 
+  (* As before, we define an implementation of the method, and associate it
+     with the server impls *)
+  let impl vm' =
+    Printf.printf "name=%s description=%s\n"
+      vm'.name_label vm'.name_description; ok ()
+  in
   let funcs = GenServer.empty () |> VMServer.start impl in
 
+  (* Again we create a wrapper RPC function that dumps the marshalled data to
+     stdout for clarity *)
   let rpc rpc =
-    Printf.printf "Marshalled RPC call: '%s'\n" (Rpc.string_of_call rpc);
+    Printf.printf "Marshalled RPC call: '%s'\n"
+      (Rpc.string_of_call rpc);
     let response = GenServer.server funcs rpc in
-    Printf.printf "Marshalled RPC type: '%s'\n" (Rpc.string_of_response response);
+    Printf.printf "Marshalled RPC type: '%s'\n"
+      (Rpc.string_of_response response);
     response
   in
 
+  (* And once again, we use a pass the server's rpc function as a
+     short-circuit to the client. *)
   let test () =
     let vm = { name_label="test"; name_description="description" } in
     VMClient.start rpc vm
   in
   test ()
+
+(* We can use the generators to generate other pieces of information: *)
+module Gen = Codegen.Gen ()
+module C = VMRPC(Gen)
+
+(* Here we use the HTML and Markdown generators to create descriptions of the
+   interfaces *)
+let _ =
+  let interfaces =
+    Codegen.Interfaces.empty "VM" "VM power-state interface"
+      "This interface is used to demonstrate the declaration of an interface by
+an example of manipulating the power-states of VMs. It shows how new datatypes
+can be declared and used in methods, and how errors are handled." |>
+    Codegen.Interfaces.add_interface (Gen.get_interface ()) in
+
+  let write fname str =
+    let oc = open_out fname in
+    Printf.fprintf oc "%s" str;
+    close_out oc
+  in
+
+  Markdowngen.to_string interfaces |> write "vm.md";
+  Htmlgen.to_string interfaces |> write "vm.html"

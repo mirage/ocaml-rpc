@@ -160,7 +160,7 @@ type nested = {
 
 let fakegen () =
   let fake ty =
-    let fake = Rpc_genfake.genall ty in
+    let fake = Rpc_genfake.genall 10 "string" ty in
     let ss = List.map (fun f -> Rpcmarshal.marshal ty f |> Jsonrpc.to_string) fake in
     let test2 = List.map (fun json -> Rpcmarshal.unmarshal ty (Jsonrpc.of_string json) ) ss in
     List.iter2 (function a -> function (Result.Ok b) -> assert(a=b); () | _ -> assert false) fake test2;

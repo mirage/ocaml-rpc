@@ -47,36 +47,41 @@ let rec gentest : type a. a typ -> a list  = fun t ->
         let content = List.nth contents (Random.int (List.length contents)) in
         v.vreview content) variants
 
-let rec genall : type a. a typ -> a list  = fun t ->
+let thin d result =
+  if d < 0
+  then [List.hd result]
+  else result
+
+let rec genall : type a. int -> string -> a typ -> a list  = fun depth strhint t ->
   let open Rpc in
   match t with
   | Basic Int -> [0]
   | Basic Int32 -> [0l]
   | Basic Int64 -> [0L]
-  | Basic Bool -> [true; false]
+  | Basic Bool -> thin depth [true; false]
   | Basic Float -> [0.0]
-  | Basic String -> ["string"]
+  | Basic String -> [strhint]
   | Basic Char -> ['a']
   | DateTime -> ["19700101T00:00:00Z"]
-  | Array typ -> [genall typ |> Array.of_list; [||]]
-  | List typ -> [genall typ; []]
+  | Array typ -> thin depth [genall (depth - 1) strhint typ |> Array.of_list; [||]]
+  | List typ -> thin depth [genall (depth - 1) strhint typ; []]
   | Dict (basic, typ) ->
-    let keys = genall (Basic basic) in
-    let vs = genall typ in
+    let keys = genall (depth - 1) strhint (Basic basic) in
+    let vs = genall (depth - 1) strhint typ in
     let x = List.map (fun k ->
         List.map (fun v -> [(k,v)]) vs
       ) keys in
-    List.flatten x
+    List.flatten x |> thin depth
   | Unit -> [()]
   | Option t ->
-    let vs = genall t in
-    None :: List.map (fun x -> Some x) vs
+    let vs = genall (depth - 1) strhint t in
+    thin depth ((List.map (fun x -> Some x) vs) @ [None])
   | Tuple (t1, t2) ->
-    let v1s = genall t1 in
-    let v2s = genall t2 in
-    List.map (fun v1 -> List.map (fun v2 -> (v1,v2)) v2s) v1s |> List.flatten
+    let v1s = genall (depth - 1) strhint t1 in
+    let v2s = genall (depth - 1) strhint t2 in
+    List.map (fun v1 -> List.map (fun v2 -> (v1,v2)) v2s) v1s |> List.flatten |> thin depth
   | Struct { constructor; sname; fields} ->
-    let fields_maxes = List.map (function BoxedField f -> let n = List.length (genall f.field) in (f.fname,n)) fields in
+    let fields_maxes = List.map (function BoxedField f -> let n = List.length (genall (depth - 1) strhint f.field) in (f.fname,n)) fields in
     let all_combinations = List.fold_left (fun acc (f,max) ->
         let rec inner n = if n=0 then [] else (f,n)::inner (n-1) in
         let ns = inner max in
@@ -85,11 +90,11 @@ let rec genall : type a. a typ -> a list  = fun t ->
     List.map (fun combination ->
       let g : type a. string -> a typ -> (a, Rresult.R.msg) Result.result  = fun fname ty ->
         let n = List.assoc fname combination in
-        let vs = genall ty in
+        let vs = genall (depth - 1) fname ty in
         Result.Ok (List.nth vs n)
       in
-      match constructor { g } with Result.Ok x -> x | Result.Error y -> failwith "Bad stuff") all_combinations
+      match constructor { g } with Result.Ok x -> x | Result.Error y -> failwith "Bad stuff") all_combinations |> thin depth
   | Variant { vconstructor; variants } ->
     List.map (function Rpc.Types.BoxedTag v ->
-        let contents = genall v.vcontents in
-        List.map (fun content -> v.vreview content) contents) variants |> List.flatten
+        let contents = genall (depth - 1) strhint v.vcontents in
+        List.map (fun content -> v.vreview content) contents) variants |> List.flatten |> thin depth

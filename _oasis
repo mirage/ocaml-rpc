@@ -16,7 +16,7 @@ Library rpclib_core
   CompiledObject: best
   FindlibParent: rpclib
   Findlibname: core
-  Modules: Rpc, Idl, Rpcmarshal, Pythongen, Codegen, Markdowngen, Rpc_genfake
+  Modules: Rpc, Idl, Rpcmarshal, Pythongen, Codegen, Rpc_genfake
   BuildDepends:	result, rresult
 
 Library xml
@@ -50,6 +50,14 @@ Library htmlgen
   Findlibname: html
   Modules: Htmlgen
   BuildDepends: rpclib.core, cow
+
+Library markdowngen
+  Path: lib
+  CompiledObject: best
+  FindlibParent: rpclib
+  Findlibname: markdown
+  Modules: Markdowngen
+  BuildDepends: rpclib.core, rpclib.xml, rpclib.json
 
 Library rpclib_lwt
   Path: lib
