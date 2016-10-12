@@ -75,6 +75,7 @@ module Types = struct
     fdescription : string;
     fversion : Version.t option;
     field : 'a typ;
+    fdefault : 'a option;
     fget : 's -> 'a; (* Lenses *)
     fset : 'a -> 's -> 's;
   }

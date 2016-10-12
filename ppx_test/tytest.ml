@@ -170,6 +170,14 @@ let fakegen () =
   fake typ_of_test_variant_name;
   fake typ_of_nested
 
+type test_defaults = {
+  test_with_default : int [@default 5];
+} [@@deriving rpcty]
+
+let test_defaults () =
+  assert (Result.Ok {test_with_default=5} = Rpcmarshal.unmarshal typ_of_test_defaults (Rpc.Dict []))
+
+
 let suite =
   "basic_tests" >:::
   [
@@ -222,6 +230,7 @@ let suite =
     "record_attrs" >:: test_record_attrs;
     "poly" >:: test_poly;
     "fakegen" >:: fakegen;
+    "defaults" >:: test_defaults;
   ]
 
 let _ =

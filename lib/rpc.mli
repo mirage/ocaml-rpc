@@ -64,6 +64,7 @@ module Types : sig
     fdescription : string;
     fversion : Version.t option;
     field : 'a typ;
+    fdefault : 'a option;
     fget : 's -> 'a;
     fset : 'a -> 's -> 's;
   }
