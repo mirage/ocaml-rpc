@@ -126,6 +126,7 @@ let vm_name_label : (string, vm) field = {
   fname="name_label";
   fdescription="The name of the VM.";
   fversion=None;
+  fdefault=None;
   field=Basic String;
   fget = (fun f -> f.name_label);
   fset = (fun v s -> {s with name_label = v})
@@ -134,6 +135,7 @@ let vm_name_description : (string, vm) field = {
   fname="name_description";
   fdescription="The description of the VM.";
   fversion=None;
+  fdefault=None;
   field=Basic String;
   fget = (fun f -> f.name_description);
   fset = (fun v s -> {s with name_description = v})
@@ -195,10 +197,11 @@ let errors : (string, exnt) Rpc.Types.tag = Rpc.Types.{
 let exnt_variant : exnt variant = Rpc.Types.{
     variants = [ BoxedTag errors ];
     vversion = None;
-  vconstructor = (fun s t ->
-      match s with
-      | "Errors" -> Rresult.R.map errors.treview (t.tget (Basic String))
-      | s -> Rresult.R.error_msg (Printf.sprintf "Unknown tag '%s'" s))
+    vdefault = Some (Errors "unknown error tag!");
+    vconstructor = (fun s t ->
+        match s with
+        | "Errors" -> Rresult.R.map errors.treview (t.tget (Basic String))
+        | s -> Rresult.R.error_msg (Printf.sprintf "Unknown tag '%s'" s))
   }
 
 (* And finally we name and describe the type in an `exnt variant def` type *)
@@ -215,9 +218,9 @@ let err = exnt
 module VMRPC (R : RPC) = struct
   open R
 
-(* We can declare some more information about the interface here for more
-   interesting uses of these declarations - for example, the documentation
-   generator or Cmdliner term generator *)
+  (* We can declare some more information about the interface here for more
+     interesting uses of these declarations - for example, the documentation
+     generator or Cmdliner term generator *)
   let interface = describe Idl.Interface.({
       name="VM";
       description="The VM interface is used to perform power-state operations

@@ -157,6 +157,7 @@ module Typ_of = struct
       | Ptype_open, _ ->
         failwith "Unhandled"
       | Ptype_variant constrs, _ ->
+        let default_case = attr_default type_decl.ptype_attributes in
         let cases =
           constrs |> List.map (fun { pcd_name = { txt = name }; pcd_args; pcd_attributes } ->
               let rpc_name = attr_name name pcd_attributes in
@@ -186,11 +187,15 @@ module Typ_of = struct
               let vconstructor_case = Exp.case (Pat.constant (Const_string (lower_rpc_name,None))) [%expr Rresult.R.bind (t.tget [%e contents]) ([%e Exp.function_ [Exp.case (ptuple pattern) [%expr Rresult.R.ok [%e (constr name args)]]]])] in
               (variant, vconstructor_case))
         in
-        let default = [Exp.case (Pat.any ()) [%expr Rresult.R.error_msg (Printf.sprintf "Unknown tag '%s'" s)]] in
+        let default = [Exp.case (Pat.any ())
+                         (match default_case with
+                         | None -> [%expr Rresult.R.error_msg (Printf.sprintf "Unknown tag '%s'" s)]
+                         | Some d -> [%expr Result.Ok [%e d]])] in
         let vconstructor = [%expr fun s' t -> let s = String.lowercase s' in [%e Exp.match_ (evar "s") ((List.map snd cases) @ default)]] in
         [ Vb.mk (pvar typ_of_lid) (wrap_runtime (polymorphize (
               [%expr Variant ({
                   variants=([%e list (List.map fst cases)]);
+                  vdefault=[%e match default_case with None -> [%expr None] | Some d -> [%expr Some [%e d]]];
                   vversion=[%e match attr_version type_decl.ptype_attributes with | Some v -> [%expr Some [%e v]] | None -> [%expr None];];
                   vconstructor=[%e vconstructor] } : [%t mytype ] variant) ]))) ]
     in

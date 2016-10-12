@@ -163,6 +163,7 @@ module DefaultError = struct
   let t : t Rpc.Types.variant = Rpc.Types.{
       variants = [ BoxedTag internalerror ];
       vversion = Some (1,0,0);
+      vdefault = Some (InternalError "Unknown error tag!");
       vconstructor = (fun s t ->
           match s with
           | "InternalError" -> Rresult.R.map (fun s -> internalerror.treview s) (t.tget (Basic String))

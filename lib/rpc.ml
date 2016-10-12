@@ -31,7 +31,6 @@ type t =
   | Dict of (string * t) list
   | Null
 
-
 module Version = struct
   type t = int * int * int
 
@@ -103,6 +102,7 @@ module Types = struct
   }
   and 'a variant = {
     variants : 'a boxed_tag list;
+    vdefault : 'a option;
     vversion : Version.t option;
     vconstructor : string -> tag_getter -> ('a, Rresult.R.msg) Result.result;
   }

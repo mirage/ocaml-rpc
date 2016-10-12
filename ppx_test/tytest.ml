@@ -177,6 +177,18 @@ type test_defaults = {
 let test_defaults () =
   assert (Result.Ok {test_with_default=5} = Rpcmarshal.unmarshal typ_of_test_defaults (Rpc.Dict []))
 
+type test_defaults_var =
+   | X1
+   | X2
+  [@@deriving rpcty] [@@default X1]
+
+let test_defaults_var () =
+  assert_equal (Result.Ok X1) (Rpcmarshal.unmarshal typ_of_test_defaults_var (Rpc.String "X3"))
+
+let test_defaults_bad () =
+  match Rpcmarshal.unmarshal typ_of_test_defaults_var (Rpc.Int 3L) with
+  | Ok _ -> assert_failure "Should have had an error"
+  | Error _ -> ()
 
 let suite =
   "basic_tests" >:::
@@ -231,6 +243,8 @@ let suite =
     "poly" >:: test_poly;
     "fakegen" >:: fakegen;
     "defaults" >:: test_defaults;
+    "defaults_var" >:: test_defaults_var;
+    "defaults_bad" >:: test_defaults_bad;
   ]
 
 let _ =
