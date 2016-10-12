@@ -74,7 +74,7 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result  = fun t v 
       match v with
       | Rpc.Dict keys' ->
         let keys = List.map (fun (s,v) -> (String.lowercase s, v)) keys' in
-        constructor { g = (
+        constructor { fget = (
             let x : type a. string -> a typ -> (a, Rresult.R.msg) Result.result  = fun s ty ->
               let s = String.lowercase s in
               match ty with
@@ -96,7 +96,7 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result  = fun t v 
      | Rpc.Enum [ Rpc.String name; contents ] -> ok (name, contents)
      | _ -> error_msg "Expecting String or Enum when unmarshalling a variant")
     >>= fun (name, contents) ->
-    let constr = { t = fun typ -> unmarshal typ contents } in
+    let constr = { tget = fun typ -> unmarshal typ contents } in
     vconstructor name constr
 
 
@@ -149,13 +149,13 @@ let rec marshal : type a. a typ -> a -> Rpc.t = fun t v ->
       List.fold_left (fun acc t ->
           match t with
           | BoxedTag t ->
-            match t.vpreview v with
+            match t.tpreview v with
             | Some x -> begin
-                match marshal t.vcontents x with
+                match marshal t.tcontents x with
                 | Rpc.Null ->
-                  Rpc.String t.vname
+                  Rpc.String t.tname
                 | y ->
-                  Rpc.Enum [ Rpc.String t.vname; y ]
+                  Rpc.Enum [ Rpc.String t.tname; y ]
               end
             | None -> acc) Rpc.Null variants
     end
@@ -187,5 +187,5 @@ let rec ocaml_of_t : type a. a typ -> string = function
   | Variant { variants } ->
     let tags = List.map (function
         | BoxedTag t ->
-          Printf.sprintf "| %s (%s) (** %s *)" t.vname (ocaml_of_t t.vcontents) t.vdescription) variants in
+          Printf.sprintf "| %s (%s) (** %s *)" t.tname (ocaml_of_t t.tcontents) t.tdescription) variants in
     String.concat " " tags

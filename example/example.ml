@@ -150,13 +150,14 @@ let vm_name_description : (string, vm) field = {
 *)
 let constructor getter =
   let open Rresult.R in
-  getter.g "name_label" (Basic String) >>= fun name_label ->
-  getter.g "name_description" (Basic String) >>= fun name_description ->
+  getter.fget "name_label" (Basic String) >>= fun name_label ->
+  getter.fget "name_description" (Basic String) >>= fun name_description ->
   return { name_label; name_description }
 
 (* These values are combined to define a value of type `vm structure` here *)
 let vm_structure : vm structure = {
   sname="vm";
+  version=None;
   fields = [ BoxedField vm_name_label; BoxedField vm_name_description ];
   constructor;
 }
@@ -182,20 +183,21 @@ type exnt = | Errors of string
    similar to those defined for the fields, and `preview` and `review` are
    the prism functions (similar to the lens functions for the fields above). *)
 let errors : (string, exnt) Rpc.Types.tag = Rpc.Types.{
-    vname = "errors";
-    vdescription = "Errors raised during an RPC invocation";
-    vversion = None;
-    vcontents = Basic String;
-    vpreview = (function (Errors s) -> Some s);
-    vreview = (fun s -> Errors s)
+    tname = "errors";
+    tdescription = "Errors raised during an RPC invocation";
+    tversion = None;
+    tcontents = Basic String;
+    tpreview = (function (Errors s) -> Some s);
+    treview = (fun s -> Errors s)
   }
 
 (* And then we can create the 'variant' type *)
 let exnt_variant : exnt variant = Rpc.Types.{
-  variants = [ BoxedTag errors ];
+    variants = [ BoxedTag errors ];
+    vversion = None;
   vconstructor = (fun s t ->
       match s with
-      | "Errors" -> Rresult.R.map errors.vreview (t.t (Basic String))
+      | "Errors" -> Rresult.R.map errors.treview (t.tget (Basic String))
       | s -> Rresult.R.error_msg (Printf.sprintf "Unknown tag '%s'" s))
   }
 

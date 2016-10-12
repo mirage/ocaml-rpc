@@ -63,15 +63,15 @@ let rec typecheck : type a.a typ -> string -> t list = fun ty v ->
   | Variant { variants } ->
     let check first boxed_tag =
       let BoxedTag t = boxed_tag in
-      match t.vcontents with
+      match t.tcontents with
       | Unit -> failwith "Can't happen: this has been filtered out"
       | ty ->
-        [ Line (sprintf "%sif %s[0] == '%s':" (if first then "" else "el") v t.vname);
+        [ Line (sprintf "%sif %s[0] == '%s':" (if first then "" else "el") v t.tname);
           Block (typecheck ty (sprintf "%s[1]" v))
         ] in
-    let variants_to_check = List.filter (fun (BoxedTag t) -> match t.vcontents with | Unit -> false | _ -> true) variants in
+    let variants_to_check = List.filter (fun (BoxedTag t) -> match t.tcontents with | Unit -> false | _ -> true) variants in
     let check_contents = List.fold_left (fun acc x -> List.concat [acc; (check false x)]) (check true (List.hd variants_to_check)) (List.tl variants_to_check) in
-    let all_tags = List.map (fun (BoxedTag t) -> t.vname) variants in
+    let all_tags = List.map (fun (BoxedTag t) -> t.tname) variants in
     let pylist = sprintf "[%s]" (String.concat "," (List.map (fun s -> sprintf "\"%s\"" s) all_tags)) in
     [ Line (sprintf "if %s[0] not in %s:" v pylist);
       Block [ raise_type_error ] ] @ check_contents
@@ -154,23 +154,23 @@ let rec value_of : type a. a typ -> string =
 let exn_var myarg =
   let open Printf in
   let inner : type a b. (a, b) tag -> t list = function tag ->
-    let has_arg = match tag.vcontents with | Unit -> false | _ -> true in
+    let has_arg = match tag.tcontents with | Unit -> false | _ -> true in
     if not has_arg
     then
       [
-        Line (sprintf "class %s(Rpc_light_failure):" tag.vname);
+        Line (sprintf "class %s(Rpc_light_failure):" tag.tname);
         Block ([
             Line "def __init__(self)";
             Block (
-              [ Line (sprintf "Rpc_light_failure.__init__(self, \"%s\", [])" tag.vname) ])])]
+              [ Line (sprintf "Rpc_light_failure.__init__(self, \"%s\", [])" tag.tname) ])])]
     else
       [
-        Line (sprintf "class %s(Rpc_light_failure):" tag.vname);
+        Line (sprintf "class %s(Rpc_light_failure):" tag.tname);
         Block ([
             Line (sprintf "def __init__(self, arg_0):");
             Block (
-              [ Line (sprintf "Rpc_light_failure.__init__(self, \"%s\", [ arg_0 ])" tag.vname )
-              ] @ (typecheck tag.vcontents "arg_0")
+              [ Line (sprintf "Rpc_light_failure.__init__(self, \"%s\", [ arg_0 ])" tag.tname )
+              ] @ (typecheck tag.tcontents "arg_0")
               @ [ Line "self.arg_0 = arg_0" ])])
 
       ]

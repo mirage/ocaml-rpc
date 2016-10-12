@@ -97,12 +97,12 @@ let of_struct_fields : 'a boxed_field list -> Cow.Html.t = fun all ->
 (* TODO: Unify with the above! *)
 let of_variant_tags : 'a boxed_tag list -> Cow.Html.t = fun all ->
   let of_row (BoxedTag t) =
-    let ty = html_of_t t.vcontents in
+    let ty = html_of_t t.tcontents in
     tag "tr"
       (list
-         [ tag "td" (tag "pre" (string t.vname));
+         [ tag "td" (tag "pre" (string t.tname));
            tag "td" (tag "pre" (string (String.concat "" ty)));
-           tag "td" (string t.vdescription) ])
+           tag "td" (string t.tdescription) ])
   in
   tag "table" ~attrs:["width","100%"]
     (list [ tag "thead"

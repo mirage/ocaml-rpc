@@ -35,17 +35,17 @@ let rec gentest : type a. a typ -> a list  = fun t ->
       match n with
       | 0 -> acc
       | n ->
-        let g : type a. string -> a typ -> (a, Rresult.R.msg) Result.result  = fun _ ty ->
+        let fget : type a. string -> a typ -> (a, Rresult.R.msg) Result.result  = fun _ ty ->
           let vs = gentest ty in
           Result.Ok (List.nth vs (Random.int (List.length vs)))
         in
-        match constructor { g } with Result.Ok x -> gen_n (x::acc) (n-1) | Result.Error y -> failwith "Bad stuff"
+        match constructor { fget } with Result.Ok x -> gen_n (x::acc) (n-1) | Result.Error y -> failwith "Bad stuff"
     in gen_n [] 10
   | Variant { vconstructor; variants } ->
     List.map (function Rpc.Types.BoxedTag v ->
-        let contents = gentest v.vcontents in
+        let contents = gentest v.tcontents in
         let content = List.nth contents (Random.int (List.length contents)) in
-        v.vreview content) variants
+        v.treview content) variants
 
 let thin d result =
   if d < 0
@@ -88,13 +88,13 @@ let rec genall : type a. int -> string -> a typ -> a list  = fun depth strhint t
         List.map (fun (f,n) -> List.map (fun dict -> (f,(n-1))::dict) acc) ns |> List.flatten
       ) [[]] fields_maxes in
     List.map (fun combination ->
-      let g : type a. string -> a typ -> (a, Rresult.R.msg) Result.result  = fun fname ty ->
+      let fget : type a. string -> a typ -> (a, Rresult.R.msg) Result.result  = fun fname ty ->
         let n = List.assoc fname combination in
         let vs = genall (depth - 1) fname ty in
         Result.Ok (List.nth vs n)
       in
-      match constructor { g } with Result.Ok x -> x | Result.Error y -> failwith "Bad stuff") all_combinations |> thin depth
+      match constructor { fget } with Result.Ok x -> x | Result.Error y -> failwith "Bad stuff") all_combinations |> thin depth
   | Variant { vconstructor; variants } ->
     List.map (function Rpc.Types.BoxedTag v ->
-        let contents = genall (depth - 1) strhint v.vcontents in
-        List.map (fun content -> v.vreview content) contents) variants |> List.flatten |> thin depth
+        let contents = genall (depth - 1) strhint v.tcontents in
+        List.map (fun content -> v.treview content) contents) variants |> List.flatten |> thin depth

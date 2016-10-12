@@ -18,10 +18,10 @@ module API(R:Idl.RPC) = struct
   let arg1   = Param.mk ~name:"arg1" Rpc.Types.string
   let argx   = Param.mk ~name:"x" Rpc.Types.int
   let argopt = Param.mk ~name:"opt" Rpc.Types.{name="string opt"; description=""; ty=Option (Basic String)}
-  let argv   = Param.mk ~name:"v" variant_t_def
+  let argv   = Param.mk ~name:"v" variant_t
   let argi   = Param.mk ~name:"i" Rpc.Types.int64
   let argu   = Param.mk ~name:"return_u" Rpc.Types.unit
-  let return = Param.mk ~name:"return" return_record_def
+  let return = Param.mk ~name:"return" return_record
 
   (* We'll use the default error type *)
   let e      = Idl.DefaultError.def

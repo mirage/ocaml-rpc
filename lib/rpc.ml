@@ -80,27 +80,29 @@ module Types = struct
   }
   and 'a boxed_field = BoxedField : ('a, 's) field -> 's boxed_field
   and field_getter = {
-    g : 'a. string -> 'a typ -> ('a, Rresult.R.msg) Result.result;
+    fget : 'a. string -> 'a typ -> ('a, Rresult.R.msg) Result.result;
   }
   and 'a structure = {
     sname : string;
     fields: 'a boxed_field list;
+    version : Version.t option;
     constructor : field_getter -> ('a, Rresult.R.msg) Result.result;
   }
   and ('a, 's) tag = {
-    vname : string;
-    vdescription : string;
-    vversion : Version.t option;
-    vcontents : 'a typ;
-    vpreview : 's -> 'a option;
-    vreview : 'a -> 's;
+    tname : string;
+    tdescription : string;
+    tversion : Version.t option;
+    tcontents : 'a typ;
+    tpreview : 's -> 'a option;
+    treview : 'a -> 's;
   }
   and 'a boxed_tag = BoxedTag : ('a, 's) tag -> 's boxed_tag
   and tag_getter = {
-    t : 'a. 'a typ -> ('a, Rresult.R.msg) Result.result;
+    tget : 'a. 'a typ -> ('a, Rresult.R.msg) Result.result;
   }
   and 'a variant = {
     variants : 'a boxed_tag list;
+    vversion : Version.t option;
     vconstructor : string -> tag_getter -> ('a, Rresult.R.msg) Result.result;
   }
 

@@ -107,8 +107,8 @@ let of_struct_fields : 'a boxed_field list -> string list = fun all ->
 
 let of_variant_tags : 'a boxed_tag list -> string list = fun all ->
   let of_row (BoxedTag t) =
-    let ty = string_of_t t.vcontents in
-    [t.vname; String.concat "" ty; t.vdescription]
+    let ty = string_of_t t.tcontents in
+    [t.tname; String.concat "" ty; t.tdescription]
   in
   table ["Name"; "Type"; "Description"] (List.map of_row all)
 

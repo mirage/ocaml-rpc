@@ -151,20 +151,21 @@ module DefaultError = struct
   type t = InternalError of string
 
   let internalerror : (string, t) Rpc.Types.tag = Rpc.Types.{
-      vname="InternalError";
-      vdescription="Internal Error";
-      vversion=Some (1,0,0);
-      vcontents=Basic String;
-      vpreview = (function (InternalError s) -> Some s);
-      vreview = (fun s -> InternalError s)
+      tname="InternalError";
+      tdescription="Internal Error";
+      tversion=Some (1,0,0);
+      tcontents=Basic String;
+      tpreview = (function (InternalError s) -> Some s);
+      treview = (fun s -> InternalError s)
     }
 
   (* And then we can create the 'variant' type *)
   let t : t Rpc.Types.variant = Rpc.Types.{
       variants = [ BoxedTag internalerror ];
+      vversion = Some (1,0,0);
       vconstructor = (fun s t ->
           match s with
-          | "InternalError" -> Rresult.R.map (fun s -> internalerror.vreview s) (t.t (Basic String))
+          | "InternalError" -> Rresult.R.map (fun s -> internalerror.treview s) (t.tget (Basic String))
           | s -> Rresult.R.error_msg (Printf.sprintf "Unknown tag '%s'" s))}
 
   let def = Rpc.Types.{ name="default_error"; description="Errors declared as part of the interface"; ty=Variant t }

@@ -131,9 +131,9 @@ module Typ_of = struct
         let construct_record = List.fold_left (fun expr (fname,rpc_name,field_name,pld_type,_,def) ->
             match def with
             | Some d ->
-              [%expr getter.Rpc.Types.g (*~default:[%e d]*) [%e str rpc_name] [%e expr_of_typ pld_type] >>= fun [%p pvar field_name] -> [%e expr]]
+              [%expr getter.Rpc.Types.fget (*~default:[%e d]*) [%e str rpc_name] [%e expr_of_typ pld_type] >>= fun [%p pvar field_name] -> [%e expr]]
             | None ->
-              [%expr getter.Rpc.Types.g [%e str rpc_name] [%e expr_of_typ pld_type] >>= fun [%p pvar field_name] -> [%e expr]]
+              [%expr getter.Rpc.Types.fget [%e str rpc_name] [%e expr_of_typ pld_type] >>= fun [%p pvar field_name] -> [%e expr]]
           )
             [%expr return [%e Exp.record (List.map (fun (fname, _, field_name, _, _, _) ->
                 mknoloc (Lident fname), evar field_name) fields) None]]
@@ -145,6 +145,7 @@ module Typ_of = struct
                   [%expr Struct ({
                       fields=[%e boxed_fields ];
                       sname=[%e str name];
+                      version=None;
                       constructor = fun getter -> let open Rresult.R in [%e construct_record]
                     } : [%t mytype ] Rpc.Types.structure)])) ]
       | Ptype_abstract, None ->
@@ -172,18 +173,18 @@ module Typ_of = struct
               in
               let vreview = Exp.function_ [Exp.case (ptuple pattern) (constr name args)] in
               let variant = [%expr BoxedTag [%e record [
-                  "vname", str rpc_name;
-                  "vcontents", contents;
-                  "vversion", (match attr_version pcd_attributes with | Some v -> [%expr Some [%e v]] | None -> [%expr None]);
-                  "vdescription", str (attr_doc "" pcd_attributes);
-                  "vpreview", vpreview;
-                  "vreview", vreview]]] in
-              let vconstructor_case = Exp.case (Pat.constant (Const_string (lower_rpc_name,None))) [%expr Rresult.R.bind (t.t [%e contents]) ([%e Exp.function_ [Exp.case (ptuple pattern) [%expr Rresult.R.ok [%e (constr name args)]]]])] in
+                  "tname", str rpc_name;
+                  "tcontents", contents;
+                  "tversion", (match attr_version pcd_attributes with | Some v -> [%expr Some [%e v]] | None -> [%expr None]);
+                  "tdescription", str (attr_doc "" pcd_attributes);
+                  "tpreview", vpreview;
+                  "treview", vreview]]] in
+              let vconstructor_case = Exp.case (Pat.constant (Const_string (lower_rpc_name,None))) [%expr Rresult.R.bind (t.tget [%e contents]) ([%e Exp.function_ [Exp.case (ptuple pattern) [%expr Rresult.R.ok [%e (constr name args)]]]])] in
               (variant, vconstructor_case))
         in
         let default = [Exp.case (Pat.any ()) [%expr Rresult.R.error_msg (Printf.sprintf "Unknown tag '%s'" s)]] in
         let vconstructor = [%expr fun s' t -> let s = String.lowercase s' in [%e Exp.match_ (evar "s") ((List.map snd cases) @ default)]] in
-        [ Vb.mk (pvar typ_of_lid) (wrap_runtime (polymorphize ([%expr Variant ({ variants=([%e list (List.map fst cases)]); vconstructor=[%e vconstructor] } : [%t mytype ] variant) ]))) ]
+        [ Vb.mk (pvar typ_of_lid) (wrap_runtime (polymorphize ([%expr Variant ({ variants=([%e list (List.map fst cases)]); vversion=None; vconstructor=[%e vconstructor] } : [%t mytype ] variant) ]))) ]
     in
     let doc = attr_doc "" type_decl.ptype_attributes in
     let name = type_decl.ptype_name.txt in
