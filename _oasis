@@ -43,13 +43,13 @@ Library cmdlinergen
   Modules: Cmdlinergen
   BuildDepends: rpclib.core, rpclib.json, cmdliner
 
-Library htmlgen
-  Path: lib
-  CompiledObject: best
-  FindlibParent: rpclib
-  Findlibname: html
-  Modules: Htmlgen
-  BuildDepends: rpclib.core, cow
+#Library htmlgen
+#  Path: lib
+#  CompiledObject: best
+#  FindlibParent: rpclib
+#  Findlibname: html
+#  Modules: Htmlgen
+#  BuildDepends: rpclib.core, cow
 
 Library markdowngen
   Path: lib
