@@ -1,5 +1,3 @@
-open Rpc.ExnProducing
-    
 module P : sig
   type 'a t
   val rpc_of_t: ('a -> Rpc.t) -> 'a t -> Rpc.t
@@ -15,7 +13,7 @@ end
 module Q = struct
   include P
   let rpc_of_t _ x = Rpc.rpc_of_string (to_string x)
-  let t_of_rpc _ x = of_string (Rpc.ExnProducing.string_of_rpc x)
+  let t_of_rpc _ x = of_string (Rpc.string_of_rpc x)
 end
 
 type x = [`foo] Q.t with rpc

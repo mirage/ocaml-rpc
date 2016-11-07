@@ -3,27 +3,41 @@ open OUnit
 
 let string_of_err = function `Msg x -> x
 
-let check_marshal_unmarshal : 'a * Rpc.t * ('a -> Rpc.t) * (Rpc.t -> ('a,_) Result.result) -> unit = fun (x, r, marshal, unmarshal) ->
+let check_marshal_unmarshal : 'a * Rpc.t * ('a -> Rpc.t) * (Rpc.t -> 'a) -> unit = fun (x, r, marshal, unmarshal) ->
   let r' = marshal x in
-  let x' = unmarshal r in
-  (match x' with
-  | Result.Error e -> Printf.printf "Found Error when expecting OK: %s\n%!" (string_of_err e)
-  | Result.Ok y -> Printf.printf "OK: (%s)\n%!" (marshal y |> Rpc.to_string));
-  assert_equal (Result.Ok x) x';
+  let x' =
+    try
+      unmarshal r
+    with e ->
+      assert_failure (Printf.sprintf "Found Error when expecting OK: %s\n%!" (Printexc.to_string e))
+  in
+  Printf.printf "OK: (%s)\n%!" (marshal x' |> Rpc.to_string);
+  assert_equal x x';
   if r <> r' then begin
     Printf.printf "marshalled stuff is different: r=%s r'=%s" (Rpc.to_string r) (Rpc.to_string r')
   end;
   assert_equal r r'
 
-let check_unmarshal_error : (Rpc.t -> ('a, [> `Msg of string] as 'b) Result.result) -> Rpc.t -> unit = fun unmarshal t ->
-  match unmarshal t with
-  | Result.Ok _ -> assert_equal false true
-  | Result.Error e -> Printf.printf "%s\n" (string_of_err e)
 
-let check_unmarshal_ok : 'a -> (Rpc.t -> ('a, [> `Msg of string] as 'b) Result.result) -> Rpc.t -> unit = fun x unmarshal r ->
-  match unmarshal r with
-  | Result.Ok x' -> assert_equal x x'
-  | Result.Error _ -> assert_equal false true
+let check_unmarshal_error : (Rpc.t -> 'a) -> Rpc.t -> unit = fun unmarshal t ->
+  let u =
+    try
+      Some (unmarshal t)
+    with e ->
+      None
+  in
+  match u with
+  | Some _ -> assert_failure "Expecting an error when unmarshalling"
+  | None -> ()
+
+let check_unmarshal_ok : 'a -> (Rpc.t -> 'a) -> Rpc.t -> unit = fun x unmarshal r ->
+  let x' =
+    try
+      unmarshal r
+    with e ->
+      assert_failure (Printf.sprintf "Expecting OK, got exception: %s" (Printexc.to_string e))
+  in
+  assert_equal x x'
 
 type test_int = int [@@deriving rpc]
 let test_int () =

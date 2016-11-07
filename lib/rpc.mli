@@ -109,40 +109,18 @@ end
 
 (** {2 Basic constructors} *)
 
-val int64_of_rpc : t -> (int64, Rresult.R.msg) Result.result
 val rpc_of_int64 : int64 -> t
-
-val int32_of_rpc : t -> (int32, Rresult.R.msg) Result.result
 val rpc_of_int32 : int32 -> t
-
-val int_of_rpc : t -> (int, Rresult.R.msg) Result.result
 val rpc_of_int : int -> t
-
-val bool_of_rpc : t -> (bool, Rresult.R.msg) Result.result
 val rpc_of_bool : bool -> t
-
-val float_of_rpc : t -> (float, Rresult.R.msg) Result.result
 val rpc_of_float : float -> t
-
-val string_of_rpc : t -> (string, Rresult.R.msg) Result.result
 val rpc_of_string : string -> t
-
-val dateTime_of_rpc : t -> (string, Rresult.R.msg) Result.result
 val rpc_of_dateTime : string -> t
-
-val t_of_rpc : t -> (t, Rresult.R.msg) Result.result (* For consistency!? *)
 val rpc_of_t : t -> t
-
-val unit_of_rpc : t -> (unit, Rresult.R.msg) Result.result
 val rpc_of_unit : unit -> t
-
-val char_of_rpc : t -> (char, Rresult.R.msg) Result.result
 val rpc_of_char : char -> t
 
-(** {2 Backwards compatibility module} *)
-module ExnProducing : sig
-type rpc = t
-type t = rpc
+
 val int64_of_rpc : t -> int64
 val int32_of_rpc : t -> int32
 val int_of_rpc : t -> int
@@ -152,8 +130,22 @@ val string_of_rpc : t -> string
 val dateTime_of_rpc : t -> string
 val t_of_rpc : t -> t
 val rpc_of_t : t -> t
+val char_of_rpc : t -> char
 val unit_of_rpc : t -> unit
+
+module ResultUnmarshallers : sig
+  val int64_of_rpc : t -> (int64, Rresult.R.msg) Result.result
+  val int32_of_rpc : t -> (int32, Rresult.R.msg) Result.result
+  val int_of_rpc : t -> (int, Rresult.R.msg) Result.result
+  val bool_of_rpc : t -> (bool, Rresult.R.msg) Result.result
+  val float_of_rpc : t -> (float, Rresult.R.msg) Result.result
+  val string_of_rpc : t -> (string, Rresult.R.msg) Result.result
+  val dateTime_of_rpc : t -> (string, Rresult.R.msg) Result.result
+  val t_of_rpc : t -> (t, Rresult.R.msg) Result.result
+  val unit_of_rpc : t -> (unit, Rresult.R.msg) Result.result
 end
+
+
 
 (** {2 Calls} *)
 
@@ -185,7 +177,7 @@ val get_debug : unit -> bool
 
 (** Helper *)
 val lowerfn : t -> t
-val map_bind : ('a -> ('b, 'c) Result.result) -> 'b list -> 'a list -> ('b list, 'c) Result.result
+
 (** [struct_extend rpc1 rpc2] first checks that [rpc1] and [rpc2] are both
  *  dictionaries. If this is the case then [struct_extend] will create a new
  *  [Rpc.t] which contains all key-value pairs from [rpc1], as well as all

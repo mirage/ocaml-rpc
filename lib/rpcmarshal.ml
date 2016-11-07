@@ -7,6 +7,7 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result  = fun t v 
   let open Rpc in
   let open Result in
   let open Rresult.R in
+  let open Rpc.ResultUnmarshallers in
   let list_helper typ l =
     List.fold_left (fun acc v ->
         match acc, unmarshal typ v with

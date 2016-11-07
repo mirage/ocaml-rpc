@@ -149,98 +149,93 @@ let rpc_of_dateTime s = DateTime s
 let rpc_of_unit () = Null
 let rpc_of_char x = Int (Int64.of_int (Char.code x))
 
-module ExnProducing = struct
-  type rpc = t
-  type t = rpc
-
-  let t_of_rpc x = x
-  let rpc_of_t x = x
-  let int64_of_rpc = function
-    | Int i    -> i
-    | String s -> Int64.of_string s
-    | x -> failwith (Printf.sprintf "Expected int64, got '%s'" (to_string x))
-  let int32_of_rpc = function
-    | Int i    -> Int64.to_int32 i
-    | String s -> Int32.of_string s
-    | x -> failwith (Printf.sprintf "Expected int32, got '%s'" (to_string x))
-  let int_of_rpc = function
-    | Int i    -> Int64.to_int i
-    | String s -> int_of_string s
-    | x -> failwith (Printf.sprintf "Expected int, got '%s'" (to_string x))
-  let bool_of_rpc = function
-    | Bool b -> b
-    | x -> failwith (Printf.sprintf "Expected bool, got '%s'" (to_string x))
-  let float_of_rpc = function
-    | Float f  -> f
-    | String s -> float_of_string s
-    | x -> failwith (Printf.sprintf "Expected float, got '%s'" (to_string x))
-  let string_of_rpc = function
-    | String s -> s
-    | x -> failwith (Printf.sprintf "Expected string, got '%s'" (to_string x))
-  let dateTime_of_rpc = function
-    | DateTime s -> s
-    | x -> failwith (Printf.sprintf "Expected DateTime, got '%s'" (to_string x))
-  let unit_of_rpc = function
-    | Null -> ()
-    | x -> failwith (Printf.sprintf "Expected unit, got '%s'" (to_string x))
-end
-
-open Rresult
-
 let int64_of_rpc = function
-  | Int i    -> R.ok i
-  | String s -> begin
-      try R.ok (Int64.of_string s)
-      with _ -> R.error_msg (Printf.sprintf "Expected int64, got string '%s'" s)
-    end
-  | x -> R.error_msg (Printf.sprintf "Expected int64, got '%s'" (to_string x))
+  | Int i    -> i
+  | String s -> Int64.of_string s
+  | x -> failwith (Printf.sprintf "Expected int64, got '%s'" (to_string x))
 let int32_of_rpc = function
-  | Int i    -> R.ok (Int64.to_int32 i)
-  | String s -> begin
-      try R.ok (Int32.of_string s)
-      with _ -> R.error_msg (Printf.sprintf "Expected int32, got string '%s'" s)
-    end
-  | x -> R.error_msg (Printf.sprintf "Expected int32, got '%s'" (to_string x))
+  | Int i    -> Int64.to_int32 i
+  | String s -> Int32.of_string s
+  | x -> failwith (Printf.sprintf "Expected int32, got '%s'" (to_string x))
 let int_of_rpc = function
-  | Int i    -> R.ok (Int64.to_int i)
-  | String s -> begin
-      try R.ok (int_of_string s)
-      with _ -> R.error_msg (Printf.sprintf "Expected int, got string '%s'" s)
-    end
-  | x -> R.error_msg (Printf.sprintf "Expected int, got '%s'" (to_string x))
+  | Int i    -> Int64.to_int i
+  | String s -> int_of_string s
+  | x -> failwith (Printf.sprintf "Expected int, got '%s'" (to_string x))
 let bool_of_rpc = function
-  | Bool b -> R.ok b
-  | x -> R.error_msg (Printf.sprintf "Expected bool, got '%s'" (to_string x))
+  | Bool b -> b
+  | x -> failwith (Printf.sprintf "Expected bool, got '%s'" (to_string x))
 let float_of_rpc = function
-  | Float f  -> R.ok f
-  | String s -> begin
-      try R.ok (float_of_string s)
-      with _ -> R.error_msg (Printf.sprintf "Expected float, got string '%s'" s)
-    end
-  | x -> R.error_msg (Printf.sprintf "Expected float, got '%s'" (to_string x))
+  | Float f  -> f
+  | String s -> float_of_string s
+  | x -> failwith (Printf.sprintf "Expected float, got '%s'" (to_string x))
 let string_of_rpc = function
-  | String s -> R.ok s
-  | x -> R.error_msg (Printf.sprintf "Expected string, got '%s'" (to_string x))
+  | String s -> s
+  | x -> failwith (Printf.sprintf "Expected string, got '%s'" (to_string x))
 let dateTime_of_rpc = function
-  | DateTime s -> R.ok s
-  | x -> R.error_msg (Printf.sprintf "Expected DateTime, got '%s'" (to_string x))
+  | DateTime s -> s
+  | x -> failwith (Printf.sprintf "Expected DateTime, got '%s'" (to_string x))
 let unit_of_rpc = function
-  | Null -> R.ok ()
-  | x -> R.error_msg (Printf.sprintf "Expected unit, got '%s'" (to_string x))
+  | Null -> ()
+  | x -> failwith (Printf.sprintf "Expected unit, got '%s'" (to_string x))
 let char_of_rpc x =
-  Rresult.R.bind (int_of_rpc x) (fun x ->
-      if x < 0 || x > 255
-      then R.error_msg (Printf.sprintf "Char out of range (%d)" x)
-      else R.ok (Char.chr x))
-let t_of_rpc t = R.ok t
-
-
+  let x = int_of_rpc x in
+  if x < 0 || x > 255
+  then failwith (Printf.sprintf "Char out of range (%d)" x)
+  else Char.chr x
+let t_of_rpc t = t
 let lowerfn = function | String s -> String (lower s) | Enum (String s::ss) -> Enum ((String (lower s))::ss) | x -> x
 
-let rec map_bind f acc xs =
-  match xs with
-  | x :: xs -> f x >>= fun x -> map_bind f (x :: acc) xs
-  | [] -> Result.Ok (List.rev acc)
+module ResultUnmarshallers = struct
+  open Rresult
+
+  let int64_of_rpc = function
+    | Int i    -> R.ok i
+    | String s -> begin
+        try R.ok (Int64.of_string s)
+        with _ -> R.error_msg (Printf.sprintf "Expected int64, got string '%s'" s)
+      end
+    | x -> R.error_msg (Printf.sprintf "Expected int64, got '%s'" (to_string x))
+  let int32_of_rpc = function
+    | Int i    -> R.ok (Int64.to_int32 i)
+    | String s -> begin
+        try R.ok (Int32.of_string s)
+        with _ -> R.error_msg (Printf.sprintf "Expected int32, got string '%s'" s)
+      end
+    | x -> R.error_msg (Printf.sprintf "Expected int32, got '%s'" (to_string x))
+  let int_of_rpc = function
+    | Int i    -> R.ok (Int64.to_int i)
+    | String s -> begin
+        try R.ok (int_of_string s)
+        with _ -> R.error_msg (Printf.sprintf "Expected int, got string '%s'" s)
+      end
+    | x -> R.error_msg (Printf.sprintf "Expected int, got '%s'" (to_string x))
+  let bool_of_rpc = function
+    | Bool b -> R.ok b
+    | x -> R.error_msg (Printf.sprintf "Expected bool, got '%s'" (to_string x))
+  let float_of_rpc = function
+    | Float f  -> R.ok f
+    | String s -> begin
+        try R.ok (float_of_string s)
+        with _ -> R.error_msg (Printf.sprintf "Expected float, got string '%s'" s)
+      end
+    | x -> R.error_msg (Printf.sprintf "Expected float, got '%s'" (to_string x))
+  let string_of_rpc = function
+    | String s -> R.ok s
+    | x -> R.error_msg (Printf.sprintf "Expected string, got '%s'" (to_string x))
+  let dateTime_of_rpc = function
+    | DateTime s -> R.ok s
+    | x -> R.error_msg (Printf.sprintf "Expected DateTime, got '%s'" (to_string x))
+  let unit_of_rpc = function
+    | Null -> R.ok ()
+    | x -> R.error_msg (Printf.sprintf "Expected unit, got '%s'" (to_string x))
+  let char_of_rpc x =
+    Rresult.R.bind (int_of_rpc x) (fun x ->
+        if x < 0 || x > 255
+        then R.error_msg (Printf.sprintf "Char out of range (%d)" x)
+        else R.ok (Char.chr x))
+  let t_of_rpc t = R.ok t
+
+end
 
 let struct_extend rpc default_rpc =
   match rpc, default_rpc with
