@@ -5,13 +5,13 @@ module Gen () = struct
 
   let describe x = x
 
-  type 'a comp = 'a
+  type ('a,'b) comp = ('a,'b) Result.result
   type 'a rpcfn = Rpc.call -> Rpc.response
   type 'a res = unit
 
   type _ fn =
     | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
-    | Returning : ('a Param.t * 'b Rpc.Types.def) -> ('a, 'b) Result.result comp fn
+    | Returning : ('a Param.t * 'b Idl.Error.t) -> ('a,'b) comp fn
 
   let returning a b = Returning (a,b)
   let (@->) = fun t f -> Function (t, f)

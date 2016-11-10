@@ -1,7 +1,7 @@
 type _ outerfn =
     Function : 'a Idl.Param.t * 'b outerfn -> ('a -> 'b) outerfn
   | Returning :
-      ('a Idl.Param.t * 'b Rpc.Types.def) -> ('a, 'b) Result.result outerfn
+      ('a Idl.Param.t * 'b Idl.Error.t) -> ('a, 'b) Result.result outerfn
 module Method :
   sig
     type 'a t = { name : string; description : string; ty : 'a outerfn; }
@@ -40,14 +40,14 @@ exception Interface_not_described
 module Gen :
   functor () ->
     sig
-      type 'a comp = 'a
+      type ('a,'b) comp = ('a,'b) Result.result
       type 'a fn = 'a outerfn
       type 'a res = unit
       type description = Interface.t
       val interface : Interface.t option ref
       val describe : Interface.description -> Interface.t
       val returning :
-        'a Idl.Param.t -> 'b Rpc.Types.def -> ('a, 'b) Result.result outerfn
+        'a Idl.Param.t -> 'b Idl.Error.t -> ('a, 'b) Result.result outerfn
       val ( @-> ) : 'a Idl.Param.t -> 'b outerfn -> ('a -> 'b) outerfn
       val declare : string -> string -> 'a fn -> 'a res
       val get_interface : unit -> Interface.t

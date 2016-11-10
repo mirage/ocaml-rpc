@@ -24,7 +24,7 @@ module API(R:Idl.RPC) = struct
   let return = Param.mk ~name:"return" return_record
 
   (* We'll use the default error type *)
-  let e      = Idl.DefaultError.def
+  let e      = Idl.DefaultError.err
 
   (* Construct 3 RPC definitions *)
   let rpc1 = declare "rpc1" "Test RPC 1" (arg1 @-> argx @-> returning return e)

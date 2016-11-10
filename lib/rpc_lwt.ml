@@ -19,13 +19,13 @@ module GenClient = struct
 
   exception MarshalError of string
 
-  type 'a comp = 'a M.lwt
+  type ('a,'b) comp = ('a,'b) Result.result M.lwt
   type rpcfn = Rpc.call -> Rpc.response Lwt.t
   type 'a res = rpcfn -> 'a
 
   type _ fn =
     | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
-    | Returning : ('a Param.t * 'b Rpc.Types.def) -> ('a, 'b) M.t fn
+    | Returning : ('a Param.t * 'b Idl.Error.t) -> ('a, 'b) M.t fn
 
   let returning a err = Returning (a, err)
   let (@->) = fun t f -> Function (t, f)
@@ -41,7 +41,7 @@ module GenClient = struct
         let res = Lwt.bind (rpc call) (fun r ->
           if r.Rpc.success
           then match Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty r.Rpc.contents with Ok x -> Lwt.return (Ok x) | Error (`Msg x) -> Lwt.fail (MarshalError x)
-          else match Rpcmarshal.unmarshal e.Rpc.Types.ty r.Rpc.contents with Ok x -> Lwt.return (Error x) | Error (`Msg x) -> Lwt.fail (MarshalError x)) in
+          else match Rpcmarshal.unmarshal e.Idl.Error.def.Rpc.Types.ty r.Rpc.contents with Ok x -> Lwt.return (Error x) | Error (`Msg x) -> Lwt.fail (MarshalError x)) in
         {M.lwt=res}
     in inner [] ty
 end
@@ -55,14 +55,14 @@ module GenServer = struct
   exception MarshalError of string
   exception UnknownMethod of string
 
-  type 'a comp = 'a M.lwt
+  type ('a,'b) comp = ('a,'b) Result.result M.lwt
   type rpcfn = Rpc.call -> Rpc.response Lwt.t
   type funcs = (string, rpcfn) Hashtbl.t
   type 'a res = 'a -> funcs -> funcs
 
   type _ fn =
     | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
-    | Returning : ('a Param.t * 'b Rpc.Types.def) -> ('a, 'b) M.t fn
+    | Returning : ('a Param.t * 'b Idl.Error.t) -> ('a, 'b) M.t fn
 
   let returning a b = Returning (a,b)
   let (@->) = fun t f -> Function (t, f)
@@ -97,7 +97,7 @@ module GenServer = struct
         | Returning (t,e) -> begin
             Lwt.bind impl.M.lwt (function
                   | Result.Ok x -> Lwt.return (success (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty x))
-                  | Result.Error y -> Lwt.return (failure (Rpcmarshal.marshal e.Rpc.Types.ty y)))
+                  | Result.Error y -> Lwt.return (failure (Rpcmarshal.marshal e.Idl.Error.def.Rpc.Types.ty y)))
           end)
       in inner ty impl
     in

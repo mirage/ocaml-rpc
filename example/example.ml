@@ -34,7 +34,7 @@ module MyAPI(R : RPC) = struct
 
   (* For the following methods, we use the default error type for any errors
      the methods may throw *)
-  let e1 = Idl.DefaultError.def
+  let e1 = Idl.DefaultError.err
 
   (* `declare` is defined in the RPC module passed in, and can do several
      different things. It is only the following two lines that actually do
@@ -199,21 +199,31 @@ let exnt_variant : exnt variant = Rpc.Types.{
     vversion = None;
     vdefault = Some (Errors "unknown error tag!");
     vconstructor = (fun s t ->
-        match s with
-        | "Errors" -> Rresult.R.map errors.treview (t.tget (Basic String))
+        match String.lowercase s with
+        | "errors" -> Rresult.R.map errors.treview (t.tget (Basic String))
         | s -> Rresult.R.error_msg (Printf.sprintf "Unknown tag '%s'" s))
   }
 
 (* And finally we name and describe the type in an `exnt variant def` type *)
 let exnt = { name="exnt"; description="A variant type"; ty=Variant exnt_variant }
 
+(* If we want to use this as an error to any RPC call, we need to declare an
+   exception and wrap this in an Idl.Error.t record *)
+exception ExampleExn of exnt
+let error = Idl.Error.{
+    def = exnt;
+    raiser = (fun e -> ExampleExn e);
+    matcher = (fun e -> match e with ExampleExn x -> Some x | _ -> None)
+  }
+
 (* Note that all of the above can be automatically derived using the
    ppx_deriving_rpcty ppx. See later examples for descriptions of these *)
 
 (* These new types can then be used in RPCs *)
 let p   = Param.mk ~name:"vm" ~description:"Example structure" vm
+let b   = Param.mk ~name:"paused" ~description:"Start the VM in a paused state" Rpc.Types.bool
 let u   = Param.mk Rpc.Types.unit
-let err = exnt
+let err = error
 
 module VMRPC (R : RPC) = struct
   open R
@@ -230,21 +240,25 @@ is purely being used as an example of how to declare an interface.";
 
   let start = declare "start" "Start a VM. This method should be idempotent,
 and you can start the same VM as many times as you like."
-      (p @-> returning u err)
+      (p @-> b @-> returning u err)
 end
 
 (* Once again we generate a client and server module *)
 module VMClient = VMRPC(GenClient)
 module VMServer = VMRPC(GenServer)
+module VMClientExn = VMRPC(GenClientExn)
 
 let _ =
   let open Rresult.R in
 
   (* As before, we define an implementation of the method, and associate it
      with the server impls *)
-  let impl vm' =
-    Printf.printf "name=%s description=%s\n"
-      vm'.name_label vm'.name_description; ok ()
+  let impl vm' paused =
+    Printf.printf "name=%s description=%s paused=%b\n"
+      vm'.name_label vm'.name_description paused;
+    if paused
+    then error (Errors "Paused start is unimplemented")
+    else ok ()
   in
   let funcs = GenServer.empty () |> VMServer.start impl in
 
@@ -262,8 +276,17 @@ let _ =
   (* And once again, we use a pass the server's rpc function as a
      short-circuit to the client. *)
   let test () =
+    let open Result in
     let vm = { name_label="test"; name_description="description" } in
-    VMClient.start rpc vm
+    begin match VMClient.start rpc vm true with
+      | Ok () -> Printf.printf "Unexpected OK\n%!"
+      | Error (Errors e) -> Printf.printf "Caught an (expected) error: %s\n%!" e
+    end;
+    try
+      VMClientExn.start rpc vm true;
+      Printf.printf "Unexpected OK!\n%!";
+    with ExampleExn (Errors s) ->
+      Printf.printf "Caught an (expected) error: %s\n%!" s
   in
   test ()
 
@@ -287,5 +310,4 @@ can be declared and used in methods, and how errors are handled." |>
     close_out oc
   in
 
-  Markdowngen.to_string interfaces |> write "vm.md";
-  Htmlgen.to_string interfaces |> write "vm.html"
+  Markdowngen.to_string interfaces |> write "vm.md"

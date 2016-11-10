@@ -16,6 +16,14 @@ module Param = struct
 
 end
 
+module Error = struct
+  type 'a t = {
+    def : 'a Rpc.Types.def;
+    raiser : 'a -> exn;
+    matcher : exn -> 'a option;
+  }
+end
+
 module Interface = struct
   type description = {
     name : string;
@@ -27,13 +35,13 @@ end
 module type RPC = sig
   type description
   type 'a res
-  type 'a comp
+  type ('a,'b) comp
   type _ fn
 
   val describe : Interface.description -> description
 
   val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
-  val returning : 'a Param.t -> 'b Rpc.Types.def -> ('a, 'b) Result.result comp fn
+  val returning : 'a Param.t -> 'b Error.t -> ('a, 'b) comp fn
   val declare : string -> string -> 'a fn -> 'a res
 end
 
@@ -50,13 +58,13 @@ module GenClient = struct
 
   exception MarshalError of string
 
-  type 'a comp = 'a
+  type ('a,'b) comp = ('a,'b) Result.result
   type rpcfn = Rpc.call -> Rpc.response
   type 'a res = rpcfn -> 'a
 
   type _ fn =
     | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
-    | Returning : ('a Param.t * 'b Rpc.Types.def) -> ('a, 'b) Result.result comp fn
+    | Returning : ('a Param.t * 'b Error.t) -> ('a, 'b) comp fn
 
   let returning a err = Returning (a, err)
   let (@->) = fun t f -> Function (t, f)
@@ -72,7 +80,39 @@ module GenClient = struct
         let r = rpc call in
         if r.Rpc.success
         then match Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty r.Rpc.contents with Ok x -> Ok x | Error (`Msg x) -> raise (MarshalError x)
-        else match Rpcmarshal.unmarshal e.Rpc.Types.ty r.Rpc.contents with Ok x -> Error x | Error (`Msg x) -> raise  (MarshalError x)
+        else match Rpcmarshal.unmarshal e.Error.def.Rpc.Types.ty r.Rpc.contents with Ok x -> Error x | Error (`Msg x) -> raise  (MarshalError x)
+    in inner [] ty
+end
+
+module GenClientExn = struct
+  type description = Interface.description
+  let describe x = x
+
+  exception MarshalError of string
+
+  type ('a,'b) comp = 'a
+  type rpcfn = Rpc.call -> Rpc.response
+  type 'a res = rpcfn -> 'a
+
+  type _ fn =
+    | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
+    | Returning : ('a Param.t * 'b Error.t) -> ('a,_) comp fn
+
+  let returning a err = Returning (a, err)
+  let (@->) = fun t f -> Function (t, f)
+
+  let declare name _ ty (rpc : rpcfn) =
+    let open Result in
+    let rec inner : type b. (string * Rpc.t) list -> b fn -> b = fun cur ->
+      function
+      | Function (t, f) ->
+        fun v -> inner ((t.Param.name, Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v) :: cur) f
+      | Returning (t, e) ->
+        let call = Rpc.call name [(Rpc.Dict cur)] in
+        let r = rpc call in
+        if r.Rpc.success
+        then match Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty r.Rpc.contents with Ok x -> x | Error (`Msg x) -> raise (MarshalError x)
+        else match Rpcmarshal.unmarshal e.Error.def.Rpc.Types.ty r.Rpc.contents with Ok x -> raise (e.Error.raiser x) | Error (`Msg x) -> raise (MarshalError x)
     in inner [] ty
 end
 
@@ -85,14 +125,14 @@ module GenServer = struct
   exception MarshalError of string
   exception UnknownMethod of string
 
-  type 'a comp = 'a
+  type ('a,'b) comp = ('a,'b) Result.result
   type rpcfn = Rpc.call -> Rpc.response
   type funcs = (string, rpcfn) Hashtbl.t
   type 'a res = 'a -> funcs -> funcs
 
   type _ fn =
     | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
-    | Returning : ('a Param.t * 'b Rpc.Types.def) -> ('a, 'b) Result.result comp fn
+    | Returning : ('a Param.t * 'b Error.t) -> ('a, 'b) comp fn
 
   let returning a b = Returning (a,b)
   let (@->) = fun t f -> Function (t, f)
@@ -127,7 +167,7 @@ module GenServer = struct
         | Returning (t,e) -> begin
           match impl with
           | Result.Ok x -> success (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty x)
-          | Result.Error y -> failure (Rpcmarshal.marshal e.Rpc.Types.ty y)
+          | Result.Error y -> failure (Rpcmarshal.marshal e.Error.def.Rpc.Types.ty y)
           end
       in inner ty impl
     in
@@ -149,6 +189,7 @@ z*)
 
 module DefaultError = struct
   type t = InternalError of string
+  exception InternalErrorExn of string
 
   let internalerror : (string, t) Rpc.Types.tag = Rpc.Types.{
       tname="InternalError";
@@ -170,4 +211,10 @@ module DefaultError = struct
           | s -> Rresult.R.error_msg (Printf.sprintf "Unknown tag '%s'" s))}
 
   let def = Rpc.Types.{ name="default_error"; description="Errors declared as part of the interface"; ty=Variant t }
+
+  let err = Error.{
+    def = def;
+    raiser = (function | InternalError s -> raise (InternalErrorExn s));
+    matcher = function | InternalErrorExn s -> Some (InternalError s) | _ -> None
+    }
 end

@@ -20,13 +20,13 @@ module GenClient = struct
 
   exception MarshalError of string
 
-  type 'a comp = 'a M.async
+  type ('a,'b) comp = ('a,'b) Result.result M.async
   type rpcfn = Rpc.call -> Rpc.response Deferred.t
   type 'a res = rpcfn -> 'a
 
   type _ fn =
     | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
-    | Returning : ('a Param.t * 'b Rpc.Types.def) -> ('a, 'b) M.t fn
+    | Returning : ('a Param.t * 'b Idl.Error.t) -> ('a, 'b) M.t fn
 
   let returning a err = Returning (a, err)
   let (@->) = fun t f -> Function (t, f)
@@ -42,7 +42,7 @@ module GenClient = struct
         let res = Deferred.bind (rpc call) (fun r ->
           if r.Rpc.success
           then match Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty r.Rpc.contents with Ok x -> Deferred.return (Ok x) | Error (`Msg x) -> raise (MarshalError x)
-          else match Rpcmarshal.unmarshal e.Rpc.Types.ty r.Rpc.contents with Ok x -> Deferred.return (Error x) | Error (`Msg x) -> raise (MarshalError x)) in
+          else match Rpcmarshal.unmarshal e.Idl.Error.def.Rpc.Types.ty r.Rpc.contents with Ok x -> Deferred.return (Error x) | Error (`Msg x) -> raise (MarshalError x)) in
         {M.async=res}
     in inner [] ty
 end
@@ -56,14 +56,14 @@ module GenServer = struct
   exception MarshalError of string
   exception UnknownMethod of string
 
-  type 'a comp = 'a M.async
+  type ('a,'b) comp = ('a,'b) Result.result M.async
   type rpcfn = Rpc.call -> Rpc.response Deferred.t
   type funcs = (string, rpcfn) Hashtbl.t
   type 'a res = 'a -> funcs -> funcs
 
   type _ fn =
     | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
-    | Returning : ('a Param.t * 'b Rpc.Types.def) -> ('a, 'b) M.t fn
+    | Returning : ('a Param.t * 'b Idl.Error.t) -> ('a, 'b) M.t fn
 
   let returning a b = Returning (a,b)
   let (@->) = fun t f -> Function (t, f)
@@ -98,7 +98,7 @@ module GenServer = struct
         | Returning (t,e) -> begin
             Deferred.bind impl.M.async (function
                   | Result.Ok x -> Deferred.return (success (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty x))
-                  | Result.Error y -> Deferred.return (failure (Rpcmarshal.marshal e.Rpc.Types.ty y)))
+                  | Result.Error y -> Deferred.return (failure (Rpcmarshal.marshal e.Idl.Error.def.Rpc.Types.ty y)))
           end
       in inner ty impl
     in

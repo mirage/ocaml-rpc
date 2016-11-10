@@ -36,6 +36,27 @@ xapi-storage repository under the xapi-project organisation on github."
   Markdowngen.to_string interfaces |> write "smapi.md";
   ()
 
+(*let generate_py () =
+  let interfaces = Codegen.Interfaces.empty "SMAPIv3" "Storage APIs version 3"
+      "This set of interfaces is the third example of how to use the ocaml-rpc
+              library as an IDL to describe RPCs. This example is inspired by the
+              xapi-storage repository under the xapi-project organisation on github."
+  in
+  let interfaces =
+    interfaces
+    |> Codegen.Interfaces.add_interface (C.get_interface ())
+    |> Codegen.Interfaces.add_interface (D.get_interface ())
+  in
+  let write fname str =
+    let oc = open_out fname in
+    Printf.fprintf oc "%s" str;
+    close_out oc
+  in
+
+(*  Pythongen.to_string interfaces |> write "smapi.py";*)
+  ()
+*)
+
 let default_cmd =
   let doc = "a cli for an API" in
   Cmdliner.Term.(ret (const (fun _ -> `Help (`Pager, None)) $ const ())),
@@ -46,6 +67,11 @@ let generate_md_cmd =
   Cmdliner.Term.(const generate_md $ const ()),
   Cmdliner.Term.info "markdown" ~doc
 
+(*let generate_md_cmd =
+  let doc = "Generate Python for the interfaces" in
+  Cmdliner.Term.(const generate_py $ const ()),
+  Cmdliner.Term.info "python" ~doc
+*)
 (* Use a binary 16-byte length to frame RPC messages *)
 let binary_rpc path (call: Rpc.call) : Rpc.response =
   let sockaddr = Unix.ADDR_UNIX path in

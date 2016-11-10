@@ -22,6 +22,15 @@ module Param : sig
   val mk : ?name:string -> ?description:string -> ?version:Rpc.Version.t -> 'a Rpc.Types.def -> 'a t
 end
 
+(* An error that might be raised by an RPC *)
+module Error : sig
+  type 'a t = {
+    def : 'a Rpc.Types.def;
+    raiser : 'a -> exn;
+    matcher : exn -> 'a option;
+  }
+end
+
 (** An interface is a collection of RPC declarations. *)
 module Interface : sig
   type description = {
@@ -47,7 +56,7 @@ module type RPC = sig
   (** This is for inserting a type in between the function application
       and its result. For example, this could be an Lwt.t, meaning that
       the result of a function application is a thread *)
-  type 'a comp
+  type ('a,'b) comp
 
   (** The GADT specifying the type of the RPC *)
   type _ fn
@@ -56,7 +65,7 @@ module type RPC = sig
   val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
 
   (** This defines the return type of an RPC *)
-  val returning : 'a Param.t -> 'b Rpc.Types.def -> ('a, 'b) Result.result comp fn
+  val returning : 'a Param.t -> 'b Error.t -> ('a, 'b) comp fn
 
   (** [declare name description typ] is how an RPC is declared to the
       module implementing the functionality. The return type is dependent
@@ -81,11 +90,36 @@ module GenClient : sig
   (** Our functions return a Result.result type, which either contains
       the result of the Rpc, or an error message indicating a problem
       happening at the transport level *)
-  type 'a comp = 'a
+  type ('a,'b) comp = ('a,'b) Result.result
 
   type _ fn
   val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
-  val returning : 'a Param.t -> 'b Rpc.Types.def -> ('a, 'b) Result.result comp fn
+  val returning : 'a Param.t -> 'b Error.t -> ('a, 'b) comp fn
+  val declare : string -> string -> 'a fn -> rpcfn -> 'a
+end
+
+(** This module generates exception-raising Client modules from RPC
+    declarations *)
+module GenClientExn : sig
+  type description = Interface.description
+  val describe : Interface.description -> description
+
+  (** The result of declaring a function of type 'a (where for example
+      'a might be (int -> string -> bool)), is a function that takes
+      an rpc function, which might send the RPC across the network,
+      and returns a function of type 'a, in this case (int -> string
+      -> bool). *)
+  type rpcfn = Rpc.call -> Rpc.response
+  type 'a res = rpcfn -> 'a
+
+  (** Our functions return a Result.result type, which either contains
+      the result of the Rpc, or an error message indicating a problem
+      happening at the transport level *)
+  type ('a,'b) comp = 'a
+
+  type _ fn
+  val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
+  val returning : 'a Param.t -> 'b Error.t -> ('a,'b) comp fn
   val declare : string -> string -> 'a fn -> rpcfn -> 'a
 end
 
@@ -106,7 +140,7 @@ module GenServer : sig
   type 'a res = 'a -> funcs -> funcs
 
   (** No error handling done server side yet *)
-  type 'a comp = 'a
+  type ('a,'b) comp = ('a,'b) Result.result
 
   type _ fn
 
@@ -118,13 +152,16 @@ module GenServer : sig
   val server : funcs -> Rpc.call -> Rpc.response
 
   val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
-  val returning : 'a Param.t -> 'b Rpc.Types.def -> ('a, 'b) Result.result comp fn
+  val returning : 'a Param.t -> 'b Error.t -> ('a, 'b) comp fn
   val declare : string -> string -> 'a fn -> 'a res
 end
 
 module DefaultError : sig
   type t = InternalError of string
+  exception InternalErrorExn of string
+
   val internalerror : (string, t) Rpc.Types.tag
   val t : t Rpc.Types.variant
   val def : t Rpc.Types.def
+  val err : t Error.t
 end

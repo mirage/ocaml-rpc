@@ -2,7 +2,7 @@ open Rpc.Types
 
 type _ outerfn =
   | Function : 'a Idl.Param.t * 'b outerfn -> ('a -> 'b) outerfn
-  | Returning : ('a Idl.Param.t * 'b Rpc.Types.def) -> ('a, 'b) Result.result outerfn
+  | Returning : ('a Idl.Param.t * 'b Idl.Error.t) -> ('a, 'b) Result.result outerfn
 
 module Method = struct
   type 'a t = {
@@ -81,7 +81,7 @@ end
 exception Interface_not_described
 
 module Gen () = struct
-  type 'a comp = 'a
+  type ('a,'b) comp = ('a,'b) Result.result
   type 'a fn = 'a outerfn
   type 'a res = unit
   type description = Interface.t

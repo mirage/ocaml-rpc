@@ -2,10 +2,10 @@ OCAMLC = ocamlfind ocamlc
 OCAMLOPT = ocamlfind ocamlopt
 OCAMLFLAGS = -annot -g -thread
 
-PACKS = lwt,lwt.unix,result,cmdliner,rresult,cow,threads
+PACKS = lwt,lwt.unix,result,cmdliner,rresult,threads,xmlm
 #,rpclib.cmdliner,rpclib.json,rpclib.html
 RPC = -I ../_build/lib
-RPCLINK = rpclib_core.cmxa rpclib.cmxa htmlgen.cmxa json.cmxa xml.cmxa cmdlinergen.cmxa markdowngen.cmxa
+RPCLINK = rpclib_core.cmxa rpclib.cmxa json.cmxa xml.cmxa cmdlinergen.cmxa markdowngen.cmxa
 
 PPXOPTS=-package ppx_deriving -ppxopt ppx_deriving,../_build/ppx/ppx_deriving_rpc.cma
 
