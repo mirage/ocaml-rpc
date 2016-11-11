@@ -61,6 +61,11 @@ module Of_rpc = struct
     | { ptyp_desc = Ptyp_constr ( { txt = Lident "char" }, args ) } ->
       [%expr Rpc.char_of_rpc ]
 
+    | [%type: (string * [%t? typ]) list] -> [%expr
+      function
+      | Rpc.Dict l -> List.map (fun (k,v) -> (k,[%e expr_of_typ typ] v)) l
+      | y -> failwith (Printf.sprintf "Expecting Rpc.Dict, but found '%s'" (Rpc.to_string y)) ]
+
     | [%type: [%t? typ] list] -> [%expr
       function
       | Rpc.Enum l -> List.map [%e expr_of_typ typ] l
@@ -244,6 +249,8 @@ module Rpc_of = struct
       [%expr Rpc.([%e Exp.ident (mknoloc (Ppx_deriving.mangle_lid (`Prefix "rpc_of") lid))])]
     | { ptyp_desc = Ptyp_constr ( { txt = Lident "char" }, args ) } ->
       [%expr Rpc.(function c -> Rpc.Int (Int64.of_int (Char.code c)))]
+    | [%type: (string * [%t? typ]) list] -> [%expr
+      fun l -> Rpc.Dict (List.map (fun (k,v) -> (k,[%e expr_of_typ typ] v)) l)]
     | [%type: [%t? typ] list] -> [%expr fun l -> Rpc.Enum (List.map [%e expr_of_typ typ] l)]
     | [%type: [%t? typ] array] -> [%expr fun l -> Rpc.Enum (List.map [%e expr_of_typ  typ] (Array.to_list l))]
     | {ptyp_desc = Ptyp_tuple typs } ->
