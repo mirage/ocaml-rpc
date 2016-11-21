@@ -2,7 +2,7 @@
 module Param = struct
   type 'a t = {
     name : string;
-    description : string;
+    description : string list;
     typedef : 'a Rpc.Types.def;
     version : Rpc.Version.t option;
   }
@@ -27,7 +27,7 @@ end
 module Interface = struct
   type description = {
     name : string;
-    description : string;
+    description : string list;
     version : Rpc.Version.t;
   }
 end
@@ -42,7 +42,7 @@ module type RPC = sig
 
   val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
   val returning : 'a Param.t -> 'b Error.t -> ('a, 'b) comp fn
-  val declare : string -> string -> 'a fn -> 'a res
+  val declare : string -> string list -> 'a fn -> 'a res
 end
 
 let debug_rpc call =
@@ -139,7 +139,7 @@ module GenServer = struct
 
   let empty : unit -> funcs = fun () -> Hashtbl.create 20
 
-  let declare : string -> string -> 'a fn -> 'a res = fun name _ ty impl functions ->
+  let declare : string -> string list -> 'a fn -> 'a res = fun name _ ty impl functions ->
     let open Rresult.R in
     let get_named_args call =
       match call.params with
@@ -193,7 +193,7 @@ module DefaultError = struct
 
   let internalerror : (string, t) Rpc.Types.tag = Rpc.Types.{
       tname="InternalError";
-      tdescription="Internal Error";
+      tdescription=["Internal Error"];
       tversion=Some (1,0,0);
       tcontents=Basic String;
       tpreview = (function (InternalError s) -> Some s);
@@ -210,7 +210,7 @@ module DefaultError = struct
           | "InternalError" -> Rresult.R.map (fun s -> internalerror.treview s) (t.tget (Basic String))
           | s -> Rresult.R.error_msg (Printf.sprintf "Unknown tag '%s'" s))}
 
-  let def = Rpc.Types.{ name="default_error"; description="Errors declared as part of the interface"; ty=Variant t }
+  let def = Rpc.Types.{ name="default_error"; description=["Errors declared as part of the interface"]; ty=Variant t }
 
   let err = Error.{
     def = def;

@@ -10,17 +10,19 @@ module PCmds=Datapath(PCmdGen)
 module DClient=Data(GenClient)
 module DCmds=Data(DCmdGen)
 
-
 module C = Codegen.Gen ()
 module CD = Datapath(C)
 module D = Codegen.Gen ()
 module DD = Data(D)
 
 let generate_md () =
-  let interfaces = Codegen.Interfaces.empty "SMAPIv3" "Storage APIs version 3"
-      "This set of interfaces is the third example of how to use the ocaml-rpc
-library as an IDL to describe RPCs. This example is inspired by the
-xapi-storage repository under the xapi-project organisation on github."
+  let interfaces = Codegen.Interfaces.empty
+      "SMAPIv3"
+      "Storage APIs version 3"
+      ["This set of interfaces is the third example of how to use the";
+       "ocaml-rpc library as an IDL to describe RPCs. This example is inspired";
+       "by the xapi-storage repository under the xapi-project organisation on";
+       "github."]
   in
   let interfaces =
     interfaces

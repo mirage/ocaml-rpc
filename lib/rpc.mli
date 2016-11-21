@@ -57,11 +57,11 @@ module Types : sig
     | Tuple : 'a typ * 'b typ -> ('a * 'b) typ
     | Struct : 'a structure -> 'a typ
     | Variant : 'a variant -> 'a typ
-  and 'a def = { name : string; description : string; ty : 'a typ; }
+  and 'a def = { name : string; description : string list; ty : 'a typ; }
   and boxed_def = BoxedDef : 'a def -> boxed_def
   and ('a, 's) field = {
     fname : string;
-    fdescription : string;
+    fdescription : string list;
     fversion : Version.t option;
     field : 'a typ;
     fdefault : 'a option;
@@ -80,7 +80,7 @@ module Types : sig
   }
   and ('a, 's) tag = {
     tname : string;
-    tdescription : string;
+    tdescription : string list;
     tversion : Version.t option;
     tcontents : 'a typ;
     tpreview : 's -> 'a option; (* Prism *)

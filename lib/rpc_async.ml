@@ -70,7 +70,7 @@ module GenServer = struct
 
   let empty : unit -> funcs = fun () -> Hashtbl.create 20
 
-  let declare : string -> string -> 'a fn -> 'a res = fun name _ ty impl functions ->
+  let declare : string -> string list -> 'a fn -> 'a res = fun name _ ty impl functions ->
     let open Rresult.R in
     let get_named_args call =
       match call.params with

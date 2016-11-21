@@ -65,13 +65,13 @@ module Types = struct
     | Variant : 'a variant -> 'a typ
 
   (* A type definition has a name and description *)
-  and 'a def = { name: string; description: string; ty: 'a typ; }
+  and 'a def = { name: string; description: string list; ty: 'a typ; }
 
   and boxed_def = BoxedDef : 'a def -> boxed_def
 
   and ('a, 's) field = {
     fname : string;
-    fdescription : string;
+    fdescription : string list;
     fversion : Version.t option;
     field : 'a typ;
     fdefault : 'a option;
@@ -90,7 +90,7 @@ module Types = struct
   }
   and ('a, 's) tag = {
     tname : string;
-    tdescription : string;
+    tdescription : string list;
     tversion : Version.t option;
     tcontents : 'a typ;
     tpreview : 's -> 'a option;
@@ -107,14 +107,14 @@ module Types = struct
     vconstructor : string -> tag_getter -> ('a, Rresult.R.msg) Result.result;
   }
 
-  let int    = { name="int";    ty=Basic Int;    description="Native integer" }
-  let int32  = { name="int32";  ty=Basic Int32;  description="32-bit integer"}
-  let int64  = { name="int64";  ty=Basic Int64;  description="64-bit integer"}
-  let bool   = { name="bool";   ty=Basic Bool;   description="Boolean"}
-  let float  = { name="float";  ty=Basic Float;  description="Floating-point number"}
-  let string = { name="string"; ty=Basic String; description="String"}
-  let char   = { name="char";   ty=Basic Char;   description="Char"}
-  let unit   = { name="unit";   ty=Unit;         description="Unit"}
+  let int    = { name="int";    ty=Basic Int;    description=["Native integer"]}
+  let int32  = { name="int32";  ty=Basic Int32;  description=["32-bit integer"]}
+  let int64  = { name="int64";  ty=Basic Int64;  description=["64-bit integer"]}
+  let bool   = { name="bool";   ty=Basic Bool;   description=["Boolean"]}
+  let float  = { name="float";  ty=Basic Float;  description=["Floating-point number"]}
+  let string = { name="string"; ty=Basic String; description=["String"]}
+  let char   = { name="char";   ty=Basic Char;   description=["Char"]}
+  let unit   = { name="unit";   ty=Unit;         description=["Unit"]}
   let default_types = [BoxedDef int; BoxedDef int32; BoxedDef int64;
                        BoxedDef bool; BoxedDef float; BoxedDef string;
                        BoxedDef char; BoxedDef unit]

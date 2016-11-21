@@ -7,7 +7,7 @@ type _ outerfn =
 module Method = struct
   type 'a t = {
     name : string;
-    description : string;
+    description : string list;
     ty : 'a outerfn
   }
 
@@ -57,7 +57,7 @@ module Interfaces = struct
   type t = {
     name : string;
     title : string;
-    description : string;
+    description : string list;
     type_decls : boxed_def list;
     interfaces : Interface.t list;
   }
@@ -98,7 +98,7 @@ module Gen () = struct
   let returning a b  = Returning (a,b)
   let (@->) = fun t f -> Function (t, f)
 
-  let declare : string -> string -> 'a fn -> 'a res = fun name description ty ->
+  let declare : string -> string list -> 'a fn -> 'a res = fun name description ty ->
     let m = BoxedFunction Method.({name; description; ty}) in
     match !interface with
     | Some i -> interface := Some (Interface.({i with methods = i.methods @ [m]}))

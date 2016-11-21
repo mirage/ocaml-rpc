@@ -21,7 +21,7 @@ module Gen () = struct
   let term_of_param : type a. a Param.t -> Rpc.t Cmdliner.Term.t = fun p ->
     let open Rpc.Types in
     let open Cmdliner in
-    let pinfo = Cmdliner.Arg.info [] ~doc:p.Param.description ~docv:(p.Param.name) in
+    let pinfo = Cmdliner.Arg.info [] ~doc:(String.concat " " p.Param.description) ~docv:(p.Param.name) in
     let incr () =
       let p = !pos in
       incr pos;
@@ -107,7 +107,7 @@ module Gen () = struct
 
   let terms = ref []
 
-  let declare name descr ty =
+  let declare name desc_list ty =
     let generate rpc =
       let rec inner : type b. ((string * Rpc.t) list) Cmdliner.Term.t -> b fn -> unit Cmdliner.Term.t = fun cur f ->
         match f with
@@ -125,7 +125,8 @@ module Gen () = struct
           in
           Cmdliner.Term.(const (fun args -> run args) $ cur)
       in
-      inner (Cmdliner.Term.pure []) ty, Cmdliner.Term.info name ~doc:descr
+      let doc = String.concat " " desc_list in
+      inner (Cmdliner.Term.pure []) ty, Cmdliner.Term.info name ~doc
     in
     terms := generate :: !terms
 

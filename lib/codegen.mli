@@ -4,7 +4,7 @@ type _ outerfn =
       ('a Idl.Param.t * 'b Idl.Error.t) -> ('a, 'b) Result.result outerfn
 module Method :
   sig
-    type 'a t = { name : string; description : string; ty : 'a outerfn; }
+    type 'a t = { name : string; description : string list; ty : 'a outerfn; }
     val find_inputs : 'a outerfn -> Idl.Param.boxed list
     val find_output : 'a outerfn -> Idl.Param.boxed
   end
@@ -14,7 +14,7 @@ module Interface :
     type description =
       Idl.Interface.description = {
       name : string;
-      description : string;
+      description : string list;
       version : Rpc.Version.t;
     }
     type t = {
@@ -29,11 +29,11 @@ module Interfaces :
     type t = {
       name : string;
       title : string;
-      description : string;
+      description : string list;
       type_decls : Rpc.Types.boxed_def list;
       interfaces : Interface.t list;
     }
-    val empty : string -> string -> string -> t
+    val empty : string -> string -> string list -> t
     val add_interface : Interface.t -> t -> t
   end
 exception Interface_not_described
@@ -49,6 +49,6 @@ module Gen :
       val returning :
         'a Idl.Param.t -> 'b Idl.Error.t -> ('a, 'b) Result.result outerfn
       val ( @-> ) : 'a Idl.Param.t -> 'b outerfn -> ('a -> 'b) outerfn
-      val declare : string -> string -> 'a fn -> 'a res
+      val declare : string -> string list -> 'a fn -> 'a res
       val get_interface : unit -> Interface.t
     end

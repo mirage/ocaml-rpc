@@ -21,7 +21,10 @@ let attr_key  = attr_string "key"
 let attr_name  = attr_string "name"
 
 (* Documentation for variants / record members *)
-let attr_doc = attr_string "doc"
+let attr_doc attrs =
+  Ppx_deriving.attr ~deriver "doc" attrs |>
+  Ppx_deriving.Arg.(get_attr ~deriver expr) |>
+  function | Some e -> e | None -> list []
 
 (* Version information *)
 let attr_version attrs =
@@ -117,7 +120,7 @@ module Typ_of = struct
                  [%e record ["fname", str rpc_name;
                              "field", expr_of_typ pld_type;
                              "fdefault", (match default with None -> [%expr None] | Some d -> [%expr Some [%e d]]);
-                             "fdescription", str (attr_doc "" pld_attributes);
+                             "fdescription", attr_doc pld_attributes;
                              "fversion", (match attr_version pld_attributes with | Some v -> [%expr Some [%e v]] | None -> [%expr None]);
                              "fget", fget;
                              "fset", fset;
@@ -181,7 +184,7 @@ module Typ_of = struct
                   "tname", str rpc_name;
                   "tcontents", contents;
                   "tversion", (match attr_version pcd_attributes with | Some v -> [%expr Some [%e v]] | None -> [%expr None]);
-                  "tdescription", str (attr_doc "" pcd_attributes);
+                  "tdescription", attr_doc pcd_attributes;
                   "tpreview", vpreview;
                   "treview", vreview]]] in
               let vconstructor_case = Exp.case (Pat.constant (Const_string (lower_rpc_name,None))) [%expr Rresult.R.bind (t.tget [%e contents]) ([%e Exp.function_ [Exp.case (ptuple pattern) [%expr Rresult.R.ok [%e (constr name args)]]]])] in
@@ -199,9 +202,9 @@ module Typ_of = struct
                   vversion=[%e match attr_version type_decl.ptype_attributes with | Some v -> [%expr Some [%e v]] | None -> [%expr None];];
                   vconstructor=[%e vconstructor] } : [%t mytype ] variant) ]))) ]
     in
-    let doc = attr_doc "" type_decl.ptype_attributes in
+    let doc = attr_doc type_decl.ptype_attributes in
     let name = type_decl.ptype_name.txt in
-    typ_of @ [Vb.mk (pvar name) (wrap_runtime (polymorphize (record ["name", str name; "description", str doc; "ty", Ppx_deriving.poly_apply_of_type_decl type_decl (Exp.ident (lid typ_of_lid))])))]
+    typ_of @ [Vb.mk (pvar name) (wrap_runtime (polymorphize (record ["name", str name; "description", doc; "ty", Ppx_deriving.poly_apply_of_type_decl type_decl (Exp.ident (lid typ_of_lid))])))]
 
 end
 

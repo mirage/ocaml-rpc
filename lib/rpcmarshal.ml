@@ -188,5 +188,5 @@ let rec ocaml_of_t : type a. a typ -> string = function
   | Variant { variants } ->
     let tags = List.map (function
         | BoxedTag t ->
-          Printf.sprintf "| %s (%s) (** %s *)" t.tname (ocaml_of_t t.tcontents) t.tdescription) variants in
+          Printf.sprintf "| %s (%s) (** %s *)" t.tname (ocaml_of_t t.tcontents) (String.concat " " t.tdescription)) variants in
     String.concat " " tags

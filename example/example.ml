@@ -25,8 +25,8 @@ module MyAPI(R : RPC) = struct
 
   (* We can define some named parameters here. These can be used in different
      method declarations *)
-  let i1 = Param.mk ~name:"i1" ~description:"Parameter i1" Rpc.Types.int
-  let s1 = Param.mk ~name:"s1" ~description:"Parameter s1" Rpc.Types.string
+  let i1 = Param.mk ~name:"i1" ~description:["Parameter i1"] Rpc.Types.int
+  let s1 = Param.mk ~name:"s1" ~description:["Parameter s1"] Rpc.Types.string
 
   (* Parameters don't _have_ to have names and descriptions, in which case they
      will inherit from the name and description of the type. *)
@@ -40,8 +40,8 @@ module MyAPI(R : RPC) = struct
      different things. It is only the following two lines that actually do
      anything in this module - the declarations of parameters above are useful
      only in allowing the two declarations here to be succinct. *)
-  let api1 = declare "api1" "Description 1" (i1 @-> s1 @-> returning b1 e1)
-  let api2 = declare "api2" "Description 2" (s1 @-> returning i1 e1)
+  let api1 = declare "api1" ["Description 1"] (i1 @-> s1 @-> returning b1 e1)
+  let api2 = declare "api2" ["Description 2"] (s1 @-> returning i1 e1)
 
 end
 
@@ -124,7 +124,7 @@ open Rpc.Types
    functions. *)
 let vm_name_label : (string, vm) field = {
   fname="name_label";
-  fdescription="The name of the VM.";
+  fdescription=["The name of the VM."];
   fversion=None;
   fdefault=None;
   field=Basic String;
@@ -133,7 +133,7 @@ let vm_name_label : (string, vm) field = {
 }
 let vm_name_description : (string, vm) field = {
   fname="name_description";
-  fdescription="The description of the VM.";
+  fdescription=["The description of the VM."];
   fversion=None;
   fdefault=None;
   field=Basic String;
@@ -170,9 +170,10 @@ let typ_of_vm = Struct vm_structure
    describes the type *)
 let vm = {
   name="vm";
-  description="This record contains the static properties of a VM object,
-such as the name, description and other useful bits and pieces. Runtime
-properties are part of some different record.";
+  description = [
+    "This record contains the static properties of a VM object,";
+    "such as the name, description and other useful bits and pieces.";
+    "Runtime properties are part of some different record."];
   ty=typ_of_vm }
 
 
@@ -186,7 +187,7 @@ type exnt = | Errors of string
    the prism functions (similar to the lens functions for the fields above). *)
 let errors : (string, exnt) Rpc.Types.tag = Rpc.Types.{
     tname = "errors";
-    tdescription = "Errors raised during an RPC invocation";
+    tdescription = ["Errors raised during an RPC invocation"];
     tversion = None;
     tcontents = Basic String;
     tpreview = (function (Errors s) -> Some s);
@@ -205,7 +206,7 @@ let exnt_variant : exnt variant = Rpc.Types.{
   }
 
 (* And finally we name and describe the type in an `exnt variant def` type *)
-let exnt = { name="exnt"; description="A variant type"; ty=Variant exnt_variant }
+let exnt = { name="exnt"; description=["A variant type"]; ty=Variant exnt_variant }
 
 (* If we want to use this as an error to any RPC call, we need to declare an
    exception and wrap this in an Idl.Error.t record *)
@@ -220,8 +221,8 @@ let error = Idl.Error.{
    ppx_deriving_rpcty ppx. See later examples for descriptions of these *)
 
 (* These new types can then be used in RPCs *)
-let p   = Param.mk ~name:"vm" ~description:"Example structure" vm
-let b   = Param.mk ~name:"paused" ~description:"Start the VM in a paused state" Rpc.Types.bool
+let p   = Param.mk ~name:"vm" ~description:["Example structure"] vm
+let b   = Param.mk ~name:"paused" ~description:["Start the VM in a paused state"] Rpc.Types.bool
 let u   = Param.mk Rpc.Types.unit
 let err = error
 
@@ -232,14 +233,16 @@ module VMRPC (R : RPC) = struct
      interesting uses of these declarations - for example, the documentation
      generator or Cmdliner term generator *)
   let interface = describe Idl.Interface.({
-      name="VM";
-      description="The VM interface is used to perform power-state operations
-on virtual machines. It doesn't do anything else in this implementation as it
-is purely being used as an example of how to declare an interface.";
+      name = "VM";
+      description = [
+        "The VM interface is used to perform power-state operations on virtual";
+        "machines. It doesn't do anything else in this implementation as it is";
+        "purely being used as an example of how to declare an interface."];
       version=(1,0,0)})
 
-  let start = declare "start" "Start a VM. This method should be idempotent,
-and you can start the same VM as many times as you like."
+  let start = declare "start"
+      ["Start a VM. This method should be idempotent, and you can start the ";
+       "same VM as many times as you like."]
       (p @-> b @-> returning u err)
 end
 
@@ -299,9 +302,10 @@ module C = VMRPC(Gen)
 let _ =
   let interfaces =
     Codegen.Interfaces.empty "VM" "VM power-state interface"
-      "This interface is used to demonstrate the declaration of an interface by
-an example of manipulating the power-states of VMs. It shows how new datatypes
-can be declared and used in methods, and how errors are handled." |>
+      ["This interface is used to demonstrate the declaration of an interface";
+       "by an example of manipulating the power-states of VMs. It shows how";
+       "new datatypes can be declared and used in methods, and how errors are";
+       "handled."] |>
     Codegen.Interfaces.add_interface (Gen.get_interface ()) in
 
   let write fname str =

@@ -205,7 +205,7 @@ let skeleton_method unimplemented i (BoxedFunction m) =
   [
     Line (sprintf "def %s(self%s):" m.Method.name (String.concat "" (List.map (fun x -> ", " ^ x) (List.map (fun (Idl.Param.Boxed x) -> x.Idl.Param.name) inputs))));
     Block ([
-        Line (sprintf "\"\"\"%s\"\"\"" i.Interface.details.Idl.Interface.description);
+        Line (sprintf "\"\"\"%s\"\"\"" (String.concat " " i.Interface.details.Idl.Interface.description));
       ] @ (
           if unimplemented
           then [ Line (sprintf "raise Unimplemented(\"%s.%s\")" i.Interface.details.Idl.Interface.name m.Method.name) ]
@@ -259,7 +259,7 @@ let rec skeleton_of_interface unimplemented suffix i =
   [
     Line (sprintf "class %s_%s:" i.Interface.details.Idl.Interface.name suffix);
     Block ([
-        Line (sprintf "\"\"\"%s\"\"\"" i.Interface.details.Idl.Interface.description);
+        Line (sprintf "\"\"\"%s\"\"\"" (String.concat " " i.Interface.details.Idl.Interface.description));
         Line "def __init__(self):";
         Block [
           Line "pass";
@@ -323,7 +323,7 @@ let server_of_interface i =
   [
     Line (sprintf "class %s_server_dispatcher:" i.Interface.details.Idl.Interface.name);
     Block ([
-        Line (sprintf "\"\"\"%s\"\"\"" i.Interface.details.Idl.Interface.description);
+        Line (sprintf "\"\"\"%s\"\"\"" (String.concat " " i.Interface.details.Idl.Interface.description));
         Line "def __init__(self, impl):";
         Block [
           Line "\"\"\"impl is a proxy object whose methods contain the implementation\"\"\"";
@@ -364,7 +364,7 @@ let commandline_parse i (BoxedFunction m) =
   [
     Line (sprintf "def _parse_%s(self):" m.Method.name);
     Block ([
-        Line (sprintf "\"\"\"%s\"\"\"" m.Method.description);
+        Line (sprintf "\"\"\"%s\"\"\"" (String.concat " " m.Method.description));
       ] @ [
         Line "# in --json mode we don't have any other arguments";
         Line "if ('--json' in sys.argv or '-j' in sys.argv):";
@@ -373,14 +373,14 @@ let commandline_parse i (BoxedFunction m) =
             Line "jsondict['json'] = True";
             Line "return jsondict";
         ];
-        Line (sprintf "parser = argparse.ArgumentParser(description='%s')" m.Method.description);
+        Line (sprintf "parser = argparse.ArgumentParser(description='%s')" (String.concat " " m.Method.description));
         Line "parser.add_argument('-j', '--json', action='store_const', const=True, default=False, help='Read json from stdin, print json to stdout', required=False)";
       ] @ (
         List.map (fun (Idl.Param.Boxed a) -> match a.Idl.Param.typedef.ty with
         | Dict(_, _) ->
-          Line (sprintf "parser.add_argument('--%s', default = {}, nargs=2, action=xapi.ListAction, help='%s')" a.Idl.Param.name a.Idl.Param.description)
+          Line (sprintf "parser.add_argument('--%s', default = {}, nargs=2, action=xapi.ListAction, help='%s')" a.Idl.Param.name (String.concat " " a.Idl.Param.description))
         | _ ->
-          Line (sprintf "parser.add_argument('%s', action='store', help='%s')" a.Idl.Param.name a.Idl.Param.description)
+          Line (sprintf "parser.add_argument('%s', action='store', help='%s')" a.Idl.Param.name (String.concat " " a.Idl.Param.description))
         ) inputs
       ) @ [
         Line "return vars(parser.parse_args())";

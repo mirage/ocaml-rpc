@@ -20,11 +20,20 @@ module Datatypes = struct
     } [@@deriving rpcty]
   end
 
-  type err =
+  type errty =
     | InternalError of string
     | FrobnicationFailed
     | OperationInProgress
   [@@deriving rpcty]
+
+  exception DatatypeError of errty
+
+  let err = Error.{
+    def = errty;
+    raiser = (function | e -> raise (DatatypeError e));
+    matcher = function | DatatypeError e -> Some e | _ -> None
+  }
+
 end
 
 module API(R : RPC) = struct
@@ -32,7 +41,7 @@ module API(R : RPC) = struct
 
   let query_p  = Param.mk
       ~name:"query"
-      ~description:"The result of the query operation"
+      ~description:["The result of the query operation"]
       Datatypes.Query.t
 
   let unit_p   = Param.mk
@@ -43,33 +52,33 @@ module API(R : RPC) = struct
 
   let domid_p  = Param.mk
       ~name:"domid"
-      ~description:"The domid on which to operate"
+      ~description:["The domid on which to operate"]
       Types.int64
 
   let vm_p     = Param.mk
       ~name:"vm"
-      ~description:"The uuid of the VM"
+      ~description:["The uuid of the VM"]
       Types.string
 
   let vm_desc  = Param.mk
       ~name:"description"
-      ~description:"The description of the VM"
+      ~description:["The description of the VM"]
       Types.string
 
   let err = Datatypes.err
 
   let query = declare
       "query"
-      "Query the details of the server."
+      ["Query the details of the server."]
       (unit_p @-> returning query_p err)
 
   let diagnostics = declare
       "get_diagnostics"
-      "Get diagnostics information from the server."
+      ["Get diagnostics information from the server."]
       (unit_p @-> returning string_p err)
 
   let test = declare
       "test"
-      "A test of a bit more of the IDL stuff."
+      ["A test of a bit more of the IDL stuff."]
       (domid_p @-> vm_p @-> vm_desc @-> returning query_p err)
 end

@@ -23,7 +23,7 @@ module GenClient :
       | Returning : ('a Idl.Param.t * 'b Idl.Error.t) -> ('a, 'b) M.t fn
     val returning : 'a Idl.Param.t -> 'b Idl.Error.t -> ('a, 'b) M.t fn
     val ( @-> ) : 'a Idl.Param.t -> 'b fn -> ('a -> 'b) fn
-    val declare : string -> 'a -> 'b fn -> rpcfn -> 'b
+    val declare : string -> string list -> 'a fn -> rpcfn -> 'a
   end
 
 module GenServer :
@@ -42,6 +42,6 @@ module GenServer :
     val returning : 'a Idl.Param.t -> 'b Idl.Error.t -> ('a, 'b) M.t fn
     val ( @-> ) : 'a Idl.Param.t -> 'b fn -> ('a -> 'b) fn
     val empty : unit -> funcs
-    val declare : string -> string -> 'a fn -> 'a res
+    val declare : string -> string list -> 'a fn -> 'a res
     val server : (string, Rpc.call -> 'a) Hashtbl.t -> Rpc.call -> 'a
   end

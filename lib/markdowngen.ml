@@ -93,7 +93,7 @@ let of_args args =
       let name = arg.Param.name in
       let direction = if is_in then "in" else "out" in
       let ty = string_of_t arg.Param.typedef.ty |> String.concat " " in
-      let description = arg.Param.description in
+      let description = String.concat " " arg.Param.description in
       [name; direction; ty; description]
   in
   table ["Name"; "Direction"; "Type"; "Description"] (List.filter (fun l -> List.length l > 0) (List.map row_of_arg args))
@@ -101,14 +101,14 @@ let of_args args =
 let of_struct_fields : 'a boxed_field list -> string list = fun all ->
   let of_row (BoxedField f) =
     let ty = string_of_t f.field in
-    [f.fname; String.concat "" ty; f.fdescription]
+    [f.fname; String.concat "" ty; String.concat " " f.fdescription]
   in
   table ["Name"; "Type"; "Description"] (List.map of_row all)
 
 let of_variant_tags : 'a boxed_tag list -> string list = fun all ->
   let of_row (BoxedTag t) =
     let ty = string_of_t t.tcontents in
-    [t.tname; String.concat "" ty; t.tdescription]
+    [t.tname; String.concat "" ty; String.concat " " t.tdescription]
   in
   table ["Name"; "Type"; "Description"] (List.map of_row all)
 
@@ -116,7 +116,7 @@ let of_type_decl i_opt ((BoxedDef t) as t') =
   if List.mem t' default_types then [] else
   let name = t.name in
   let defn = String.concat "" (string_of_t t.ty) in
-  let description = t.description in
+  let description = String.concat " " t.description in
   let common =
     [ Printf.sprintf "### type `%s` = %s" name defn;
       description ]
@@ -132,7 +132,7 @@ let of_type_decl i_opt ((BoxedDef t) as t') =
 
 let of_method is i (Codegen.BoxedFunction m) =
   let name = m.Method.name in
-  let description = m.Method.description in
+  let description = String.concat " " m.Method.description in
   h3 (Printf.sprintf "Method: `%s`" name) @ [ description ] @
     (of_args (
         List.map (fun p -> (true,p)) Method.(find_inputs m.ty) @
@@ -141,12 +141,12 @@ let of_method is i (Codegen.BoxedFunction m) =
 
 let of_interface is i =
   let name = i.Interface.details.Idl.Interface.name in
-  let description = i.Interface.details.Idl.Interface.description in
+  let description = String.concat " " i.Interface.details.Idl.Interface.description in
   h2 (Printf.sprintf "Interface: `%s`" name) @ [ description ] @ List.concat (List.map (of_method is i) i.Interface.methods)
 
 let of_interfaces x =
   let name = x.Interfaces.name in
-  let description = x.Interfaces.description in
+  let description = String.concat " " x.Interfaces.description in
   h1 name @
   [ description ] @
   h2 "Type definitions" @

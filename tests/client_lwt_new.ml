@@ -17,7 +17,7 @@ module API(R:Idl.RPC) = struct
   (* Construct a bunch of arguments to use in our RPCs *)
   let arg1   = Param.mk ~name:"arg1" Rpc.Types.string
   let argx   = Param.mk ~name:"x" Rpc.Types.int
-  let argopt = Param.mk ~name:"opt" Rpc.Types.{name="string opt"; description=""; ty=Option (Basic String)}
+  let argopt = Param.mk ~name:"opt" Rpc.Types.{name="string opt"; description=[]; ty=Option (Basic String)}
   let argv   = Param.mk ~name:"v" variant_t
   let argi   = Param.mk ~name:"i" Rpc.Types.int64
   let argu   = Param.mk ~name:"return_u" Rpc.Types.unit
@@ -27,9 +27,9 @@ module API(R:Idl.RPC) = struct
   let e      = Idl.DefaultError.err
 
   (* Construct 3 RPC definitions *)
-  let rpc1 = declare "rpc1" "Test RPC 1" (arg1 @-> argx @-> returning return e)
-  let rpc2 = declare "rpc2" "Test RPC 2" (argopt @-> argv @-> returning argu e)
-  let rpc3 = declare "rpc3" "Test RPC 3" (argi @-> returning argi e)
+  let rpc1 = declare "rpc1" ["Test RPC 1"] (arg1 @-> argx @-> returning return e)
+  let rpc2 = declare "rpc2" ["Test RPC 2"] (argopt @-> argv @-> returning argu e)
+  let rpc3 = declare "rpc3" ["Test RPC 3"] (argi @-> returning argi e)
 end
 
 module ImplM = struct

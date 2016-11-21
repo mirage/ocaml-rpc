@@ -8,7 +8,7 @@ module Param : sig
       default values, example values and so on *)
   type 'a t = {
     name : string;
-    description : string;
+    description : string list;
     typedef : 'a Rpc.Types.def;
     version : Rpc.Version.t option;
   }
@@ -19,7 +19,7 @@ module Param : sig
   (** [mk ~name ~description typ] creates a Param.t out of a type definition
       from the Types module. If the name or description are omitted, the name
       or description from the type definition will be inherited *)
-  val mk : ?name:string -> ?description:string -> ?version:Rpc.Version.t -> 'a Rpc.Types.def -> 'a t
+  val mk : ?name:string -> ?description:string list -> ?version:Rpc.Version.t -> 'a Rpc.Types.def -> 'a t
 end
 
 (* An error that might be raised by an RPC *)
@@ -35,7 +35,7 @@ end
 module Interface : sig
   type description = {
     name : string;
-    description : string;
+    description : string list;
     version : Rpc.Version.t;
   }
 end
@@ -70,7 +70,7 @@ module type RPC = sig
   (** [declare name description typ] is how an RPC is declared to the
       module implementing the functionality. The return type is dependent
       upon the module being used *)
-  val declare : string -> string -> 'a fn -> 'a res
+  val declare : string -> string list -> 'a fn -> 'a res
 end
 
 
@@ -95,7 +95,7 @@ module GenClient : sig
   type _ fn
   val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
   val returning : 'a Param.t -> 'b Error.t -> ('a, 'b) comp fn
-  val declare : string -> string -> 'a fn -> rpcfn -> 'a
+  val declare : string -> string list -> 'a fn -> rpcfn -> 'a
 end
 
 (** This module generates exception-raising Client modules from RPC
@@ -120,7 +120,7 @@ module GenClientExn : sig
   type _ fn
   val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
   val returning : 'a Param.t -> 'b Error.t -> ('a,'b) comp fn
-  val declare : string -> string -> 'a fn -> rpcfn -> 'a
+  val declare : string -> string list -> 'a fn -> rpcfn -> 'a
 end
 
 module GenServer : sig
@@ -153,7 +153,7 @@ module GenServer : sig
 
   val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
   val returning : 'a Param.t -> 'b Error.t -> ('a, 'b) comp fn
-  val declare : string -> string -> 'a fn -> 'a res
+  val declare : string -> string list -> 'a fn -> 'a res
 end
 
 module DefaultError : sig
