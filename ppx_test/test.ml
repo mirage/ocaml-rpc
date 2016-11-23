@@ -1,6 +1,10 @@
 (* All the ppx tests *)
 open OUnit
 
+(* Check that t -/-> of_rpc but t -> t_of_rpc *)
+type t = int [@@deriving rpc]
+let _ = t_of_rpc
+
 let string_of_err = function `Msg x -> x
 
 let check_marshal_unmarshal : 'a * Rpc.t * ('a -> Rpc.t) * (Rpc.t -> 'a) -> unit = fun (x, r, marshal, unmarshal) ->

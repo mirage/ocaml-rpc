@@ -15,7 +15,10 @@ build: [
 install: [
   [make "install"]
 ]
-remove: [["ocamlfind" "remove" "rpclib"]]
+remove: [
+  ["ocamlfind" "remove" "rpclib"]
+  ["ocamlfind" "remove" "ppx_deriving_rpc"]
+]
 depends: [
   "oasis" {build}
   "ocamlfind"

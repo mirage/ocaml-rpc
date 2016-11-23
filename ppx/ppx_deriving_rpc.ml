@@ -56,7 +56,7 @@ module Of_rpc = struct
     match typ with
     | { ptyp_desc = Ptyp_constr ( { txt = Lident id as lid }, args ) } when
         List.mem_assoc lid core_types ->
-      Exp.ident (mknoloc (Ppx_deriving.mangle_lid (`Suffix "of_rpc") (Ldot (Lident "Rpc", id))))
+      Exp.ident (mknoloc (Ppx_deriving.mangle_lid ~fixpoint:"" (`Suffix "of_rpc") (Ldot (Lident "Rpc", id))))
 
     | { ptyp_desc = Ptyp_constr ( { txt = Lident "char" }, args ) } ->
       [%expr Rpc.char_of_rpc ]
@@ -94,7 +94,7 @@ module Of_rpc = struct
 
     | { ptyp_desc = Ptyp_constr ( { txt = lid }, args ) } ->
       let args = List.map expr_of_typ args in
-      let f = Exp.ident (mknoloc (Ppx_deriving.mangle_lid (`Suffix "of_rpc") lid)) in
+      let f = Exp.ident (mknoloc (Ppx_deriving.mangle_lid ~fixpoint:"" (`Suffix "of_rpc") lid)) in
       app f args
 
     | { ptyp_desc = Ptyp_var name } ->
@@ -246,7 +246,7 @@ module Rpc_of = struct
     match typ with
     | { ptyp_desc = Ptyp_constr ( { txt = lid }, args ) } when
         List.mem_assoc lid core_types ->
-      [%expr Rpc.([%e Exp.ident (mknoloc (Ppx_deriving.mangle_lid (`Prefix "rpc_of") lid))])]
+      [%expr Rpc.([%e Exp.ident (mknoloc (Ppx_deriving.mangle_lid ~fixpoint:"" (`Prefix "rpc_of") lid))])]
     | { ptyp_desc = Ptyp_constr ( { txt = Lident "char" }, args ) } ->
       [%expr Rpc.(function c -> Rpc.Int (Int64.of_int (Char.code c)))]
     | [%type: (string * [%t? typ]) list] -> [%expr
@@ -262,7 +262,7 @@ module Rpc_of = struct
       [%expr fun x -> match x with None -> Rpc.Enum [] | Some y -> Rpc.Enum [ [%e e] y ] ]
     | { ptyp_desc = Ptyp_constr ( { txt = lid }, args ) } ->
       let args = List.map (expr_of_typ ) args in
-      let f = Exp.ident (mknoloc (Ppx_deriving.mangle_lid (`Prefix "rpc_of") lid)) in
+      let f = Exp.ident (mknoloc (Ppx_deriving.mangle_lid ~fixpoint:"" (`Prefix "rpc_of") lid)) in
       app f args
     | { ptyp_desc = Ptyp_variant (fields, _, _); ptyp_loc } ->
       let cases =
@@ -363,8 +363,8 @@ end
 
 let rpc_strs_of_type ~options ~path type_decl =
   let polymorphize = Ppx_deriving.poly_fun_of_type_decl type_decl in
-  let rpc_of = Ppx_deriving.mangle_type_decl (`Prefix "rpc_of") type_decl in
-  let of_rpc = Ppx_deriving.mangle_type_decl (`Suffix "of_rpc") type_decl in
+  let rpc_of = Ppx_deriving.mangle_type_decl ~fixpoint:"" (`Prefix "rpc_of") type_decl in
+  let of_rpc = Ppx_deriving.mangle_type_decl ~fixpoint:"" (`Suffix "of_rpc") type_decl in
   [
     Vb.mk (pvar rpc_of)
       (polymorphize (Rpc_of.str_of_type ~options ~path type_decl));
