@@ -36,13 +36,9 @@ type blocklist = {
 type error =
   | Unimplemented of string
   [@@deriving rpcty]
-exception Exn of error
 
-let error = Idl.Error.{
-    def=error;
-    raiser=(fun e -> raise (Exn e));
-    matcher=(function | Exn e -> Some e | _ -> None);
-  }
+module E = Idl.Error.Make(struct type t=error let t = error end)
+let error = E.error
 
 type domain = string
   [@@deriving rpcty]

@@ -29,6 +29,10 @@ module Error : sig
     raiser : 'a -> exn;
     matcher : exn -> 'a option;
   }
+
+  module Make(T : sig type t val t : t Rpc.Types.def end) : sig
+    val error : T.t t
+  end
 end
 
 (** An interface is a collection of RPC declarations. *)

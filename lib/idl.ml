@@ -22,6 +22,16 @@ module Error = struct
     raiser : 'a -> exn;
     matcher : exn -> 'a option;
   }
+
+  module Make(T : sig type t val t : t Rpc.Types.def end) = struct
+    exception Exn of T.t
+    let error = {
+        def = T.t;
+        raiser = (function e -> Exn e);
+        matcher = (function | Exn e -> Some e | _ -> None)
+      }
+  end
+
 end
 
 module Interface = struct
