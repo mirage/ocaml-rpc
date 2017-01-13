@@ -191,6 +191,81 @@ module GenServer = struct
     fn call
 end
 
+module GenServerExn = struct
+  open Rpc
+
+  type description = Interface.description
+  let describe x = x
+
+  exception MarshalError of string
+  exception UnknownMethod of string
+
+  type ('a,'b) comp = 'a
+  type rpcfn = Rpc.call -> Rpc.response
+  type funcs = (string, rpcfn) Hashtbl.t
+  type 'a res = 'a -> funcs -> funcs
+
+  type _ fn =
+    | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
+    | Returning : ('a Param.t * 'b Error.t) -> ('a, _) comp fn
+
+  let returning a b = Returning (a,b)
+  let (@->) = fun t f -> Function (t, f)
+
+  let empty : unit -> funcs = fun () -> Hashtbl.create 20
+
+  type boxed_error = BoxedError : 'a Error.t -> boxed_error
+
+  let rec get_error_ty : type a. a fn -> boxed_error = function
+    | Function (_,f) -> get_error_ty f
+    | Returning (_,e) -> BoxedError e
+
+  let declare : string -> string list -> 'a fn -> 'a res = fun name _ ty impl functions ->
+    let open Rresult.R in
+    let get_named_args call =
+      match call.params with
+      | [Dict x] -> x
+      | _ -> raise (MarshalError "All arguments must be named currently")
+    in
+
+    let get_arg args name =
+      if not (List.mem_assoc name args)
+      then raise (MarshalError (Printf.sprintf "Argument missing: %s" name))
+      else List.assoc name args
+    in
+
+    let rpcfn =
+      let rec inner : type a. a fn -> a -> call -> response = fun f impl call ->
+        let args = get_named_args call in
+        try
+          match f with
+          | Function (t, f) ->
+              let arg_rpc = get_arg args t.Param.name in
+              let z = Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty arg_rpc in
+              let arg =
+                match z with
+                | Result.Ok arg -> arg
+                | Result.Error (`Msg m) -> raise (MarshalError m)
+              in
+              inner f (impl arg) call
+          | Returning (t,e) -> success (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty impl)
+        with e ->
+          let BoxedError error_ty = get_error_ty f in
+          match error_ty.Error.matcher e with
+          | Some y -> failure (Rpcmarshal.marshal error_ty.Error.def.Rpc.Types.ty y)
+          | None -> raise e
+      in inner ty impl
+    in
+
+    Hashtbl.add functions name rpcfn;
+
+    functions
+
+  let server funcs call =
+    let fn = try Hashtbl.find funcs call.name with Not_found -> raise (UnknownMethod call.name) in
+    fn call
+end
+
 
 (* A default error variant as an example. In real code, this is more easily expressed by using the PPX:
 

@@ -160,6 +160,39 @@ module GenServer : sig
   val declare : string -> string list -> 'a fn -> 'a res
 end
 
+module GenServerExn : sig
+  type description = Interface.description
+  val describe : Interface.description -> description
+
+  (** 'funcs' is a Hashtbl type that is used to hold the implementations of
+      the RPCs *)
+  type rpcfn = Rpc.call -> Rpc.response
+  type funcs = (string, rpcfn) Hashtbl.t
+
+  (** The result of a declaration of an RPC is a function type that takes
+      as first parameter the implementation of the RPC, and as second
+      parameter the 'funcs' object that is accumulating each implementation.
+      When all the implementations have been added to the 'funcs' object,
+      it can be passed to the 'server' function below *)
+  type 'a res = 'a -> funcs -> funcs
+
+  (** No error handling done server side yet *)
+  type ('a,'b) comp = 'a
+
+  type _ fn
+
+  (** The 'empty' method here can be used to obtain an initial 'funcs' object
+      to accumulate the implementations in *)
+  val empty : unit -> funcs
+
+  (** [server funcs] is a function that can be used to respond to RPC calls *)
+  val server : funcs -> Rpc.call -> Rpc.response
+
+  val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
+  val returning : 'a Param.t -> 'b Error.t -> ('a, 'b) comp fn
+  val declare : string -> string list -> 'a fn -> 'a res
+end
+
 module DefaultError : sig
   type t = InternalError of string
   exception InternalErrorExn of string
