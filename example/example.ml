@@ -250,6 +250,7 @@ end
 module VMClient = VMRPC(GenClient)
 module VMServer = VMRPC(GenServer)
 module VMClientExn = VMRPC(GenClientExn)
+module VMServerExn = VMRPC(GenServerExn)
 
 let _ =
   let open Rresult.R in
@@ -265,13 +266,25 @@ let _ =
   in
   let funcs = GenServer.empty () |> VMServer.start impl in
 
+  (* And an implementation that raises exceptions rather than Result.result
+     types *)
+  let implexn vm' paused =
+    if paused
+    then raise (ExampleExn (Errors "Paused start is unimplemented"));
+    ()
+  in
+  let funcsexn = GenServer.empty () |> VMServerExn.start implexn in
+
   (* Again we create a wrapper RPC function that dumps the marshalled data to
      stdout for clarity *)
   let rpc rpc =
-    Printf.printf "Marshalled RPC call: '%s'\n"
+    Printf.printf "Marshalled RPC call:\n'%s'\n"
       (Rpc.string_of_call rpc);
     let response = GenServer.server funcs rpc in
-    Printf.printf "Marshalled RPC type: '%s'\n"
+    Printf.printf "Marshalled RPC type:\n'%s'\n"
+      (Rpc.string_of_response response);
+    let response = GenServerExn.server funcsexn rpc in
+    Printf.printf "Marshalled RPC type from exception producing impl (should be the same):\n'%s'\n"
       (Rpc.string_of_response response);
     response
   in
