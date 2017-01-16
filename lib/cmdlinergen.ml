@@ -126,6 +126,7 @@ module Gen () = struct
           Cmdliner.Term.(const (fun args -> run args) $ cur)
       in
       let doc = String.concat " " desc_list in
+      pos := 0;
       inner (Cmdliner.Term.pure []) ty, Cmdliner.Term.info name ~doc
     in
     terms := generate :: !terms
