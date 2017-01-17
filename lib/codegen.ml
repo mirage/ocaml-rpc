@@ -86,13 +86,12 @@ module Gen () = struct
   type 'a res = unit
   type description = Interface.t
 
-  let interface = ref None
+  let methods = ref []
 
   let describe i =
     let n = i.Interface.name in
     if String.capitalize n <> n then failwith "Interface names must be capitalized";
-    let i = Interface.({details=i; methods=[]}) in
-    interface := Some i;
+    let i = Interface.({details=i; methods=(List.rev !methods)}) in
     i
 
   let returning a b  = Returning (a,b)
@@ -100,12 +99,5 @@ module Gen () = struct
 
   let declare : string -> string list -> 'a fn -> 'a res = fun name description ty ->
     let m = BoxedFunction Method.({name; description; ty}) in
-    match !interface with
-    | Some i -> interface := Some (Interface.({i with methods = i.methods @ [m]}))
-    | None -> raise Interface_not_described
-
-  let get_interface () =
-    match !interface with
-    | None -> raise Interface_not_described
-    | Some x -> x
+    methods := m :: !methods
 end

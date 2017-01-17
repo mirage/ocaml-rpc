@@ -44,11 +44,9 @@ module Gen :
       type 'a fn = 'a outerfn
       type 'a res = unit
       type description = Interface.t
-      val interface : Interface.t option ref
       val describe : Interface.description -> Interface.t
       val returning :
         'a Idl.Param.t -> 'b Idl.Error.t -> ('a, 'b) Result.result outerfn
       val ( @-> ) : 'a Idl.Param.t -> 'b outerfn -> ('a -> 'b) outerfn
       val declare : string -> string list -> 'a fn -> 'a res
-      val get_interface : unit -> Interface.t
     end

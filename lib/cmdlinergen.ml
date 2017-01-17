@@ -1,9 +1,8 @@
 open Idl
 
 module Gen () = struct
-  type description = Idl.Interface.description
-
-  let describe x = x
+  type description = ((Rpc.call -> Rpc.response) ->
+                      unit Cmdliner.Term.t * Cmdliner.Term.info) list
 
   type ('a,'b) comp = ('a,'b) Result.result
   type 'a rpcfn = Rpc.call -> Rpc.response
@@ -130,5 +129,8 @@ module Gen () = struct
       inner (Cmdliner.Term.pure []) ty, Cmdliner.Term.info name ~doc
     in
     terms := generate :: !terms
+
+
+  let describe : Idl.Interface.description -> description = fun _ -> !terms
 
 end

@@ -229,6 +229,11 @@ let err = error
 module VMRPC (R : RPC) = struct
   open R
 
+  let start = declare "start"
+      ["Start a VM. This method should be idempotent, and you can start the ";
+       "same VM as many times as you like."]
+      (p @-> b @-> returning u err)
+
   (* We can declare some more information about the interface here for more
      interesting uses of these declarations - for example, the documentation
      generator or Cmdliner term generator *)
@@ -240,10 +245,6 @@ module VMRPC (R : RPC) = struct
         "purely being used as an example of how to declare an interface."];
       version=(1,0,0)})
 
-  let start = declare "start"
-      ["Start a VM. This method should be idempotent, and you can start the ";
-       "same VM as many times as you like."]
-      (p @-> b @-> returning u err)
 end
 
 (* Once again we generate a client and server module *)
@@ -307,8 +308,7 @@ let _ =
   test ()
 
 (* We can use the generators to generate other pieces of information: *)
-module Gen = Codegen.Gen ()
-module C = VMRPC(Gen)
+module C = VMRPC(Codegen.Gen ())
 
 (* Here we use the HTML and Markdown generators to create descriptions of the
    interfaces *)
@@ -319,7 +319,7 @@ let _ =
        "by an example of manipulating the power-states of VMs. It shows how";
        "new datatypes can be declared and used in methods, and how errors are";
        "handled."] |>
-    Codegen.Interfaces.add_interface (Gen.get_interface ()) in
+    Codegen.Interfaces.add_interface C.interface in
 
   let write fname str =
     let oc = open_out fname in

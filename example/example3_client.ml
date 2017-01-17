@@ -10,10 +10,8 @@ module PCmds=Datapath(PCmdGen)
 module DClient=Data(GenClient)
 module DCmds=Data(DCmdGen)
 
-module C = Codegen.Gen ()
-module CD = Datapath(C)
-module D = Codegen.Gen ()
-module DD = Data(D)
+module CD = Datapath(Codegen.Gen ())
+module DD = Data(Codegen.Gen ())
 
 let generate_md () =
   let interfaces = Codegen.Interfaces.empty
@@ -26,8 +24,8 @@ let generate_md () =
   in
   let interfaces =
     interfaces
-    |> Codegen.Interfaces.add_interface (C.get_interface ())
-    |> Codegen.Interfaces.add_interface (D.get_interface ())
+    |> Codegen.Interfaces.add_interface CD.interface
+    |> Codegen.Interfaces.add_interface DD.interface
   in
   let write fname str =
     let oc = open_out fname in
