@@ -35,6 +35,7 @@ module Interfaces :
     }
     val empty : string -> string -> string list -> t
     val add_interface : Interface.t -> t -> t
+    val create : name:string -> title:string -> description:string list -> interfaces:Interface.t list -> t
   end
 exception Interface_not_described
 module Gen :

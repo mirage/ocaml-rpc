@@ -76,6 +76,10 @@ module Interfaces = struct
 
     { is with type_decls = new_typedefs @ is.type_decls; interfaces = i :: is.interfaces }
 
+  let create ~name ~title ~description ~interfaces =
+    let i = empty name title description in
+    List.fold_right add_interface interfaces i
+
 end
 
 exception Interface_not_described
