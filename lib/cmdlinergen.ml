@@ -8,8 +8,9 @@ module Gen () = struct
   type 'a rpcfn = Rpc.call -> Rpc.response
   type 'a res = unit
 
+  let description = ref None
   let terms = ref []
-  let implement : Idl.Interface.description -> implementation = fun _ () -> !terms
+  let implement : Idl.Interface.description -> implementation = fun x -> description := Some x; fun () -> !terms
 
   type _ fn =
     | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
@@ -109,6 +110,7 @@ module Gen () = struct
 
   let declare name desc_list ty =
     let generate rpc =
+      let wire_name = Idl.get_wire_name !description name in
       let rec inner : type b. ((string * Rpc.t) list) Cmdliner.Term.t -> b fn -> unit Cmdliner.Term.t = fun cur f ->
         match f with
         | Function (t, f) ->
@@ -117,7 +119,7 @@ module Gen () = struct
           inner term f
         | Returning (ty, err) ->
           let run args =
-            let call = Rpc.call name [(Rpc.Dict args)] in
+            let call = Rpc.call wire_name [(Rpc.Dict args)] in
             let response = rpc call in
             match response.Rpc.contents with
             | x -> Printf.printf "%s\n" (Rpc.to_string x);
@@ -127,7 +129,7 @@ module Gen () = struct
       in
       let doc = String.concat " " desc_list in
       pos := 0;
-      inner (Cmdliner.Term.pure []) ty, Cmdliner.Term.info name ~doc
+      inner (Cmdliner.Term.pure []) ty, Cmdliner.Term.info wire_name ~doc
     in
     terms := generate :: !terms
 

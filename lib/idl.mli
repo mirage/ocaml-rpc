@@ -45,6 +45,8 @@ module Interface : sig
   }
 end
 
+val get_wire_name : Interface.description option -> string -> string
+
 (** The RPC module type is the standard module signature that the various
     specialization modules must conform to. *)
 module type RPC = sig
