@@ -12,8 +12,8 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result  = fun t v 
     List.fold_left (fun acc v ->
         match acc, unmarshal typ v with
         | (Ok a), (Ok v) -> Ok (v::a)
-        | _ -> Error (Rresult.R.msg "Failed to unmarshal array"))
-                 (Ok []) l >>| List.rev
+        | _, (Error (`Msg s)) -> Error (Rresult.R.msg (Printf.sprintf "Failed to unmarshal array: %s (when unmarshalling: %s)" s (Rpc.to_string v)))
+        | x, _ -> x) (Ok []) l >>| List.rev
   in
   match t with
   | Basic Int -> int_of_rpc v
