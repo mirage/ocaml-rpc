@@ -88,11 +88,11 @@ module Gen () = struct
   type ('a,'b) comp = ('a,'b) Result.result
   type 'a fn = 'a outerfn
   type 'a res = unit
-  type description = Interface.t
+  type implementation = unit -> Interface.t
 
   let methods = ref []
 
-  let describe i =
+  let implement i () =
     let n = i.Interface.name in
     if String.capitalize n <> n then failwith "Interface names must be capitalized";
     let i = Interface.({details=i; methods=(List.rev !methods)}) in

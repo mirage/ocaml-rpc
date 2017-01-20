@@ -2,30 +2,24 @@ open Idl
 open Rpc
 open Example3_idl
 
-module PCmdGen = Cmdlinergen.Gen ()
-module DCmdGen = Cmdlinergen.Gen ()
-
-module PClient=Datapath(GenClient)
-module PCmds=Datapath(PCmdGen)
-module DClient=Data(GenClient)
-module DCmds=Data(DCmdGen)
+module PClient=Datapath(GenClient ())
+module PCmds=Datapath(Cmdlinergen.Gen ())
+module DClient=Data(GenClient ())
+module DCmds=Data(Cmdlinergen.Gen ())
 
 module CD = Datapath(Codegen.Gen ())
 module DD = Data(Codegen.Gen ())
 
 let generate_md () =
-  let interfaces = Codegen.Interfaces.empty
-      "SMAPIv3"
-      "Storage APIs version 3"
-      ["This set of interfaces is the third example of how to use the";
-       "ocaml-rpc library as an IDL to describe RPCs. This example is inspired";
-       "by the xapi-storage repository under the xapi-project organisation on";
-       "github."]
-  in
-  let interfaces =
-    interfaces
-    |> Codegen.Interfaces.add_interface CD.interface
-    |> Codegen.Interfaces.add_interface DD.interface
+  let interfaces = Codegen.Interfaces.create
+      ~name:"SMAPIv3"
+      ~title:"Storage APIs version 3"
+      ~description:[
+        "This set of interfaces is the third example of how to use the";
+        "ocaml-rpc library as an IDL to describe RPCs. This example is inspired";
+        "by the xapi-storage repository under the xapi-project organisation on";
+        "github."]
+      ~interfaces:[CD.implementation (); DD.implementation ()]
   in
   let write fname str =
     let oc = open_out fname in
@@ -99,6 +93,6 @@ let binary_rpc path (call: Rpc.call) : Rpc.response =
 
 let cli () =
   let rpc = binary_rpc "path" in
-  Cmdliner.Term.eval_choice default_cmd (generate_md_cmd :: (List.map (fun t -> t rpc) (!PCmdGen.terms @ !DCmdGen.terms)))
+  Cmdliner.Term.eval_choice default_cmd (generate_md_cmd :: (List.map (fun t -> t rpc) (PCmds.implementation () @ DCmds.implementation ())))
 
 let _ = cli ()

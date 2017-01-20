@@ -23,6 +23,17 @@ open Idl
 module MyAPI(R : RPC) = struct
   open R
 
+  let description = Interface.{
+      name = "MyAPI";
+      namespace = Some "MYAPI";
+      description =
+        ["This is an example showing how to use the IDL part of the ocaml-rpc ";
+         "library. What goes here is a description of the interface we're ";
+         "currently describing."];
+      version=(1,0,0);
+    }
+  let implementation = implement description
+
   (* We can define some named parameters here. These can be used in different
      method declarations *)
   let i1 = Param.mk ~name:"i1" ~description:["Parameter i1"] Rpc.Types.int
@@ -47,8 +58,8 @@ end
 
 (* By passing in different modules to the `MyAPI` functor above, we can
    generate Client and Server modules *)
-module Client=MyAPI(GenClient)
-module Server=MyAPI(GenServer)
+module Client=MyAPI(GenClient ())
+module Server=MyAPI(GenServer ())
 
 let _ =
   (* The Client module generated above makes use of the Result.result type,
@@ -59,21 +70,17 @@ let _ =
   (* The server is used by associating the RPC declarations with their
      implementations. The return type is expected to be Result.result, hence
      the use of `ok` here. *)
-  let funcs =
-    GenServer.empty ()
+  Server.api1 (fun i s ->
+    Printf.printf "Received '%d' and '%s': returning '%b'\n" i s true;
+    ok true);
 
-    |> Server.api1 (fun i s ->
-        Printf.printf "Received '%d' and '%s': returning '%b'\n" i s true;
-        ok true)
-
-    |> Server.api2 (fun s ->
-        Printf.printf "Received '%s': returning '%d'\n%!" s 56;
-        ok 56)
-  in
+  Server.api2 (fun s ->
+    Printf.printf "Received '%s': returning '%d'\n%!" s 56;
+    ok 56);
 
   (* The Server module has a 'server' function that can be used to service RPC
      requests by passing the funcs value created above. *)
-  let rpc_fn : Rpc.call -> Rpc.response = GenServer.server funcs in
+  let rpc_fn : Rpc.call -> Rpc.response = Server.implementation in
 
   (* To see a little more clearly what's going on, we will wrap this rpc
      function in something to print out the marshalled call and response. *)
@@ -229,29 +236,29 @@ let err = error
 module VMRPC (R : RPC) = struct
   open R
 
-  let start = declare "start"
-      ["Start a VM. This method should be idempotent, and you can start the ";
-       "same VM as many times as you like."]
-      (p @-> b @-> returning u err)
-
   (* We can declare some more information about the interface here for more
      interesting uses of these declarations - for example, the documentation
      generator or Cmdliner term generator *)
-  let interface = describe Idl.Interface.({
+  let implementation = implement Idl.Interface.({
       name = "VM";
+      namespace = None;
       description = [
         "The VM interface is used to perform power-state operations on virtual";
         "machines. It doesn't do anything else in this implementation as it is";
         "purely being used as an example of how to declare an interface."];
       version=(1,0,0)})
 
+  let start = declare "start"
+      ["Start a VM. This method should be idempotent, and you can start the ";
+       "same VM as many times as you like."]
+      (p @-> b @-> returning u err)
 end
 
 (* Once again we generate a client and server module *)
-module VMClient = VMRPC(GenClient)
-module VMServer = VMRPC(GenServer)
-module VMClientExn = VMRPC(GenClientExn)
-module VMServerExn = VMRPC(GenServerExn)
+module VMClient = VMRPC(GenClient ())
+module VMServer = VMRPC(GenServer ())
+module VMClientExn = VMRPC(GenClientExn ())
+module VMServerExn = VMRPC(GenServerExn ())
 
 let _ =
   let open Rresult.R in
@@ -265,7 +272,7 @@ let _ =
     then error (Errors "Paused start is unimplemented")
     else ok ()
   in
-  let funcs = GenServer.empty () |> VMServer.start impl in
+  VMServer.start impl;
 
   (* And an implementation that raises exceptions rather than Result.result
      types *)
@@ -274,17 +281,17 @@ let _ =
     then raise (ExampleExn (Errors "Paused start is unimplemented"));
     ()
   in
-  let funcsexn = GenServer.empty () |> VMServerExn.start implexn in
+  VMServerExn.start implexn;
 
   (* Again we create a wrapper RPC function that dumps the marshalled data to
      stdout for clarity *)
   let rpc rpc =
     Printf.printf "Marshalled RPC call:\n'%s'\n"
       (Rpc.string_of_call rpc);
-    let response = GenServer.server funcs rpc in
+    let response = VMServer.implementation rpc in
     Printf.printf "Marshalled RPC type:\n'%s'\n"
       (Rpc.string_of_response response);
-    let response = GenServerExn.server funcsexn rpc in
+    let response = VMServerExn.implementation rpc in
     Printf.printf "Marshalled RPC type from exception producing impl (should be the same):\n'%s'\n"
       (Rpc.string_of_response response);
     response
@@ -319,7 +326,7 @@ let _ =
        "by an example of manipulating the power-states of VMs. It shows how";
        "new datatypes can be declared and used in methods, and how errors are";
        "handled."] |>
-    Codegen.Interfaces.add_interface C.interface in
+    Codegen.Interfaces.add_interface (C.implementation ()) in
 
   let write fname str =
     let oc = open_out fname in

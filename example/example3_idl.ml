@@ -92,6 +92,17 @@ open Idl
 module Datapath(R: RPC) = struct
   open R
 
+  let implementation = R.implement Idl.Interface.{
+      name = "Datapath";
+      namespace = None;
+      description = [
+        "Xapi will call the functions here on VM start / shutdown / suspend";
+        "/ resume / migrate. Every function is idempotent. Every function";
+        "takes a domain parameter which allows the implementation to track";
+        "how many domains are currently using the volume."];
+      version=(1,0,0)
+    }
+
   let open_ =
     declare "open" [
       "[open uri persistent] is called before a disk is attached to a VM.";
@@ -149,20 +160,21 @@ module Datapath(R: RPC) = struct
       "is an opportunity to throw away writes if the disk is not persistent."]
       (uri_p @-> returning unit error)
 
-  let interface = R.describe Idl.Interface.{
-      name = "Datapath";
-      description = [
-        "Xapi will call the functions here on VM start / shutdown / suspend";
-        "/ resume / migrate. Every function is idempotent. Every function";
-        "takes a domain parameter which allows the implementation to track";
-        "how many domains are currently using the volume."];
-      version=(1,0,0)
-    }
 end
 
 
 module Data (R : RPC) = struct
   open R
+
+  let implementation = implement Idl.Interface.{
+      name = "Data";
+      namespace = Some "Data";
+      description = [
+        "This interface is used for long-running data operations such as";
+        "copying the contents of volumes or mirroring volumes to remote";
+        "destinations"];
+      version=(1,0,0)
+    }
 
   type operation =
     | Copy of uri * uri
@@ -236,12 +248,4 @@ module Data (R : RPC) = struct
       ["[ls] returns a list of all current operations"]
       (unit @-> returning operations error)
 
-  let interface = describe Idl.Interface.{
-      name = "Data";
-      description = [
-        "This interface is used for long-running data operations such as";
-        "copying the contents of volumes or mirroring volumes to remote";
-        "destinations"];
-      version=(1,0,0)
-    }
 end

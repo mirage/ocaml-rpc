@@ -1,7 +1,7 @@
 open Idl
 open Example2_idl
 
-module Server=API(GenServer)
+module Server=API(GenServer ())
 
 (* Implementations of the methods *)
 let query () =
@@ -77,14 +77,11 @@ let serve_requests rpcfn path =
 let start_server () =
   let open Rresult in
 
-  let funcs =
-    GenServer.empty ()
-    |> Server.query query
-    |> Server.diagnostics diagnostics
-    |> Server.test test
-  in
+  Server.query query;
+  Server.diagnostics diagnostics;
+  Server.test test;
 
-  let rpc_fn = GenServer.server funcs in
+  let rpc_fn = Server.implementation in
 
   let process x =
     Jsonrpc.string_of_response (rpc_fn (Jsonrpc.call_of_string x)) in

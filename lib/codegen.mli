@@ -14,6 +14,7 @@ module Interface :
     type description =
       Idl.Interface.description = {
       name : string;
+      namespace : string option;
       description : string list;
       version : Rpc.Version.t;
     }
@@ -44,8 +45,8 @@ module Gen :
       type ('a,'b) comp = ('a,'b) Result.result
       type 'a fn = 'a outerfn
       type 'a res = unit
-      type description = Interface.t
-      val describe : Interface.description -> Interface.t
+      type implementation = unit -> Interface.t
+      val implement : Interface.description -> implementation
       val returning :
         'a Idl.Param.t -> 'b Idl.Error.t -> ('a, 'b) Result.result outerfn
       val ( @-> ) : 'a Idl.Param.t -> 'b outerfn -> ('a -> 'b) outerfn

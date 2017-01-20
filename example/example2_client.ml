@@ -1,9 +1,8 @@
 open Idl
 open Example2_idl
 
-module Client = API(GenClient)
-module C      = Cmdlinergen.Gen ()
-module Cmds   = API(C)
+module Client = API(GenClient ())
+module Cmds   = API(Cmdlinergen.Gen ())
 
 (* Use a binary 16-byte length to frame RPC messages *)
 let binary_rpc path (call: Rpc.call) : Rpc.response =
@@ -37,4 +36,4 @@ let server_cmd =
 
 let cli () =
   let rpc = binary_rpc Example2_idl.sockpath in
-  Cmdliner.Term.eval_choice default_cmd (server_cmd :: List.map (fun t -> t rpc) !C.terms)
+  Cmdliner.Term.eval_choice default_cmd (server_cmd :: List.map (fun t -> t rpc) (Cmds.implementation ()))

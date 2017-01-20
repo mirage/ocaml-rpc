@@ -39,6 +39,17 @@ end
 module API(R : RPC) = struct
   open R
 
+  let description = Interface.{
+      name = "API";
+      namespace = None;
+      description = [
+        "This is another example of the ocaml-rpc IDL."
+      ];
+      version=(1,0,0);
+    }
+
+  let implementation = implement description
+
   let query_p  = Param.mk
       ~name:"query"
       ~description:["The result of the query operation"]

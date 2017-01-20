@@ -37,18 +37,19 @@ end
 module Interface = struct
   type description = {
     name : string;
+    namespace : string option;
     description : string list;
     version : Rpc.Version.t;
   }
 end
 
 module type RPC = sig
-  type description
+  type implementation
   type 'a res
   type ('a,'b) comp
   type _ fn
 
-  val describe : Interface.description -> description
+  val implement : Interface.description -> implementation
 
   val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
   val returning : 'a Param.t -> 'b Error.t -> ('a, 'b) comp fn
@@ -62,11 +63,34 @@ let debug_rpc call =
   Printf.printf "response: %s\n" (Rpc.string_of_response response);
   response
 
-module GenClient = struct
-  type description = Interface.description
-  let describe x = x
+exception MarshalError of string
+exception UnknownMethod of string
 
-  exception MarshalError of string
+let get_wire_name description name =
+  match description with
+  | None -> name
+  | Some d -> match d.Interface.namespace with
+    | Some ns -> Printf.sprintf "%s.%s" ns name
+    | None -> name
+
+let get_named_args call =
+  match call.Rpc.params with
+  | [Rpc.Dict x] -> x
+  | _ -> raise (MarshalError "All arguments must be named currently")
+
+let get_arg args name =
+  if not (List.mem_assoc name args)
+  then raise (MarshalError (Printf.sprintf "Argument missing: %s" name))
+  else List.assoc name args
+
+type client_implementation = unit
+
+module GenClient () =
+struct
+  type implementation = client_implementation
+
+  let description = ref None
+  let implement x = description := Some x; ()
 
   type ('a,'b) comp = ('a,'b) Result.result
   type rpcfn = Rpc.call -> Rpc.response
@@ -86,7 +110,8 @@ module GenClient = struct
       | Function (t, f) ->
         fun v -> inner ((t.Param.name, Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v) :: cur) f
       | Returning (t, e) ->
-        let call = Rpc.call name [(Rpc.Dict cur)] in
+        let wire_name = get_wire_name !description name in
+        let call = Rpc.call wire_name [(Rpc.Dict cur)] in
         let r = rpc call in
         if r.Rpc.success
         then match Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty r.Rpc.contents with Ok x -> Ok x | Error (`Msg x) -> raise (MarshalError x)
@@ -94,11 +119,11 @@ module GenClient = struct
     in inner [] ty
 end
 
-module GenClientExn = struct
-  type description = Interface.description
-  let describe x = x
-
-  exception MarshalError of string
+module GenClientExn () =
+struct
+  type implementation = client_implementation
+  let description = ref None
+  let implement x = description := Some x; ()
 
   type ('a,'b) comp = 'a
   type rpcfn = Rpc.call -> Rpc.response
@@ -118,7 +143,8 @@ module GenClientExn = struct
       | Function (t, f) ->
         fun v -> inner ((t.Param.name, Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v) :: cur) f
       | Returning (t, e) ->
-        let call = Rpc.call name [(Rpc.Dict cur)] in
+        let wire_name = get_wire_name !description name in
+        let call = Rpc.call wire_name [(Rpc.Dict cur)] in
         let r = rpc call in
         if r.Rpc.success
         then match Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty r.Rpc.contents with Ok x -> x | Error (`Msg x) -> raise (MarshalError x)
@@ -126,19 +152,28 @@ module GenClientExn = struct
     in inner [] ty
 end
 
-module GenServer = struct
+(* For the Server generation, the 'implement' function call _must_ be called
+   before any RPCs are described. This exception will be raised if the user
+   tries to do this. *)
+exception NoDescription
+
+module GenServer () = struct
   open Rpc
 
-  type description = Interface.description
-  let describe x = x
+  let funcs = Hashtbl.create 20
 
-  exception MarshalError of string
-  exception UnknownMethod of string
+  let server call =
+    let fn = try Hashtbl.find funcs call.name with Not_found -> raise (UnknownMethod call.name) in
+    fn call
+
+  type implementation = Rpc.call -> Rpc.response
+  let description = ref None
+  let implement x = description := Some x; server
 
   type ('a,'b) comp = ('a,'b) Result.result
   type rpcfn = Rpc.call -> Rpc.response
   type funcs = (string, rpcfn) Hashtbl.t
-  type 'a res = 'a -> funcs -> funcs
+  type 'a res = 'a -> unit
 
   type _ fn =
     | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
@@ -147,22 +182,15 @@ module GenServer = struct
   let returning a b = Returning (a,b)
   let (@->) = fun t f -> Function (t, f)
 
-  let empty : unit -> funcs = fun () -> Hashtbl.create 20
-
-  let declare : string -> string list -> 'a fn -> 'a res = fun name _ ty impl functions ->
+  let declare : string -> string list -> 'a fn -> 'a res = fun name _ ty impl ->
+    begin
+      (* Sanity check: ensure the description has been set before we declare
+         any RPCs *)
+      match !description with
+      | Some _ -> ()
+      | None -> raise NoDescription
+    end;
     let open Rresult.R in
-    let get_named_args call =
-      match call.params with
-      | [Dict x] -> x
-      | _ -> raise (MarshalError "All arguments must be named currently")
-    in
-
-    let get_arg args name =
-      if not (List.mem_assoc name args)
-      then raise (MarshalError (Printf.sprintf "Argument missing: %s" name))
-      else List.assoc name args
-    in
-
     let rpcfn =
       let rec inner : type a. a fn -> a -> call -> response = fun f impl call ->
         let args = get_named_args call in
@@ -182,28 +210,27 @@ module GenServer = struct
       in inner ty impl
     in
 
-    Hashtbl.add functions name rpcfn;
-
-    functions
-
-  let server funcs call =
-    let fn = try Hashtbl.find funcs call.name with Not_found -> raise (UnknownMethod call.name) in
-    fn call
+    let wire_name = get_wire_name !description name in
+    Hashtbl.add funcs wire_name rpcfn
 end
 
-module GenServerExn = struct
+module GenServerExn () = struct
   open Rpc
 
-  type description = Interface.description
-  let describe x = x
+  let funcs = Hashtbl.create 20
 
-  exception MarshalError of string
-  exception UnknownMethod of string
+  let server call =
+    let fn = try Hashtbl.find funcs call.name with Not_found -> raise (UnknownMethod call.name) in
+    fn call
+
+  type implementation = Rpc.call -> Rpc.response
+  let description = ref None
+  let implement x = description := Some x; server
 
   type ('a,'b) comp = 'a
   type rpcfn = Rpc.call -> Rpc.response
   type funcs = (string, rpcfn) Hashtbl.t
-  type 'a res = 'a -> funcs -> funcs
+  type 'a res = 'a -> unit
 
   type _ fn =
     | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
@@ -212,28 +239,14 @@ module GenServerExn = struct
   let returning a b = Returning (a,b)
   let (@->) = fun t f -> Function (t, f)
 
-  let empty : unit -> funcs = fun () -> Hashtbl.create 20
-
   type boxed_error = BoxedError : 'a Error.t -> boxed_error
 
   let rec get_error_ty : type a. a fn -> boxed_error = function
     | Function (_,f) -> get_error_ty f
     | Returning (_,e) -> BoxedError e
 
-  let declare : string -> string list -> 'a fn -> 'a res = fun name _ ty impl functions ->
+  let declare : string -> string list -> 'a fn -> 'a res = fun name _ ty impl ->
     let open Rresult.R in
-    let get_named_args call =
-      match call.params with
-      | [Dict x] -> x
-      | _ -> raise (MarshalError "All arguments must be named currently")
-    in
-
-    let get_arg args name =
-      if not (List.mem_assoc name args)
-      then raise (MarshalError (Printf.sprintf "Argument missing: %s" name))
-      else List.assoc name args
-    in
-
     let rpcfn =
       let rec inner : type a. a fn -> a -> call -> response = fun f impl call ->
         let args = get_named_args call in
@@ -257,13 +270,9 @@ module GenServerExn = struct
       in inner ty impl
     in
 
-    Hashtbl.add functions name rpcfn;
+    let wire_name = get_wire_name !description name in
+    Hashtbl.add funcs wire_name rpcfn
 
-    functions
-
-  let server funcs call =
-    let fn = try Hashtbl.find funcs call.name with Not_found -> raise (UnknownMethod call.name) in
-    fn call
 end
 
 

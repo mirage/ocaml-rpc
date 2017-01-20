@@ -39,6 +39,7 @@ end
 module Interface : sig
   type description = {
     name : string;
+    namespace : string option;
     description : string list;
     version : Rpc.Version.t;
   }
@@ -48,9 +49,9 @@ end
     specialization modules must conform to. *)
 module type RPC = sig
 
-  (** The description is dependent on the module. *)
-  type description
-  val describe : Interface.description -> description
+  (** The implementation is dependent on the module. *)
+  type implementation
+  val implement : Interface.description -> implementation
 
   (** 'a res is the result type of declaring a function. For example,
       the Client module, given an (int -> int -> int) fn, will return
@@ -77,116 +78,88 @@ module type RPC = sig
   val declare : string -> string list -> 'a fn -> 'a res
 end
 
+type client_implementation = unit
 
 (** This module generates Client modules from RPC declarations *)
-module GenClient : sig
-  type description = Interface.description
-  val describe : Interface.description -> description
+module GenClient () : sig
+  type implementation = client_implementation
+  val implement : Interface.description -> implementation
 
   (** The result of declaring a function of type 'a (where for example
-      'a might be (int -> string -> bool)), is a function that takes
-      an rpc function, which might send the RPC across the network,
-      and returns a function of type 'a, in this case (int -> string
-      -> bool). *)
+             'a might be (int -> string -> bool)), is a function that takes
+             an rpc function, which might send the RPC across the network,
+             and returns a function of type 'a, in this case (int -> string
+             -> bool). *)
   type rpcfn = Rpc.call -> Rpc.response
   type 'a res = rpcfn -> 'a
 
   (** Our functions return a Result.result type, which either contains
-      the result of the Rpc, or an error message indicating a problem
-      happening at the transport level *)
+       -      the result of the Rpc, or an error message indicating a problem
+       -      happening at the transport level *)
   type ('a,'b) comp = ('a,'b) Result.result
-
   type _ fn
   val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
   val returning : 'a Param.t -> 'b Error.t -> ('a, 'b) comp fn
   val declare : string -> string list -> 'a fn -> rpcfn -> 'a
 end
 
+
 (** This module generates exception-raising Client modules from RPC
     declarations *)
-module GenClientExn : sig
-  type description = Interface.description
-  val describe : Interface.description -> description
+module GenClientExn () : sig
+  type implementation = client_implementation
+  val implement : Interface.description -> implementation
 
   (** The result of declaring a function of type 'a (where for example
-      'a might be (int -> string -> bool)), is a function that takes
-      an rpc function, which might send the RPC across the network,
-      and returns a function of type 'a, in this case (int -> string
-      -> bool). *)
+             'a might be (int -> string -> bool)), is a function that takes
+             an rpc function, which might send the RPC across the network,
+             and returns a function of type 'a, in this case (int -> string
+             -> bool). *)
   type rpcfn = Rpc.call -> Rpc.response
   type 'a res = rpcfn -> 'a
 
   (** Our functions return a Result.result type, which either contains
-      the result of the Rpc, or an error message indicating a problem
-      happening at the transport level *)
+       -      the result of the Rpc, or an error message indicating a problem
+       -      happening at the transport level *)
   type ('a,'b) comp = 'a
-
   type _ fn
   val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
-  val returning : 'a Param.t -> 'b Error.t -> ('a,'b) comp fn
+  val returning : 'a Param.t -> 'b Error.t -> ('a, 'b) comp fn
   val declare : string -> string list -> 'a fn -> rpcfn -> 'a
 end
 
-module GenServer : sig
-  type description = Interface.description
-  val describe : Interface.description -> description
+module GenServer () : sig
+  type implementation = Rpc.call -> Rpc.response
+  val implement : Interface.description -> implementation
 
   (** 'funcs' is a Hashtbl type that is used to hold the implementations of
-      the RPCs *)
+             the RPCs *)
   type rpcfn = Rpc.call -> Rpc.response
-  type funcs = (string, rpcfn) Hashtbl.t
 
-  (** The result of a declaration of an RPC is a function type that takes
-      as first parameter the implementation of the RPC, and as second
-      parameter the 'funcs' object that is accumulating each implementation.
-      When all the implementations have been added to the 'funcs' object,
-      it can be passed to the 'server' function below *)
-  type 'a res = 'a -> funcs -> funcs
-
+  type 'a res = 'a -> unit
   (** No error handling done server side yet *)
   type ('a,'b) comp = ('a,'b) Result.result
 
   type _ fn
-
-  (** The 'empty' method here can be used to obtain an initial 'funcs' object
-      to accumulate the implementations in *)
-  val empty : unit -> funcs
-
-  (** [server funcs] is a function that can be used to respond to RPC calls *)
-  val server : funcs -> Rpc.call -> Rpc.response
 
   val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
   val returning : 'a Param.t -> 'b Error.t -> ('a, 'b) comp fn
   val declare : string -> string list -> 'a fn -> 'a res
 end
 
-module GenServerExn : sig
-  type description = Interface.description
-  val describe : Interface.description -> description
+module GenServerExn () : sig
+  type implementation = Rpc.call -> Rpc.response
+  val implement : Interface.description -> implementation
 
   (** 'funcs' is a Hashtbl type that is used to hold the implementations of
-      the RPCs *)
+             the RPCs *)
   type rpcfn = Rpc.call -> Rpc.response
-  type funcs = (string, rpcfn) Hashtbl.t
 
-  (** The result of a declaration of an RPC is a function type that takes
-      as first parameter the implementation of the RPC, and as second
-      parameter the 'funcs' object that is accumulating each implementation.
-      When all the implementations have been added to the 'funcs' object,
-      it can be passed to the 'server' function below *)
-  type 'a res = 'a -> funcs -> funcs
-
+  type 'a res = 'a -> unit
   (** No error handling done server side yet *)
   type ('a,'b) comp = 'a
 
   type _ fn
-
-  (** The 'empty' method here can be used to obtain an initial 'funcs' object
-      to accumulate the implementations in *)
-  val empty : unit -> funcs
-
-  (** [server funcs] is a function that can be used to respond to RPC calls *)
-  val server : funcs -> Rpc.call -> Rpc.response
 
   val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
   val returning : 'a Param.t -> 'b Error.t -> ('a, 'b) comp fn

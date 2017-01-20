@@ -1,12 +1,15 @@
 open Idl
 
 module Gen () = struct
-  type description = ((Rpc.call -> Rpc.response) ->
+  type implementation = unit -> ((Rpc.call -> Rpc.response) ->
                       unit Cmdliner.Term.t * Cmdliner.Term.info) list
 
   type ('a,'b) comp = ('a,'b) Result.result
   type 'a rpcfn = Rpc.call -> Rpc.response
   type 'a res = unit
+
+  let terms = ref []
+  let implement : Idl.Interface.description -> implementation = fun _ () -> !terms
 
   type _ fn =
     | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
@@ -104,8 +107,6 @@ module Gen () = struct
              | _ -> failwith "Type error"))
         (Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo))
 
-  let terms = ref []
-
   let declare name desc_list ty =
     let generate rpc =
       let rec inner : type b. ((string * Rpc.t) list) Cmdliner.Term.t -> b fn -> unit Cmdliner.Term.t = fun cur f ->
@@ -131,6 +132,5 @@ module Gen () = struct
     terms := generate :: !terms
 
 
-  let describe : Idl.Interface.description -> description = fun _ -> !terms
 
 end
