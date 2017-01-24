@@ -19,7 +19,8 @@ module Param : sig
   (** [mk ~name ~description typ] creates a Param.t out of a type definition
       from the Types module. If the name or description are omitted, the name
       or description from the type definition will be inherited *)
-  val mk : ?name:string -> ?description:string list -> ?version:Rpc.Version.t -> 'a Rpc.Types.def -> 'a t
+  val mk : ?name:string -> ?description:string list ->
+    ?version:Rpc.Version.t -> 'a Rpc.Types.def -> 'a t
 end
 
 (* An error that might be raised by an RPC *)
@@ -51,8 +52,18 @@ val get_wire_name : Interface.description option -> string -> string
     specialization modules must conform to. *)
 module type RPC = sig
 
-  (** The implementation is dependent on the module. *)
+  (** The implementation is dependent on the module, and represents the
+      'result' of the entire module. For example, in the Server
+      module, the `implementation` is the server function, with type
+
+          Rpc.call -> Rpc.response.
+
+      For the Client module, the individual declarations are used to perform
+      the RPCs, and the 'implementation' type is simply unit. *)
   type implementation
+
+  (** To actually construct the implementation, an interface description
+      must be provided *)
   val implement : Interface.description -> implementation
 
   (** 'a res is the result type of declaring a function. For example,
@@ -80,24 +91,27 @@ module type RPC = sig
   val declare : string -> string list -> 'a fn -> 'a res
 end
 
-type client_implementation = unit
-
 (** This module generates Client modules from RPC declarations *)
 module GenClient () : sig
-  type implementation = client_implementation
+
+  (* The result of the module as a whole is unused *)
+  type implementation = unit
+
+  (* However, the namespace comes from the interface description, and hence calling
+     `implement` is important. *)
   val implement : Interface.description -> implementation
 
   (** The result of declaring a function of type 'a (where for example
-             'a might be (int -> string -> bool)), is a function that takes
-             an rpc function, which might send the RPC across the network,
-             and returns a function of type 'a, in this case (int -> string
-             -> bool). *)
+      'a might be (int -> string -> bool)), is a function that takes
+      an rpc function, which might send the RPC across the network,
+      and returns a function of type 'a, in this case (int -> string
+      -> bool). *)
   type rpcfn = Rpc.call -> Rpc.response
   type 'a res = rpcfn -> 'a
 
-  (** Our functions return a Result.result type, which either contains
-       -      the result of the Rpc, or an error message indicating a problem
-       -      happening at the transport level *)
+  (** Our functions return a Result.result type, which contains
+      the result of the Rpc, which might be an error message indicating
+      a problem happening on the remote end. *)
   type ('a,'b) comp = ('a,'b) Result.result
   type _ fn
   val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
@@ -107,22 +121,18 @@ end
 
 
 (** This module generates exception-raising Client modules from RPC
-    declarations *)
+    declarations. See the Client module above for a description of
+    the common entries. *)
 module GenClientExn () : sig
-  type implementation = client_implementation
+  type implementation = unit
   val implement : Interface.description -> implementation
 
-  (** The result of declaring a function of type 'a (where for example
-             'a might be (int -> string -> bool)), is a function that takes
-             an rpc function, which might send the RPC across the network,
-             and returns a function of type 'a, in this case (int -> string
-             -> bool). *)
   type rpcfn = Rpc.call -> Rpc.response
   type 'a res = rpcfn -> 'a
 
-  (** Our functions return a Result.result type, which either contains
-       -      the result of the Rpc, or an error message indicating a problem
-       -      happening at the transport level *)
+  (* Our functions never return the error parameter, hence the following
+     type declaration drops the `b parameter. Instead, the exception declared
+     in the Error.t passed in the `returning` function below will be raised.  *)
   type ('a,'b) comp = 'a
   type _ fn
   val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
@@ -134,12 +144,10 @@ module GenServer () : sig
   type implementation = Rpc.call -> Rpc.response
   val implement : Interface.description -> implementation
 
-  (** 'funcs' is a Hashtbl type that is used to hold the implementations of
-             the RPCs *)
   type rpcfn = Rpc.call -> Rpc.response
 
   type 'a res = 'a -> unit
-  (** No error handling done server side yet *)
+
   type ('a,'b) comp = ('a,'b) Result.result
 
   type _ fn
@@ -153,12 +161,10 @@ module GenServerExn () : sig
   type implementation = Rpc.call -> Rpc.response
   val implement : Interface.description -> implementation
 
-  (** 'funcs' is a Hashtbl type that is used to hold the implementations of
-             the RPCs *)
   type rpcfn = Rpc.call -> Rpc.response
 
   type 'a res = 'a -> unit
-  (** No error handling done server side yet *)
+
   type ('a,'b) comp = 'a
 
   type _ fn
