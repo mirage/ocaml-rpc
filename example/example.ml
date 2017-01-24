@@ -80,7 +80,7 @@ let _ =
 
   (* The Server module has a 'server' function that can be used to service RPC
      requests by passing the funcs value created above. *)
-  let rpc_fn : Rpc.call -> Rpc.response = Server.implementation in
+  let rpc_fn : Rpc.call -> Rpc.response = server Server.implementation in
 
   (* To see a little more clearly what's going on, we will wrap this rpc
      function in something to print out the marshalled call and response. *)
@@ -285,13 +285,16 @@ let _ =
 
   (* Again we create a wrapper RPC function that dumps the marshalled data to
      stdout for clarity *)
+  let rpcfn = server VMServer.implementation in
+  let rpcfnexn = server VMServerExn.implementation in
+
   let rpc rpc =
     Printf.printf "Marshalled RPC call:\n'%s'\n"
       (Rpc.string_of_call rpc);
-    let response = VMServer.implementation rpc in
+    let response = rpcfn rpc in
     Printf.printf "Marshalled RPC type:\n'%s'\n"
       (Rpc.string_of_response response);
-    let response = VMServerExn.implementation rpc in
+    let response = rpcfnexn rpc in
     Printf.printf "Marshalled RPC type from exception producing impl (should be the same):\n'%s'\n"
       (Rpc.string_of_response response);
     response

@@ -140,11 +140,14 @@ module GenClientExn () : sig
   val declare : string -> string list -> 'a fn -> rpcfn -> 'a
 end
 
-module GenServer () : sig
-  type implementation = Rpc.call -> Rpc.response
-  val implement : Interface.description -> implementation
+type rpcfn = Rpc.call -> Rpc.response
+type server_implementation
+val server : server_implementation -> rpcfn
+val combine : server_implementation list -> server_implementation
 
-  type rpcfn = Rpc.call -> Rpc.response
+module GenServer () : sig
+  type implementation = server_implementation
+  val implement : Interface.description -> implementation
 
   type 'a res = 'a -> unit
 
@@ -157,11 +160,10 @@ module GenServer () : sig
   val declare : string -> string list -> 'a fn -> 'a res
 end
 
-module GenServerExn () : sig
-  type implementation = Rpc.call -> Rpc.response
-  val implement : Interface.description -> implementation
 
-  type rpcfn = Rpc.call -> Rpc.response
+module GenServerExn () : sig
+  type implementation = server_implementation
+  val implement : Interface.description -> implementation
 
   type 'a res = 'a -> unit
 

@@ -157,21 +157,28 @@ end
    tries to do this. *)
 exception NoDescription
 
+type rpcfn = Rpc.call -> Rpc.response
+type server_implementation = (string, rpcfn) Hashtbl.t
+
+let server hashtbl call =
+  let fn = try Hashtbl.find hashtbl call.Rpc.name with Not_found -> raise (UnknownMethod call.Rpc.name) in
+  fn call
+
+let combine hashtbls =
+  let result = Hashtbl.create 16 in
+  List.iter (Hashtbl.iter (fun k v -> Hashtbl.add result k v)) hashtbls;
+  result
+
 module GenServer () = struct
   open Rpc
 
   let funcs = Hashtbl.create 20
 
-  let server call =
-    let fn = try Hashtbl.find funcs call.name with Not_found -> raise (UnknownMethod call.name) in
-    fn call
-
-  type implementation = Rpc.call -> Rpc.response
+  type implementation = server_implementation
   let description = ref None
-  let implement x = description := Some x; server
+  let implement x = description := Some x; funcs
 
   type ('a,'b) comp = ('a,'b) Result.result
-  type rpcfn = Rpc.call -> Rpc.response
   type funcs = (string, rpcfn) Hashtbl.t
   type 'a res = 'a -> unit
 
@@ -219,16 +226,11 @@ module GenServerExn () = struct
 
   let funcs = Hashtbl.create 20
 
-  let server call =
-    let fn = try Hashtbl.find funcs call.name with Not_found -> raise (UnknownMethod call.name) in
-    fn call
-
-  type implementation = Rpc.call -> Rpc.response
+  type implementation = server_implementation
   let description = ref None
-  let implement x = description := Some x; server
+  let implement x = description := Some x; funcs
 
   type ('a,'b) comp = 'a
-  type rpcfn = Rpc.call -> Rpc.response
   type funcs = (string, rpcfn) Hashtbl.t
   type 'a res = 'a -> unit
 
