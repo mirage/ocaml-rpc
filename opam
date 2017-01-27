@@ -27,5 +27,7 @@ depends: [
   "cow"
   "xmlm"
   "lwt"
+  "rresult"
+  "async"
 ]
 depopts: [ "js_of_ocaml" ]
