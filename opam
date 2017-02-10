@@ -27,6 +27,7 @@ depends: [
   "cow"
   "xmlm"
   "lwt"
+  "cmdliner"
   "rresult"
   "async"
 ]
