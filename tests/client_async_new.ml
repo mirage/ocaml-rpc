@@ -14,6 +14,15 @@ module API(R:Idl.RPC) = struct
   open R
   open Idl
 
+  let description = Idl.Interface.{
+      name="Test server";
+      namespace=None;
+      description=["Test interface"];
+      version=(1,0,0);
+    }
+
+  let implementation = implement description
+
   (* Construct a bunch of arguments to use in our RPCs *)
   let arg1   = Param.mk ~name:"arg1" Rpc.Types.string
   let argx   = Param.mk ~name:"x" Rpc.Types.int
@@ -75,20 +84,19 @@ let rpc rpc_fn call =
   Printf.printf "rpc function: response_string = '%s'\n" response_str;
   return (Jsonrpc.response_of_string response_str)
 
-module Server = API(Rpc_async.GenServer)
-module Client = API(Rpc_async.GenClient)
+module Server = API(Rpc_async.GenServer ())
+module Client = API(Rpc_async.GenClient ())
 
 let main () =
   let open Rpc_async.M in
 
-  let funcs =
-    Rpc_async.GenServer.empty ()
-    |> Server.rpc1 ImplM.rpc1
-    |> Server.rpc2 ImplM.rpc2
-    |> Server.rpc3 ImplM.rpc3
-  in
+  Server.rpc1 ImplM.rpc1;
+  Server.rpc2 ImplM.rpc2;
+  Server.rpc3 ImplM.rpc3;
 
-  let rpc = rpc (Rpc_async.GenServer.server funcs) in
+  let funcs = Server.implementation in
+
+  let rpc = rpc (Rpc_async.server funcs) in
 
   Client.rpc1 rpc "test argument" 2 >>= fun result ->
   Printf.printf "result.result='%s', metadata=[%s]\n"

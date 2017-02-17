@@ -1,5 +1,7 @@
 open Idl
 
+type lwt_rpcfn = Rpc.call -> Rpc.response Lwt.t
+
 (* Construct a helper monad to hide the nasty 'a comp type *)
 module M = struct
   type 'a lwt = { lwt: 'a Lwt.t }
@@ -13,9 +15,12 @@ module M = struct
   let lwt x = x.lwt
 end
 
-module GenClient = struct
-  type description = Interface.description
-  let describe x = x
+module GenClient () = struct
+  type implementation = unit
+
+  let description = ref None
+
+  let implement x = description := Some x
 
   exception MarshalError of string
 
@@ -46,19 +51,33 @@ module GenClient = struct
     in inner [] ty
 end
 
-module GenServer = struct
+exception MarshalError of string
+exception UnknownMethod of string
+
+type server_implementation = (string, lwt_rpcfn) Hashtbl.t
+let server hashtbl call =
+  let fn = try Hashtbl.find hashtbl call.Rpc.name with Not_found -> raise (UnknownMethod call.Rpc.name) in
+  fn call
+
+let combine hashtbls =
+  let result = Hashtbl.create 16 in
+  List.iter (Hashtbl.iter (fun k v -> Hashtbl.add result k v)) hashtbls;
+  result
+
+module GenServer () = struct
   open Rpc
 
-  type description = Idl.Interface.description
-  let describe x = x
+  let funcs = Hashtbl.create 20
 
-  exception MarshalError of string
-  exception UnknownMethod of string
+  type implementation = server_implementation
+
+  let description = ref None
+  let implement x = description := Some x; funcs
 
   type ('a,'b) comp = ('a,'b) Result.result M.lwt
   type rpcfn = Rpc.call -> Rpc.response Lwt.t
   type funcs = (string, rpcfn) Hashtbl.t
-  type 'a res = 'a -> funcs -> funcs
+  type 'a res = 'a -> unit
 
   type _ fn =
     | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
@@ -69,7 +88,7 @@ module GenServer = struct
 
   let empty : unit -> funcs = fun () -> Hashtbl.create 20
 
-  let declare : string -> string list -> 'a fn -> 'a res = fun name _ ty impl functions ->
+  let declare : string -> string list -> 'a fn -> 'a res = fun name _ ty impl ->
     let open Rresult.R in
     let get_named_args call =
       match call.params with
@@ -102,11 +121,5 @@ module GenServer = struct
       in inner ty impl
     in
 
-    Hashtbl.add functions name rpcfn;
-
-    functions
-
-  let server funcs call =
-    let fn = try Hashtbl.find funcs call.name with Not_found -> raise (UnknownMethod call.name) in
-    fn call
+    Hashtbl.add funcs name rpcfn
 end

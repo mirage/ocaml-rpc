@@ -1,3 +1,5 @@
+type lwt_rpcfn = Rpc.call -> Rpc.response Lwt.t
+
 module M :
   sig
     type 'a lwt = { lwt : 'a Lwt.t; }
@@ -10,10 +12,10 @@ module M :
     val lwt : 'a lwt -> 'a Lwt.t
   end
 
-module GenClient :
+module GenClient () :
   sig
-    type description = Idl.Interface.description
-    val describe : 'a -> 'a
+    type implementation = unit
+    val implement : Idl.Interface.description -> implementation
     exception MarshalError of string
     type ('a,'b) comp = ('a,'b) Result.result M.lwt
     type rpcfn = Rpc.call -> Rpc.response Lwt.t
@@ -26,16 +28,21 @@ module GenClient :
     val declare : string -> string list -> 'a fn -> rpcfn -> 'a
   end
 
-module GenServer :
+exception MarshalError of string
+exception UnknownMethod of string
+
+type server_implementation = (string, lwt_rpcfn) Hashtbl.t
+val server : server_implementation -> lwt_rpcfn
+val combine : server_implementation list -> server_implementation
+
+module GenServer () :
   sig
-    type description = Idl.Interface.description
-    val describe : 'a -> 'a
-    exception MarshalError of string
-    exception UnknownMethod of string
+    type implementation = server_implementation
+    val implement : Idl.Interface.description -> implementation
     type ('a,'b) comp = ('a,'b) Result.result M.lwt
     type rpcfn = Rpc.call -> Rpc.response Lwt.t
     type funcs = (string, rpcfn) Hashtbl.t
-    type 'a res = 'a -> funcs -> funcs
+    type 'a res = 'a -> unit
     type _ fn =
         Function : 'a Idl.Param.t * 'b fn -> ('a -> 'b) fn
       | Returning : ('a Idl.Param.t * 'b Idl.Error.t) -> ('a, 'b) M.t fn
@@ -43,5 +50,4 @@ module GenServer :
     val ( @-> ) : 'a Idl.Param.t -> 'b fn -> ('a -> 'b) fn
     val empty : unit -> funcs
     val declare : string -> string list -> 'a fn -> 'a res
-    val server : (string, Rpc.call -> 'a) Hashtbl.t -> Rpc.call -> 'a
   end
