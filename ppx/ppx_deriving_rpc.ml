@@ -369,7 +369,7 @@ let rpc_strs_of_type ~options ~path type_decl =
     Vb.mk (pvar rpc_of)
       (polymorphize (Rpc_of.str_of_type ~options ~path type_decl));
     Vb.mk (pvar of_rpc)
-      (polymorphize (Of_rpc.str_of_type ~options ~path type_decl));
+      (Exp.fun_ Label.nolabel None (pvar ("__x__")) [%expr [%e (polymorphize (Of_rpc.str_of_type ~options ~path type_decl))] __x__]);
   ]
 
 
