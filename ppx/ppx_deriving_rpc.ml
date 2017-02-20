@@ -367,7 +367,7 @@ let rpc_strs_of_type ~options ~path type_decl =
   let of_rpc = Ppx_deriving.mangle_type_decl ~fixpoint:"" (`Suffix "of_rpc") type_decl in
   [
     Vb.mk (pvar rpc_of)
-      (polymorphize (Rpc_of.str_of_type ~options ~path type_decl));
+      (Exp.fun_ Label.nolabel None (pvar ("__x__")) [%expr [%e (polymorphize (Rpc_of.str_of_type ~options ~path type_decl))] __x__]);
     Vb.mk (pvar of_rpc)
       (Exp.fun_ Label.nolabel None (pvar ("__x__")) [%expr [%e (polymorphize (Of_rpc.str_of_type ~options ~path type_decl))] __x__]);
   ]
