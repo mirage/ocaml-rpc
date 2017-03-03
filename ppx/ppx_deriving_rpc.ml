@@ -277,7 +277,7 @@ module Rpc_of = struct
     (* Tuple lists might be representable by a dictionary, if the first type in the tuple is string-like *)
     | [%type: ([%t? typ] * [%t? typ2]) list] -> [%expr
       if [%e is_string typ]
-      then fun l -> Rpc.Dict (List.map (fun (k,v) -> (k,[%e expr_of_typ typ2] v)) l)
+      then fun l -> Rpc.Dict (List.map (fun (k,v) -> (Rpc.string_of_rpc ([%e expr_of_typ typ] k),[%e expr_of_typ typ2] v)) l)
       else fun l -> Rpc.Enum (List.map (fun (a,b) -> Rpc.Enum [[%e expr_of_typ typ] a; [%e expr_of_typ typ2] b]) l)]
 
     | [%type: [%t? typ] list] ->
