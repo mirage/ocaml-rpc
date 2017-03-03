@@ -37,7 +37,7 @@ let is_string typ =
   | [%type: int] -> [%expr false]
   | [%type: bool] -> [%expr false]
   | { ptyp_desc = Ptyp_constr ( { txt = lid }, [] ) } ->
-    [%expr try (let _ = [%e Exp.ident (mknoloc (Ppx_deriving.mangle_lid ~fixpoint:"" (`Suffix "of_rpc") lid)) ] (Rpc.String "") in true) with _ -> false]
+    [%expr let open Rpc in try (let _ = [%e Exp.ident (mknoloc (Ppx_deriving.mangle_lid ~fixpoint:"" (`Suffix "of_rpc") lid)) ] (Rpc.String "") in true) with _ -> false]
   | _ -> [%expr false]
 
 (* Retrieve a string attribute from the annotation. For example: given the type declaration:
