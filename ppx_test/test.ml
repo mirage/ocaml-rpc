@@ -115,6 +115,11 @@ type test_dict = (string * int) list [@@deriving rpc]
 let test_dict () =
   check_marshal_unmarshal (["foo",1; "bar",2; "baz",3], Rpc.Dict ["foo", Rpc.Int 1L; "bar", Rpc.Int 2L; "baz", Rpc.Int 3L], rpc_of_test_dict, test_dict_of_rpc)
 
+type key = string [@@deriving rpc]
+type test_dict_key = (key * int) list [@@deriving rpc]
+let test_dict_key () =
+  check_marshal_unmarshal (["foo",1; "bar",2; "baz",3], Rpc.Dict ["foo", Rpc.Int 1L; "bar", Rpc.Int 2L; "baz", Rpc.Int 3L], rpc_of_test_dict_key, test_dict_key_of_rpc)
+
 type test_int_array = int array [@@deriving rpc]
 let test_int_array () =
   check_marshal_unmarshal ([|1;2;3;4|], Rpc.Enum [Rpc.Int 1L; Rpc.Int 2L; Rpc.Int 3L; Rpc.Int 4L;], rpc_of_test_int_array, test_int_array_of_rpc)
@@ -192,6 +197,9 @@ let test_poly () =
   let (x : int test_poly) = [1;2;3] in
   check_marshal_unmarshal (x, Rpc.Enum [Rpc.Int 1L; Rpc.Int 2L; Rpc.Int 3L], (rpc_of_test_poly Rpc.rpc_of_int), (test_poly_of_rpc Rpc.int_of_rpc))
 
+type 'a myref = string [@@deriving rpc]
+type vdi_ref = [`VDI] myref [@@deriving rpc]
+
 type test_polyvar = [ `one | `two of int | `thRee of int * int ] [@@deriving rpc]
 let test_polyvar () =
   check_marshal_unmarshal (`one, Rpc.String "one", rpc_of_test_polyvar, test_polyvar_of_rpc)
@@ -239,6 +247,7 @@ let suite =
     "int list" >:: test_int_list;
     "int array" >:: test_int_array;
     "dict" >:: test_dict;
+    "dict_key" >:: test_dict_key;
     "tuple2" >:: test_tuple2;
     "tuple3" >:: test_tuple3;
     "option" >:: test_option;
