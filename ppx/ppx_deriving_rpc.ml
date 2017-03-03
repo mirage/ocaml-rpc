@@ -27,6 +27,19 @@ let is_option typ =
   | [%type: [%t? typ] option] -> true
   | _ -> false
 
+
+(* When marshalling (foo * bar) lists we check to see whether it can be better represented by a
+   dictionary - we do this by checking (possibly at run time) whether the 'foo' can be unmarshalled from
+   a string - this following function, given the type 'foo', returns the run time check *)
+let is_string typ =
+  match typ with
+  | [%type: string] -> [%expr true]
+  | [%type: int] -> [%expr false]
+  | [%type: bool] -> [%expr false]
+  | { ptyp_desc = Ptyp_constr ( { txt = lid }, [] ) } ->
+    [%expr try (let _ = [%e Exp.ident (mknoloc (Ppx_deriving.mangle_lid ~fixpoint:"" (`Suffix "of_rpc") lid)) ] (Rpc.String "") in true) with _ -> false]
+  | _ -> [%expr false]
+
 (* Retrieve a string attribute from the annotation. For example: given the type declaration:
  *
  *      type x = {
@@ -61,10 +74,19 @@ module Of_rpc = struct
     | { ptyp_desc = Ptyp_constr ( { txt = Lident "char" }, args ) } ->
       [%expr Rpc.char_of_rpc ]
 
-    | [%type: (string * [%t? typ]) list] -> [%expr
-      function
-      | Rpc.Dict l -> List.map (fun (k,v) -> (k,[%e expr_of_typ typ] v)) l
-      | y -> failwith (Printf.sprintf "Expecting Rpc.Dict, but found '%s'" (Rpc.to_string y)) ]
+    (* Tuple lists might be representable by a dictionary, if the first type in the tuple is string-like *)
+    | [%type: ([%t? typ1] * [%t? typ2]) list] -> [%expr
+      if [%e is_string typ1]
+      then
+        function
+        | Rpc.Dict l -> List.map (fun (k,v) -> ([%e expr_of_typ typ1] (Rpc.String k),[%e expr_of_typ typ2] v)) l
+        | y -> failwith (Printf.sprintf "Expecting Rpc.Dict, but found '%s'" (Rpc.to_string y))
+      else
+        function
+        | Rpc.Enum l -> List.map
+          (function | Rpc.Enum [k;v] -> ([%e expr_of_typ typ1] k,[%e expr_of_typ typ2] v)
+                    | y -> failwith (Printf.sprintf "Expecting Rpc.Enum (within an Enum), but found '%s'" (Rpc.to_string y))) l
+        | y -> failwith (Printf.sprintf "Expecting Rpc.Enum, but found '%s'" (Rpc.to_string y)) ]
 
     | [%type: [%t? typ] list] -> [%expr
       function
@@ -169,7 +191,7 @@ module Of_rpc = struct
       failwith "Ptyp_package not handled"
 
   let str_of_type ~options ~path type_decl =
-    let to_rpc =
+    let of_rpc =
       match type_decl.ptype_kind, type_decl.ptype_manifest with
       | Ptype_abstract, Some manifest ->
         expr_of_typ manifest
@@ -237,11 +259,13 @@ module Of_rpc = struct
         [%expr fun rpc ->
           let rpc' = Rpc.lowerfn rpc in
           [%e Exp.function_ (cases@[default]) ] rpc' ]
-    in to_rpc
+    in of_rpc
 end
 
 
 module Rpc_of = struct
+
+
   let rec expr_of_typ typ =
     match typ with
     | { ptyp_desc = Ptyp_constr ( { txt = lid }, args ) } when
@@ -249,9 +273,15 @@ module Rpc_of = struct
       [%expr Rpc.([%e Exp.ident (mknoloc (Ppx_deriving.mangle_lid ~fixpoint:"" (`Prefix "rpc_of") lid))])]
     | { ptyp_desc = Ptyp_constr ( { txt = Lident "char" }, args ) } ->
       [%expr Rpc.(function c -> Rpc.Int (Int64.of_int (Char.code c)))]
-    | [%type: (string * [%t? typ]) list] -> [%expr
-      fun l -> Rpc.Dict (List.map (fun (k,v) -> (k,[%e expr_of_typ typ] v)) l)]
-    | [%type: [%t? typ] list] -> [%expr fun l -> Rpc.Enum (List.map [%e expr_of_typ typ] l)]
+
+    (* Tuple lists might be representable by a dictionary, if the first type in the tuple is string-like *)
+    | [%type: ([%t? typ] * [%t? typ2]) list] -> [%expr
+      if [%e is_string typ]
+      then fun l -> Rpc.Dict (List.map (fun (k,v) -> (k,[%e expr_of_typ typ2] v)) l)
+      else fun l -> Rpc.Enum (List.map (fun (a,b) -> Rpc.Enum [[%e expr_of_typ typ] a; [%e expr_of_typ typ2] b]) l)]
+
+    | [%type: [%t? typ] list] ->
+      [%expr fun l -> Rpc.Enum (List.map [%e expr_of_typ typ] l)]
     | [%type: [%t? typ] array] -> [%expr fun l -> Rpc.Enum (List.map [%e expr_of_typ  typ] (Array.to_list l))]
     | {ptyp_desc = Ptyp_tuple typs } ->
       let args = List.mapi (fun i typ -> app (expr_of_typ  typ) [evar (argn i)]) typs in
@@ -311,6 +341,7 @@ module Rpc_of = struct
     | { ptyp_desc = Ptyp_package _ } ->
       failwith "Ptyp_package not handled"
   (*  | _ -> failwith "Error"*)
+
 
   let str_of_type ~options ~path type_decl =
     let to_rpc =
