@@ -1,3 +1,8 @@
+1.9.50 (Mar 2017)
+* Add a ppx to replace 'with rpc'
+* Add a new mechanism for defining IDLs (inspired by ctypes), to replace
+  the 'idl' syntax extension
+
 1.6.0 (July 2016)
 * Add support for JSON-RPC v2
 
