@@ -1,4 +1,4 @@
-PKG ppx_deriving ppx_tools rpclib ppx_tools.metaquot result cow cmdliner rresult lwt async oUnit ppx_deriving_rpc
+PKG ppx_deriving ppx_tools rpclib ppx_tools.metaquot result cow cmdliner rresult lwt async oUnit ppx_deriving_rpc cppo_ocamlbuild
 S ppx
 S lib
 S tests

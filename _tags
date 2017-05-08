@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: ee457f80c439d0c8f96fdb5309c29d25)
+# DO NOT EDIT (digest: afcff56637e5433d562333c658c7ae78)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -22,43 +22,43 @@ true: annot, bin_annot
 "lib/json.cmxs": use_json
 # Library cmdlinergen
 "lib/cmdlinergen.cmxs": use_cmdlinergen
-<lib/*.ml{,i,y}>: pkg_cmdliner
+<lib/*.ml{,i,y}>: package(cmdliner)
 # Library markdowngen
 "lib/markdowngen.cmxs": use_markdowngen
 <lib/*.ml{,i,y}>: use_json
 # Library rpclib_lwt
 "lib/rpclib_lwt.cmxs": use_rpclib_lwt
-<lib/*.ml{,i,y}>: pkg_lwt
+<lib/*.ml{,i,y}>: package(lwt)
 # Library rpclib_async
 "lib/rpclib_async.cmxs": use_rpclib_async
-<lib/*.ml{,i,y}>: pkg_async
-<lib/*.ml{,i,y}>: pkg_threads
+<lib/*.ml{,i,y}>: package(async)
+<lib/*.ml{,i,y}>: package(threads)
 # Library rpclib_syntax
 "lib/rpclib_syntax.cmxs": use_rpclib_syntax
-<lib/*.ml{,i,y}>: pkg_type_conv
+<lib/*.ml{,i,y}>: package(type_conv)
 # Library rpclib_unix
 "lib/rpclib_unix.cmxs": use_rpclib_unix
 # Library rpclib
 "lib/rpclib.cmxs": use_rpclib
 # Library idl
 "lib/idl.cmxs": use_idl
-<lib/*.ml{,i,y}>: pkg_camlp4
-<lib/*.ml{,i,y}>: pkg_result
-<lib/*.ml{,i,y}>: pkg_rresult
-<lib/*.ml{,i,y}>: pkg_xmlm
+<lib/*.ml{,i,y}>: package(camlp4)
+<lib/*.ml{,i,y}>: package(result)
+<lib/*.ml{,i,y}>: package(rresult)
+<lib/*.ml{,i,y}>: package(xmlm)
 <lib/*.ml{,i,y}>: use_rpclib
 <lib/*.ml{,i,y}>: use_rpclib_core
 <lib/*.ml{,i,y}>: use_xml
 # Library ppx_deriving_rpc
 "ppx/ppx_deriving_rpc.cmxs": use_ppx_deriving_rpc
-<ppx/*.ml{,i,y}>: pkg_compiler-libs.common
-<ppx/*.ml{,i,y}>: pkg_ppx_deriving
-<ppx/*.ml{,i,y}>: pkg_ppx_deriving.api
-<ppx/*.ml{,i,y}>: pkg_ppx_tools.metaquot
+<ppx/*.ml{,i,y}>: package(compiler-libs.common)
+<ppx/*.ml{,i,y}>: package(ppx_deriving)
+<ppx/*.ml{,i,y}>: package(ppx_deriving.api)
+<ppx/*.ml{,i,y}>: package(ppx_tools.metaquot)
 # Library rpc_client_js
 "js/rpc_client_js.cmxs": use_rpc_client_js
-<js/*.ml{,i,y}>: pkg_js_of_ocaml
-<js/*.ml{,i,y}>: pkg_js_of_ocaml.syntax
+<js/*.ml{,i,y}>: package(js_of_ocaml)
+<js/*.ml{,i,y}>: package(js_of_ocaml.syntax)
 # OASIS_STOP
 <lib/pa_rpc.ml>: pp(camlp4orf)
 <lib/p4_rpc.ml>: pp(camlp4orf)
@@ -68,3 +68,5 @@ true: annot, bin_annot
 <example/*>: not_hygienic
 <tests/*>: not_hygienic
 <ppx_test/*>: not_hygienic
+<ppx/*>: cppo_V_OCAML
+true: thread

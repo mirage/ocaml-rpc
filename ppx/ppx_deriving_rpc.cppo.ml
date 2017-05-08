@@ -1,3 +1,8 @@
+#if OCAML_VERSION < (4, 03, 0)
+    #define Pconst_string Const_string
+    #define Pcstr_tuple(x) x
+#endif
+
 open Longident
 open Asttypes
 open Parsetree
@@ -238,17 +243,21 @@ module Of_rpc = struct
         let cases =
           constrs |> List.map (fun { pcd_name = { txt = name }; pcd_args; pcd_attributes } ->
               match pcd_args with
-              | typs ->
+              | Pcstr_tuple(typs) ->
                 let subpattern = List.mapi (fun i _ -> pvar (argn i)) typs |> plist in
-                let exprs = List.mapi (fun i typ -> [%expr [%e expr_of_typ typ] [%e evar (argn i) ] ] ) pcd_args in
+                let exprs = List.mapi (fun i typ -> [%expr [%e expr_of_typ typ] [%e evar (argn i) ] ] ) typs in
                 let rpc_of = constr name exprs in
                 let main = [%pat? Rpc.String [%p pstr (String.lowercase (attr_name name pcd_attributes))]] in
-                let pattern = match pcd_args with
+                let pattern = match typs with
                   | [] -> main
                   | _ -> [%pat? Rpc.Enum ([%p main] :: [%p subpattern])]
                 in
-                Exp.case pattern rpc_of)
-        in
+                Exp.case pattern rpc_of
+#if OCAML_VERSION >= (4, 03, 0)
+              | Pcstr_record _ ->
+                raise_errorf "%s: record variants are not supported" deriver
+#endif
+          ) in
         let default =
           Exp.case
             [%pat? y]
@@ -373,7 +382,7 @@ module Rpc_of = struct
         let cases =
           constrs |> List.map (fun { pcd_name = { txt = name }; pcd_args; pcd_attributes } ->
               match pcd_args with
-              | typs ->
+              | Pcstr_tuple(typs) ->
                 let args = List.mapi (fun i typ -> [%expr [%e expr_of_typ  typ] [%e evar (argn i)]]) typs in
                 let argsl = list args in
                 let pattern = List.mapi (fun i _ -> pvar (argn i)) typs in
@@ -381,8 +390,12 @@ module Rpc_of = struct
                   | [] -> [%expr Rpc.String [%e str (attr_name name pcd_attributes)]]
                   | args -> [%expr Rpc.Enum ((Rpc.String [%e str (attr_name name pcd_attributes)]) :: [%e argsl])]
                 in
-                Exp.case (pconstr name pattern) rpc_of)
-        in
+                Exp.case (pconstr name pattern) rpc_of
+#if OCAML_VERSION >= (4, 03, 0)
+              | Pcstr_record _ ->
+                raise_errorf "%s: record variants are not supported" deriver
+#endif
+          ) in
         Exp.function_ cases
     in
     to_rpc
