@@ -134,6 +134,8 @@ struct
           (uid,Some ty)::exns
         | <:ctyp< $uid:uid$ >> ->
           (uid,None)::exns
+        | _ ->
+          exns
       end
     | _ ->
       exns

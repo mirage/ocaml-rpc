@@ -30,34 +30,122 @@ type t =
 
 val to_string : t -> string
 
+module Version : sig
+  type t = int * int * int
+
+  val compare : t -> t -> int
+end
+
+(** {2 Type declarations} *)
+module Types : sig
+  type _ basic =
+      Int : int basic
+    | Int32 : int32 basic
+    | Int64 : int64 basic
+    | Bool : bool basic
+    | Float : float basic
+    | String : string basic
+    | Char : char basic
+  type _ typ =
+      Basic : 'a basic -> 'a typ
+    | DateTime : string typ
+    | Array : 'a typ -> 'a array typ
+    | List : 'a typ -> 'a list typ
+    | Dict : 'a basic * 'b typ -> ('a * 'b) list typ
+    | Unit : unit typ
+    | Option : 'a typ -> 'a option typ
+    | Tuple : 'a typ * 'b typ -> ('a * 'b) typ
+    | Struct : 'a structure -> 'a typ
+    | Variant : 'a variant -> 'a typ
+  and 'a def = { name : string; description : string list; ty : 'a typ; }
+  and boxed_def = BoxedDef : 'a def -> boxed_def
+  and ('a, 's) field = {
+    fname : string;
+    fdescription : string list;
+    fversion : Version.t option;
+    field : 'a typ;
+    fdefault : 'a option;
+    fget : 's -> 'a;
+    fset : 'a -> 's -> 's;
+  }
+  and 'a boxed_field = BoxedField : ('a, 's) field -> 's boxed_field
+  and field_getter = {
+    fget : 'a. string -> 'a typ -> ('a, Rresult.R.msg) Result.result;
+  }
+  and 'a structure = {
+    sname : string;
+    fields : 'a boxed_field list;
+    version : Version.t option;
+    constructor : field_getter -> ('a, Rresult.R.msg) Result.result;
+  }
+  and ('a, 's) tag = {
+    tname : string;
+    tdescription : string list;
+    tversion : Version.t option;
+    tcontents : 'a typ;
+    tpreview : 's -> 'a option; (* Prism *)
+    treview : 'a -> 's;
+  }
+  and 'a boxed_tag = BoxedTag : ('a, 's) tag -> 's boxed_tag
+  and tag_getter = {
+    tget : 'a. 'a typ -> ('a, Rresult.R.msg) Result.result;
+  }
+  and 'a variant = {
+    variants : 'a boxed_tag list;
+    vdefault : 'a option;
+    vversion : Version.t option;
+    vconstructor : string -> tag_getter -> ('a, Rresult.R.msg) Result.result;
+  }
+  val int : int def
+  val int32 : int32 def
+  val int64 : int64 def
+  val bool : bool def
+  val float : float def
+  val string : string def
+  val char : char def
+  val unit : unit def
+  val default_types : boxed_def list
+end
+
 (** {2 Basic constructors} *)
 
-val int64_of_rpc : t -> int64
 val rpc_of_int64 : int64 -> t
-
-val int32_of_rpc : t -> int32
 val rpc_of_int32 : int32 -> t
-
-val int_of_rpc : t -> int
 val rpc_of_int : int -> t
-
-val bool_of_rpc : t -> bool
 val rpc_of_bool : bool -> t
-
-val float_of_rpc : t -> float
 val rpc_of_float : float -> t
-
-val string_of_rpc : t -> string
 val rpc_of_string : string -> t
-
-val dateTime_of_rpc : t -> string
 val rpc_of_dateTime : string -> t
+val rpc_of_t : t -> t
+val rpc_of_unit : unit -> t
+val rpc_of_char : char -> t
 
+
+val int64_of_rpc : t -> int64
+val int32_of_rpc : t -> int32
+val int_of_rpc : t -> int
+val bool_of_rpc : t -> bool
+val float_of_rpc : t -> float
+val string_of_rpc : t -> string
+val dateTime_of_rpc : t -> string
 val t_of_rpc : t -> t
 val rpc_of_t : t -> t
-
+val char_of_rpc : t -> char
 val unit_of_rpc : t -> unit
-val rpc_of_unit : unit -> t
+
+module ResultUnmarshallers : sig
+  val int64_of_rpc : t -> (int64, Rresult.R.msg) Result.result
+  val int32_of_rpc : t -> (int32, Rresult.R.msg) Result.result
+  val int_of_rpc : t -> (int, Rresult.R.msg) Result.result
+  val bool_of_rpc : t -> (bool, Rresult.R.msg) Result.result
+  val float_of_rpc : t -> (float, Rresult.R.msg) Result.result
+  val string_of_rpc : t -> (string, Rresult.R.msg) Result.result
+  val dateTime_of_rpc : t -> (string, Rresult.R.msg) Result.result
+  val t_of_rpc : t -> (t, Rresult.R.msg) Result.result
+  val unit_of_rpc : t -> (unit, Rresult.R.msg) Result.result
+end
+
+
 
 (** {2 Calls} *)
 

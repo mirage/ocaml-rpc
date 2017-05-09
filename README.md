@@ -23,7 +23,7 @@ given type to and from theirs RPC representations.
 In order to do so, it is sufficicient to add `with rpc` to the
 corresponding type defintion. Hence :
 
-    type t = ... with rpc
+    type t = ... [@@deriving rpc]
 
 this will give two functions:
 
@@ -31,14 +31,13 @@ this will give two functions:
   `val rpc_of_t : t -> Rpc.t`
 
 * A function to convert values of type `Rpc.t` to values of type `t` :
-  `val t_of_rpc : Rpc.t -> t`
+  `val t_of_rpc : Rpc.t -> (t,string) Result.result`
 
 Optionaly, it is possible to have different field name in the OCaml
 type (if it is a record) and in the dictionary argumenent (the first
 elements of `Dict`):
 
-    type t = { foo: int; bar: int }
-    with rpc ("foo" -> "type", "bar" -> "let")
+    type t = { foo: int [@key "type"]; bar: int [@key "let"]; } [@@deriving rpc]
 
 This will replace "foo" by "type" and "bar" by "let" in the RPC 
 representation. This is particularly useful when you want to integrate
@@ -60,4 +59,5 @@ So if you want to marshal a value x of type t to JSON, you can use the following
 # Dependencies
 
 * [xmlm](http://erratique.ch/software/xmlm)
-* [type-conv](http://hg.ocaml.info/release/type-conv)
+* [ppx_deriving](http://github.com/whitequark/ppx_deriving)
+* [type-conv](http://hg.ocaml.info/release/type-conv) (for deprecated camlp4 extension)

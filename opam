@@ -15,11 +15,20 @@ build: [
 install: [
   [make "install"]
 ]
-remove: [["ocamlfind" "remove" "rpclib"]]
+remove: [
+  ["ocamlfind" "remove" "rpclib"]
+  ["ocamlfind" "remove" "ppx_deriving_rpc"]
+]
 depends: [
+  "oasis" {build}
   "ocamlfind"
   "type_conv" {>= "108.07.01"}
+  "ppx_deriving"
+  "cow"
   "xmlm"
   "lwt"
+  "cmdliner"
+  "rresult"
+  "async"
 ]
 depopts: [ "js_of_ocaml" ]

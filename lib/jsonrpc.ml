@@ -238,14 +238,14 @@ module Parser = struct
 
   let clist_to_string cs =
     let len = List.length cs in
-    let s = String.create len in
+    let s = Bytes.create len in
     let rec iter indx = function
       | c :: cs ->
-        String.set s indx c;
+        Bytes.set s indx c;
         iter (indx + 1) cs
       | [] -> () in
     iter 0 cs;
-    s
+    Bytes.to_string s
 
   let string_of_error = function
     | Unexpected_char (l, c, state) ->
