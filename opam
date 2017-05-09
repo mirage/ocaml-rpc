@@ -19,6 +19,10 @@ remove: [
   ["ocamlfind" "remove" "rpclib"]
   ["ocamlfind" "remove" "ppx_deriving_rpc"]
 ]
+build-test: [
+    [make]
+    [make "test"]
+]
 depends: [
   "oasis" {build}
   "cppo"  {build}
