@@ -41,7 +41,8 @@ let of_args args =
           tag "td" (tag "code" (string name));
           tag "td" (string direction);
           tag "td" (tag "code" (list ty));
-          tag "td" (string description)])
+          tag "td" (string (String.concat " " description))
+      ])
   in
   tag "table" ~attrs:["width","100%"]
     (list [
@@ -82,7 +83,8 @@ let of_struct_fields : 'a boxed_field list -> Cow.Html.t = fun all ->
       (list
          [ tag "td" (tag "pre" (string f.fname));
            tag "td" (tag "pre" (string (String.concat "" ty)));
-           tag "td" (string f.fdescription) ])
+           tag "td" (string (String.concat " " f.fdescription))
+    ])
   in
   tag "table" ~attrs:["width","100%"]
     (list [ tag "thead"
@@ -102,7 +104,8 @@ let of_variant_tags : 'a boxed_tag list -> Cow.Html.t = fun all ->
       (list
          [ tag "td" (tag "pre" (string t.tname));
            tag "td" (tag "pre" (string (String.concat "" ty)));
-           tag "td" (string t.tdescription) ])
+           tag "td" (string (String.concat " " t.tdescription))
+    ])
   in
   tag "table" ~attrs:["width","100%"]
     (list [ tag "thead"
@@ -123,7 +126,8 @@ let of_type_decl i_opt (BoxedDef t) =
   let description = t.description in
   let common =
     [ h4 ~id:anchor (string (Printf.sprintf "type %s = %s" name defn));
-      p (string description) ]
+      p (string (String.concat " " description))
+    ]
   in
   let rest = match t.ty with
     | Struct structure ->
@@ -175,8 +179,8 @@ let of_method is i (Codegen.BoxedFunction m) =
   let name = m.Method.name in
   let description = m.Method.description in
   [ h3 ~id:anchor (string name);
-    p (string description) ]
-  @ tabs_of is i m
+    p (string (String.concat " " description))
+  ] @ tabs_of is i m
 
 
 let of_interface is i =
@@ -184,8 +188,8 @@ let of_interface is i =
   let anchor = "a-" ^ name in
   let description = i.Interface.details.Idl.Interface.description in
   [ h2 ~id:anchor (string name);
-    p (string description) ] @
-  List.concat (List.map (of_method is i) i.Interface.methods)
+    p (string (String.concat " " description))
+  ] @ List.concat (List.map (of_method is i) i.Interface.methods)
 
 (*
 let of_exception ts =
@@ -229,7 +233,7 @@ let of_interfaces x =
            (list
               ([
                 h1 (string name);
-                p (string description);
+                p (string (String.concat " " description));
               ] @
                 List.concat (List.map (of_type_decl None) x.Interfaces.type_decls)
                 @
