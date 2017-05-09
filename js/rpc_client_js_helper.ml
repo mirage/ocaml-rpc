@@ -96,7 +96,7 @@ let response_of_string str =
   | Rpc.Dict d ->
     let result = get "result" d in
     let error = get "error" d in
-    let (_:int64) = try match get "id" d with Rpc.Int i -> i | Rpc.String s -> Int64.of_string s with _ -> 
+    let (_:int64) = try match get "id" d with Rpc.Int i -> i | Rpc.String s -> Int64.of_string s | _ -> failwith "inconsistent input" with _ -> 
       Firebug.console##log (Js.string (Printf.sprintf "Weirdness: %s" (Rpc.to_string (get "id" d))));
       raise (Malformed_method_response "id") in
     begin match result, error with
