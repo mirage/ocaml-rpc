@@ -154,7 +154,7 @@ module Of_rpc = struct
               raise_errorf ~loc:ptyp_loc "%s cannot be derived for %s"
                 deriver (Ppx_deriving.string_of_core_type typ))
       and inherits_case =
-        let toplevel_typ = typ in
+        (*let toplevel_typ = typ in*)
         inherits |>
         List.map (function Rinherit typ -> typ | _ -> assert false) |>
         List.fold_left (fun expr typ ->
