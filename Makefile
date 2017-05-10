@@ -19,7 +19,7 @@ clean:
 	make -C ppx_test clean
 	make -C tests clean
 	make -C example clean
-	rm -f setup.data setup.log setup.ml myocamlbuild.ml
+	rm -f setup.data setup.log setup.ml
 
 distclean:
 	$(SETUP) -distclean $(DISTCLEANFLAGS)

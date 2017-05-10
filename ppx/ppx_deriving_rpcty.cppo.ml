@@ -1,3 +1,8 @@
+#if OCAML_VERSION < (4, 03, 0)
+    #define Pconst_string Const_string
+    #define Pcstr_tuple(x) x
+#endif
+
 
 open Longident
 open Asttypes
@@ -165,15 +170,22 @@ module Typ_of = struct
           constrs |> List.map (fun { pcd_name = { txt = name }; pcd_args; pcd_attributes } ->
               let rpc_name = attr_name name pcd_attributes in
               let lower_rpc_name = String.lowercase rpc_name in
-              let contents = match pcd_args with
-                | [] -> [%expr Unit]
-                | _ -> List.fold_right (fun t acc ->
-                    [%expr Tuple ([%e expr_of_typ  t], [%e acc])])
-                    (List.tl pcd_args)
-                    [%expr [%e (expr_of_typ  (List.hd pcd_args))]]
+              let typs = match pcd_args with
+              | Pcstr_tuple(typs) -> typs
+#if OCAML_VERSION >= (4, 03, 0)
+              | Pcstr_record _ ->
+                raise_errorf "%s: record variants are not supported" deriver
+#endif        
               in
-              let args = List.mapi (fun i typ -> evar (argn i)) pcd_args in
-              let pattern = List.mapi (fun i _ -> pvar (argn i)) pcd_args in
+              let contents = match typs with
+                | [] -> [%expr Unit]
+                | typs_hd::typs_tl -> List.fold_right (fun t acc ->
+                    [%expr Tuple ([%e expr_of_typ  t], [%e acc])])
+                    typs_tl
+                    [%expr [%e (expr_of_typ  typs_hd)]]
+              in
+              let args = List.mapi (fun i typ -> evar (argn i)) typs in
+              let pattern = List.mapi (fun i _ -> pvar (argn i)) typs in
               let vpreview_default = if List.length constrs = 1 then [] else [Exp.case (Pat.any ()) [%expr None]] in
               let vpreview = Exp.function_ ([
                   Exp.case (pconstr name pattern) [%expr Some [%e tuple args ]];
@@ -187,7 +199,7 @@ module Typ_of = struct
                   "tdescription", attr_doc pcd_attributes;
                   "tpreview", vpreview;
                   "treview", vreview]]] in
-              let vconstructor_case = Exp.case (Pat.constant (Const_string (lower_rpc_name,None))) [%expr Rresult.R.bind (t.tget [%e contents]) ([%e Exp.function_ [Exp.case (ptuple pattern) [%expr Rresult.R.ok [%e (constr name args)]]]])] in
+              let vconstructor_case = Exp.case (Pat.constant (Pconst_string (lower_rpc_name,None))) [%expr Rresult.R.bind (t.tget [%e contents]) ([%e Exp.function_ [Exp.case (ptuple pattern) [%expr Rresult.R.ok [%e (constr name args)]]]])] in
               (variant, vconstructor_case))
         in
         let default = [Exp.case (Pat.any ())

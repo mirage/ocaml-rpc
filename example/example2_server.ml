@@ -81,7 +81,7 @@ let start_server () =
   Server.diagnostics diagnostics;
   Server.test test;
 
-  let rpc_fn = Server.implementation in
+  let rpc_fn = server Server.implementation in
 
   let process x =
     Jsonrpc.string_of_response (rpc_fn (Jsonrpc.call_of_string x)) in
