@@ -29,10 +29,16 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result  = fun t v 
       | Enum xs -> (list_helper typ xs) >>| Array.of_list
       | _ -> Rresult.R.error_msg "Expecting Array"
     end
-  | List typ -> begin
+  | List (Tuple (Basic String, typ)) -> begin
       match v with
-      | Enum xs -> list_helper typ xs
-      | _ -> Rresult.R.error_msg "Expecting array"
+      | Dict xs -> begin
+          let keys = List.map fst xs in
+          let vs = List.map snd xs in
+          list_helper typ vs >>= fun vs ->
+          return (List.combine keys vs)
+        end
+      | _ ->
+        Rresult.R.error_msg "Unhandled"
     end
   | Dict (basic, typ) -> begin
       match v with
@@ -48,6 +54,11 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result  = fun t v 
         end
       | _ ->
         Rresult.R.error_msg "Unhandled"
+    end
+  | List typ -> begin
+      match v with
+      | Enum xs -> list_helper typ xs
+      | _ -> Rresult.R.error_msg "Expecting array"
     end
   | Unit -> unit_of_rpc v
   | Option t -> begin
@@ -118,6 +129,8 @@ let rec marshal : type a. a typ -> a -> Rpc.t = fun t v ->
   | Basic t -> rpc_of_basic t v
   | DateTime -> rpc_of_dateTime v
   | Array typ -> Enum (List.map (marshal typ) (Array.to_list v))
+  | List (Tuple (Basic String, typ)) ->
+    Dict (List.map (fun (x,y) -> (x, marshal typ y)) v)
   | List typ -> Enum (List.map (marshal typ) v)
   | Dict (String, typ) ->
     Rpc.Dict (List.map (fun (k,v) -> (k, marshal typ v)) v)
