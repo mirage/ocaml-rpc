@@ -40,7 +40,8 @@ module GenClient () = struct
     let rec inner : type b. (string * Rpc.t) list -> b fn -> b = fun cur ->
       function
       | Function (t, f) ->
-        fun v -> inner ((t.Param.name, Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v) :: cur) f
+        let n = match t.Param.name with | Some s -> s | None -> raise (MarshalError "Named parameters required for Async") in
+        fun v -> inner ((n, Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v) :: cur) f
       | Returning (t, e) ->
         let call = Rpc.call name [(Rpc.Dict cur)] in
         let res = Deferred.bind (rpc call) (fun r ->
@@ -105,7 +106,8 @@ module GenServer () = struct
         let args = get_named_args call in
         match f with
         | Function (t, f) -> begin
-            let arg_rpc = get_arg args t.Param.name in
+            let n = match t.Param.name with Some s -> s | None -> raise (MarshalError "Named parameters required for Async") in
+            let arg_rpc = get_arg args n in
             let z = Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty arg_rpc in
             match z with
             | Result.Ok arg -> inner f (impl arg) call

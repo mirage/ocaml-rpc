@@ -90,7 +90,7 @@ let of_args args =
     match is_in, arg.Param.typedef.ty with
     | false, Unit -> []
     | _ ->
-      let name = arg.Param.name in
+      let name = match arg.Param.name with Some s -> s | None -> "unnamed" in
       let direction = if is_in then "in" else "out" in
       let ty = string_of_t arg.Param.typedef.ty |> String.concat " " in
       let description = String.concat " " arg.Param.description in

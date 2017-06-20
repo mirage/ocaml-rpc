@@ -7,7 +7,7 @@ module Param : sig
   (** A Param.t has a name, description and a typedef. We may also want to add in here
       default values, example values and so on *)
   type 'a t = {
-    name : string;
+    name : string option;
     description : string list;
     typedef : 'a Rpc.Types.def;
     version : Rpc.Version.t option;

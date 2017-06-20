@@ -38,7 +38,7 @@ let of_args args =
     let description = arg.Param.description in
     tag "tr"
       (list [
-          tag "td" (tag "code" (string name));
+          tag "td" (tag "code" (string (match name with Some s -> s | None -> "unnamed")));
           tag "td" (string direction);
           tag "td" (tag "code" (list ty));
           tag "td" (string (String.concat " " description))
