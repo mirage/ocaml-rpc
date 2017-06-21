@@ -184,6 +184,52 @@ struct
     in inner ([],[]) ty
 end
 
+module type RPCfunc = sig
+  val rpc : Rpc.call -> Rpc.response
+end
+
+module GenClientExnRpc (R : RPCfunc) =
+struct
+  type implementation = client_implementation
+  let description = ref None
+  let implement x = description := Some x; ()
+
+  type ('a,'b) comp = 'a
+  type 'a res = 'a
+
+  type _ fn =
+    | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
+    | Returning : ('a Param.t * 'b Error.t) -> ('a,_) comp fn
+
+  let returning a err = Returning (a, err)
+  let (@->) = fun t f -> Function (t, f)
+
+  let declare name _ ty =
+    let open Result in
+    let rec inner : type b. ((string * Rpc.t) list * Rpc.t list) -> b fn -> b = fun (named,unnamed) ->
+      function
+      | Function (t, f) -> begin
+        fun v ->
+          let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
+          match t.Param.name with
+          | Some n -> inner (((n,marshalled)::named),unnamed) f
+          | None -> inner (named,(marshalled::unnamed)) f
+        end
+      | Returning (t, e) ->
+        let wire_name = get_wire_name !description name in
+        let args =
+          match named with
+          | [] -> List.rev unnamed
+          | _ -> (Rpc.Dict named) :: List.rev unnamed
+        in
+        let call = Rpc.call wire_name args in
+        let r = R.rpc call in
+        if r.Rpc.success
+        then match Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty r.Rpc.contents with Ok x -> x | Error (`Msg x) -> raise (MarshalError x)
+        else match Rpcmarshal.unmarshal e.Error.def.Rpc.Types.ty r.Rpc.contents with Ok x -> raise (e.Error.raiser x) | Error (`Msg x) -> raise (MarshalError x)
+    in inner ([],[]) ty
+end
+
 (* For the Server generation, the 'implement' function call _must_ be called
    before any RPCs are described. This exception will be raised if the user
    tries to do this. *)
