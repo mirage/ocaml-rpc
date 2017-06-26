@@ -95,6 +95,7 @@ Library rpclib_unix
 Library rpclib
   Path: lib
   FindlibName: rpclib
+  Modules: Rpc_empty_module
   BuildDepends: rpclib.xml
 
 Library idl
