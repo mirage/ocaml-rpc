@@ -40,7 +40,8 @@ module GenClient () = struct
     let rec inner : type b. (string * Rpc.t) list -> b fn -> b = fun cur ->
       function
       | Function (t, f) ->
-        fun v -> inner ((t.Param.name, Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v) :: cur) f
+        let n = match t.Param.name with Some s -> s | None -> raise (MarshalError "Named parameters required for Lwt") in
+        fun v -> inner ((n, Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v) :: cur) f
       | Returning (t, e) ->
         let call = Rpc.call name [(Rpc.Dict cur)] in
         let res = Lwt.bind (rpc call) (fun r ->
@@ -107,7 +108,8 @@ module GenServer () = struct
         Lwt.bind (get_named_args call) (fun args ->
         match f with
         | Function (t, f) -> begin
-            Lwt.bind (get_arg args t.Param.name) (fun arg_rpc ->
+            let n = match t.Param.name with | Some s -> s | None -> raise (MarshalError "Named parameters required for Lwt") in 
+            Lwt.bind (get_arg args n) (fun arg_rpc ->
             let z = Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty arg_rpc in
             match z with
             | Result.Ok arg -> inner f (impl arg) call

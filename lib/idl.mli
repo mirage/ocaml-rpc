@@ -7,7 +7,7 @@ module Param : sig
   (** A Param.t has a name, description and a typedef. We may also want to add in here
       default values, example values and so on *)
   type 'a t = {
-    name : string;
+    name : string option;
     description : string list;
     typedef : 'a Rpc.Types.def;
     version : Rpc.Version.t option;
@@ -139,6 +139,27 @@ module GenClientExn () : sig
   val returning : 'a Param.t -> 'b Error.t -> ('a, 'b) comp fn
   val declare : string -> string list -> 'a fn -> rpcfn -> 'a
 end
+
+module type RPCfunc = sig
+  val rpc : Rpc.call -> Rpc.response
+end
+
+module GenClientExnRpc (R : RPCfunc) : sig
+  type implementation = unit
+  val implement : Interface.description -> implementation
+
+  type 'a res = 'a
+
+  (* Our functions never return the error parameter, hence the following
+     type declaration drops the `b parameter. Instead, the exception declared
+     in the Error.t passed in the `returning` function below will be raised.  *)
+  type ('a,'b) comp = 'a
+  type _ fn
+  val (@->) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
+  val returning : 'a Param.t -> 'b Error.t -> ('a, 'b) comp fn
+  val declare : string -> string list -> 'a fn -> 'a
+end
+
 
 type rpcfn = Rpc.call -> Rpc.response
 type server_implementation = (string, rpcfn) Hashtbl.t

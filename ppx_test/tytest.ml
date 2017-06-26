@@ -146,6 +146,11 @@ type test_record_attrs = {
 let test_record_attrs () =
   check_marshal_unmarshal ({field5=6}, Rpc.Dict ["foo", Rpc.Int 6L], typ_of_test_record_attrs)
 
+type key = string [@@deriving rpcty]
+type test_dict_key = (key * int) list [@@deriving rpcty]
+let test_dict_key () =
+ check_marshal_unmarshal (["foo",1; "bar",2; "baz",3], Rpc.Dict ["foo", Rpc.Int 1L; "bar", Rpc.Int 2L; "baz", Rpc.Int 3L], typ_of_test_dict_key)
+
 type 'a test_poly = 'a list [@@deriving rpcty]
 let test_poly () =
   let (x : int test_poly) = [1;2;3] in
@@ -245,6 +250,7 @@ let suite =
     "defaults" >:: test_defaults;
     "defaults_var" >:: test_defaults_var;
     "defaults_bad" >:: test_defaults_bad;
+    "dict" >:: test_dict_key;
   ]
 
 let _ =

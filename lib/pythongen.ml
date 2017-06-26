@@ -197,13 +197,15 @@ let skeleton_method unimplemented i (BoxedFunction m) =
   let open Printf in
 
   let output_py (Idl.Param.Boxed a) =
-    match a.Idl.Param.typedef.ty with
-    | Unit -> []
-    | _ -> [ Line (sprintf "result[\"%s\"] = %s" a.Idl.Param.name (value_of a.Idl.Param.typedef.ty)) ]
+    let value = value_of a.Idl.Param.typedef.ty in
+    match a.Idl.Param.typedef.ty, a.Idl.Param.name with
+    | Unit, _ -> []
+    | _, Some n -> [ Line (sprintf "result[\"%s\"] = %s" n value) ]
+    | _, _ -> [Line (sprintf "result = %s" value)]
   in
 
   [
-    Line (sprintf "def %s(self%s):" m.Method.name (String.concat "" (List.map (fun x -> ", " ^ x) (List.map (fun (Idl.Param.Boxed x) -> x.Idl.Param.name) inputs))));
+    Line (sprintf "def %s(self%s):" m.Method.name (String.concat "" (List.map (fun x -> ", " ^ x) (List.map (fun (Idl.Param.Boxed x) -> match x.Idl.Param.name with Some n -> n | None -> failwith "Parameter names required for python generation") inputs))));
     Block ([
         Line (sprintf "\"\"\"%s\"\"\"" (String.concat " " i.Interface.details.Idl.Interface.description));
       ] @ (
@@ -231,7 +233,7 @@ let example_stub_user i (BoxedFunction m) =
     Block [
       Line "c = xapi.connect()";
       Line (Printf.sprintf "results = c.%s.%s({ %s })" i.Interface.details.Idl.Interface.name m.Method.name
-              (String.concat ", " (List.map (fun (Idl.Param.Boxed a) -> sprintf "%s: %s" a.Idl.Param.name (value_of a.Idl.Param.typedef.ty)) Method.(find_inputs m.ty))));
+              (String.concat ", " (List.map (fun (Idl.Param.Boxed a) -> sprintf "%s: %s" (match a.Idl.Param.name with Some x -> x | None -> failwith "Parameter names required for python generation")  (value_of a.Idl.Param.typedef.ty)) Method.(find_inputs m.ty))));
       Line "print (repr(results))"
     ]
   ]
@@ -284,10 +286,11 @@ let server_of_interface i =
             | _ -> true) inputs in
     let output = Method.(find_output m.ty) in
     let extract_input (Idl.Param.Boxed arg) =
-      [ Line (sprintf "if not(args.has_key('%s')):" arg.Idl.Param.name);
-        Block [ Line (sprintf "raise UnmarshalException('argument missing', '%s', '')" arg.Idl.Param.name) ];
-        Line (sprintf "%s = args[\"%s\"]" arg.Idl.Param.name arg.Idl.Param.name) ]
-      @ (typecheck arg.Idl.Param.typedef.ty arg.Idl.Param.name) in
+      let arg_name = match arg.Idl.Param.name with Some x -> x | None -> failwith "Parameter names requred for python generation" in
+      [ Line (sprintf "if not(args.has_key('%s')):" arg_name);
+        Block [ Line (sprintf "raise UnmarshalException('argument missing', '%s', '')" arg_name) ];
+        Line (sprintf "%s = args[\"%s\"]" arg_name arg_name) ]
+      @ (typecheck arg.Idl.Param.typedef.ty arg_name) in
     let check_output (Idl.Param.Boxed arg) =
       match arg.Idl.Param.typedef.ty with
       | Unit -> []
@@ -306,7 +309,7 @@ let server_of_interface i =
         ] @ (
             List.concat (List.map extract_input inputs)
           ) @ [
-            Line (sprintf "results = self._impl.%s(%s)" m.Method.name (String.concat ", " (List.map (fun (Idl.Param.Boxed x) -> x.Idl.Param.name) inputs)))
+            Line (sprintf "results = self._impl.%s(%s)" m.Method.name (String.concat ", " (List.map (fun (Idl.Param.Boxed x) -> match x.Idl.Param.name with Some n -> n | None -> failwith "Parameter names required for python generation") inputs)))
           ] @ (
             List.concat (List.map check_output [output])
           ) @ [
@@ -376,11 +379,13 @@ let commandline_parse i (BoxedFunction m) =
         Line (sprintf "parser = argparse.ArgumentParser(description='%s')" (String.concat " " m.Method.description));
         Line "parser.add_argument('-j', '--json', action='store_const', const=True, default=False, help='Read json from stdin, print json to stdout', required=False)";
       ] @ (
-        List.map (fun (Idl.Param.Boxed a) -> match a.Idl.Param.typedef.ty with
+        List.map (fun (Idl.Param.Boxed a) ->
+        let name = match a.Idl.Param.name with | Some s -> s | None -> failwith "Parameter names required for python generation" in
+        match a.Idl.Param.typedef.ty with
         | Dict(_, _) ->
-          Line (sprintf "parser.add_argument('--%s', default = {}, nargs=2, action=xapi.ListAction, help='%s')" a.Idl.Param.name (String.concat " " a.Idl.Param.description))
+          Line (sprintf "parser.add_argument('--%s', default = {}, nargs=2, action=xapi.ListAction, help='%s')" name (String.concat " " a.Idl.Param.description))
         | _ ->
-          Line (sprintf "parser.add_argument('%s', action='store', help='%s')" a.Idl.Param.name (String.concat " " a.Idl.Param.description))
+          Line (sprintf "parser.add_argument('%s', action='store', help='%s')" name (String.concat " " a.Idl.Param.description))
         ) inputs
       ) @ [
         Line "return vars(parser.parse_args())";
