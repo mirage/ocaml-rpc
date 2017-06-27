@@ -1,3 +1,9 @@
+1.9.52 (Jun 2017)
+* Fix compilation on MacOS X (@djs55)
+* Add a ClientExnRpc functor that takes an RPC impl as argument (@jonludlam)
+* ppx_deriving_rpc: Fix marshalling of dictionaries in the rpcty code too (@jonludlam)
+* ppx_deriving_rpc: Allow unnamed parameters in functions to introduce compatibility with the old camlp4 idl (@jonludlam)
+
 1.9.51 (May 2017)
 * Support Ocaml 4.03+ (@mseri)
 * Fixed javascript and htmlgen backends (@mseri)
