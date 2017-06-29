@@ -110,6 +110,8 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result  = fun t v 
     >>= fun (name, contents) ->
     let constr = { tget = fun typ -> unmarshal typ contents } in
     vconstructor name constr
+  | Abstract { of_rpc } ->
+    of_rpc v
 
 
 let rec marshal : type a. a typ -> a -> Rpc.t = fun t v ->
@@ -173,6 +175,9 @@ let rec marshal : type a. a typ -> a -> Rpc.t = fun t v ->
               end
             | None -> acc) Rpc.Null variants
     end
+  | Abstract { rpc_of } -> begin
+      rpc_of v
+    end
 
 
 let ocaml_of_basic : type a. a basic -> string = function
@@ -203,3 +208,5 @@ let rec ocaml_of_t : type a. a typ -> string = function
         | BoxedTag t ->
           Printf.sprintf "| %s (%s) (** %s *)" t.tname (ocaml_of_t t.tcontents) (String.concat " " t.tdescription)) variants in
     String.concat " " tags
+  | Abstract _ ->
+    "<abstract>"

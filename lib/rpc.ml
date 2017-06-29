@@ -63,6 +63,7 @@ module Types = struct
     | Tuple : 'a typ * 'b typ -> ('a * 'b) typ
     | Struct : 'a structure -> 'a typ
     | Variant : 'a variant -> 'a typ
+    | Abstract : 'a abstract -> 'a typ
 
   (* A type definition has a name and description *)
   and 'a def = { name: string; description: string list; ty: 'a typ; }
@@ -105,6 +106,10 @@ module Types = struct
     vdefault : 'a option;
     vversion : Version.t option;
     vconstructor : string -> tag_getter -> ('a, Rresult.R.msg) Result.result;
+  }
+  and 'a abstract = {
+    rpc_of : 'a -> t;
+    of_rpc : t -> ('a, Rresult.R.msg) Result.result;
   }
 
   let int    = { name="int";    ty=Basic Int;    description=["Native integer"]}
