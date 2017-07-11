@@ -88,6 +88,10 @@ let test_bad_string () =
 type test_float = float [@@deriving rpc]
 let test_float () =
   check_marshal_unmarshal (2.0, Rpc.Float 2.0, rpc_of_test_float, test_float_of_rpc)
+let test_float_from_int () =
+  check_unmarshal_ok 1.0 test_float_of_rpc (Rpc.Int 1L)
+let test_float_from_int32 () =
+  check_unmarshal_ok 1.0 test_float_of_rpc (Rpc.Int32 1l)
 let test_float_from_string () =
   check_unmarshal_ok 1.0 test_float_of_rpc (Rpc.String "1.0")
 let test_bad_float () =
@@ -237,6 +241,8 @@ let suite =
     "string" >:: test_string;
     "bad_string" >:: test_bad_string;
     "float" >:: test_float;
+    "float_from_int" >:: test_float_from_int;
+    "float_from_int32" >:: test_float_from_int32;
     "float_from_string" >:: test_float_from_string;
     "bad_float" >:: test_bad_float;
     "bad_float_string" >:: test_bad_float_string;

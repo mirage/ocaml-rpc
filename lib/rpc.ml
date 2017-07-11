@@ -166,6 +166,8 @@ let bool_of_rpc = function
   | x -> failwith (Printf.sprintf "Expected bool, got '%s'" (to_string x))
 let float_of_rpc = function
   | Float f  -> f
+  | Int i    -> Int64.to_float i
+  | Int32 i  -> Int32.to_float i
   | String s -> float_of_string s
   | x -> failwith (Printf.sprintf "Expected float, got '%s'" (to_string x))
 let string_of_rpc = function
@@ -214,6 +216,8 @@ module ResultUnmarshallers = struct
     | x -> R.error_msg (Printf.sprintf "Expected bool, got '%s'" (to_string x))
   let float_of_rpc = function
     | Float f  -> R.ok f
+    | Int i    -> R.ok (Int64.to_float i)
+    | Int32 i  -> R.ok (Int32.to_float i)
     | String s -> begin
         try R.ok (float_of_string s)
         with _ -> R.error_msg (Printf.sprintf "Expected float, got string '%s'" s)
