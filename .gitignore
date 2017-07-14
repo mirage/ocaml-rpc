@@ -7,7 +7,13 @@
 *.cmo
 *.annot
 *~
+_build
 idl_test_gen.ml
+*.gen.ml
 *.mldylib
 *.mllib
 lib/META
+setup.data
+setup.log
+ppx_test/test
+ppx_test/tytest
