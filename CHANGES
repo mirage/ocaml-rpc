@@ -1,3 +1,7 @@
+1.9.53 (Jul 2017)
+* Delay evaluation of Cmdlinergen terms (API breaking change) (@jonludlam)
+* Accept marshalled ints when unmarshalling floats (@johnelse)
+
 1.9.52 (Jun 2017)
 * Fix compilation on MacOS X (@djs55)
 * Add a ClientExnRpc functor that takes an RPC impl as argument (@jonludlam)
