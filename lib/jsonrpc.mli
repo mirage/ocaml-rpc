@@ -25,6 +25,7 @@ exception Malformed_method_request of string
 exception Malformed_method_response of string
 val get : string -> (string * 'a) list -> 'a
 val call_of_string : string -> Rpc.call
+val version_and_call_of_string : string -> version * Rpc.call
 val response_of_stream : (unit -> char) -> Rpc.response
 val response_of_string : string -> Rpc.response
 val response_of_in_channel : in_channel -> Rpc.response

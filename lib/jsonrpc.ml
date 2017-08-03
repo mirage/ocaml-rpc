@@ -554,26 +554,40 @@ let get name dict =
     raise (Malformed_method_request str)
   | Some v -> v
 
-let call_of_string str =
+let version_and_call_of_string str =
   match of_string str with
   | Dict d ->
-    let name = match get "method" d with String s -> s | _ -> raise (Malformed_method_request str) in
-    let params =
+    let name =
+      match get "method" d with
+      | String s -> s
+      | _ -> raise (Malformed_method_request "method")
+    in
+    let version =
       match get' "jsonrpc" d with
-      | None ->
-        (match get "params" d with Enum l -> l | _ -> raise (Malformed_method_request str))
-      | Some (String "2.0") ->
+      | None -> V1
+      | Some (String "2.0") -> V2
+      | _ -> raise (Malformed_method_request "jsonrpc")
+    in
+    let params =
+      match version with
+      | V1 ->
+        begin match get "params" d with
+        | Enum l -> l
+        | _ -> raise (Malformed_method_request "params")
+        end
+      | V2 ->
         begin match get "params" d with
           | Enum l -> l
           | Dict l -> [Dict l]
-          | _ -> raise (Malformed_method_request str)
+          | _ -> raise (Malformed_method_request "params")
         end
-      | _ ->
-        raise (Malformed_method_request "jsonrpc")
     in
     let (_:int64) = match get "id" d with Int i -> i | _ -> raise (Malformed_method_request str) in
-    call name params
+    version, call name params
   | _ -> raise (Malformed_method_request str)
+
+let call_of_string str =
+  snd ( version_and_call_of_string str)
 
 let response_of_stream str =
   match Parser.of_stream str with
