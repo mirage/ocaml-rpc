@@ -1,7 +1,7 @@
-let bad = "
+let invalid_json = "
  { foo\"a\":\"b\" }
 "
-let good = "
+let valid_json = "
  { \"a\":\"b\" }
 "
 
@@ -73,9 +73,52 @@ let v2_bad_jsonrpc = "{
 	\"jsonrpc\": \"1.0\"
 }"
 
+let v2_mixed = "{
+    \"jsonrpc\": \"2.0\",
+    \"result\": \"OpaqueRef:0d01bcdd-9b33-a0d8-1870-d4fb80af354e\",
+    \"error\": null,
+    \"id\": 0
+}"
+
+let v2_success = "{
+    \"jsonrpc\": \"2.0\",
+    \"result\": \"OpaqueRef:0d01bcdd-9b33-a0d8-1870-d4fb80af354e\",
+    \"id\": 0
+}"
+
+let v2_failure_bad_error = "{
+    \"jsonrpc\": \"2.0\",
+    \"error\": [ \"SESSION_AUTHENTICATION_FAILED\", \"root\", \"Authentication failure\" ],
+    \"id\": 0
+}"
+
+let v2_failure = "{
+    \"jsonrpc\": \"2.0\",
+    \"error\": { \"code\": 1, \"message\": \"foo\", \"data\": \"bar\" },
+    \"id\": 0
+}"
+
+let v2_failure_no_data = "{
+    \"jsonrpc\": \"2.0\",
+    \"error\": { \"code\": 1, \"message\": \"foo\" },
+    \"id\": 0
+}"
+
+let v2_failure_bad_code = "{
+    \"jsonrpc\": \"2.0\",
+    \"error\": { \"code\": \"a\", \"message\": \"foo\" },
+    \"id\": 0
+}"
+
+let v2_failure_bad_message = "{
+    \"jsonrpc\": \"2.0\",
+    \"error\": { \"code\": 1, \"message\": 2 },
+    \"id\": 0
+}"
+
 let tests1 = [
-  "bad", bad, false;
-  "good", good, true;
+  "invalid_json", invalid_json, false;
+  "valid_json", valid_json, true;
 ]
 
 let tests2 = [
@@ -92,35 +135,34 @@ let tests2 = [
   "v2_bad_jsonrpc", v2_bad_jsonrpc, false;
 ]
 
-let handle_exception test_name e pass =
-  if pass then
-    (Printf.printf "Failed: test %s was not supposed to throw a parse failure\n" test_name;
-    false)
-  else
-    (Printf.printf "Passed: test %s threw %s\n" test_name (Printexc.to_string e);
-    true)
+let tests3 = [
+  "v2_success", v2_success, true;
+  "v2_failure", v2_failure, false;
+  "v2_mixed", v2_mixed, false;
+  "v2_failure_bad_error", v2_failure_bad_error, false;
+  "v2_failure_no_data", v2_failure_no_data, true;
+  "v2_failure_bad_code", v2_failure_bad_code, false;
+  "v2_failure_bad_message", v2_failure_bad_message, false;
+]
 
-
-let parse_json (test_name, json, pass) =
+let invoke parse_func (test_name, json, pass) =
   try
-    let _ = Jsonrpc.of_string json in
+    let _ = parse_func json in
     Printf.printf "Passed: test %s\n" test_name;
     true;
   with e ->
-    handle_exception test_name e pass
-
-let call_of_json (test_name, json, pass) =
-  try
-    let _ = Jsonrpc.call_of_string json in
-    Printf.printf "Passed: test %s\n" test_name;
-    true
-  with e ->
-    handle_exception test_name e pass
+    if pass then
+      (Printf.printf "Failed: test %s was not supposed to throw a parse failure\n" test_name;
+      false)
+    else
+      (Printf.printf "Passed: test %s threw %s\n" test_name (Printexc.to_string e);
+      true)
 
 let _ =
-  let results1 = tests1 |> List.map parse_json in
-  let results2 = tests2 |> List.map call_of_json in
-  let failures = results1 @ results2 |> List.filter (fun x -> not x) in
+  let results1 = tests1 |> List.map (fun x -> invoke Jsonrpc.of_string x) in
+  let results2 = tests2 |> List.map (fun x -> invoke Jsonrpc.call_of_string x) in
+  let results3 = tests3 |> List.map (fun x -> invoke Jsonrpc.response_of_string x) in
+  let failures = results1 @ results2 @ results3 |> List.filter (fun x -> not x) in
   match failures with
   | [] -> ()
   | _ -> failwith (Printf.sprintf "Test failures: %d"  (List.length failures))

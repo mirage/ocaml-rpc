@@ -136,6 +136,10 @@ let json_of_response version response =
         "id", Int 0L
       ]
 
+let json_of_error_object ?(data=None) code message =
+  let data_json = match data with Some d -> ["data", d] | None -> [] in
+  Dict ([ "code", Int code; "message", String message; ] @ data_json)
+
 let string_of_response ?(version=V1) response =
   let json = json_of_response version response in
   to_string json
@@ -560,26 +564,26 @@ let version_and_call_of_string str =
     let name =
       match get "method" d with
       | String s -> s
-      | _ -> raise (Malformed_method_request "method")
+      | _ -> raise (Malformed_method_request ("method " ^ str))
     in
     let version =
       match get' "jsonrpc" d with
       | None -> V1
       | Some (String "2.0") -> V2
-      | _ -> raise (Malformed_method_request "jsonrpc")
+      | _ -> raise (Malformed_method_request ("jsonrpc " ^ str))
     in
     let params =
       match version with
       | V1 ->
         begin match get "params" d with
         | Enum l -> l
-        | _ -> raise (Malformed_method_request "params")
+        | _ -> raise (Malformed_method_request ("params " ^ str))
         end
       | V2 ->
         begin match get "params" d with
           | Enum l -> l
           | Dict l -> [Dict l]
-          | _ -> raise (Malformed_method_request "params")
+          | _ -> raise (Malformed_method_request ("params " ^ str))
         end
     in
     let (_:int64) = match get "id" d with Int i -> i | _ -> raise (Malformed_method_request str) in
@@ -607,7 +611,14 @@ let response_of_stream str =
       let error = get' "error" d in
       begin match result, error with
         | Some v, None    -> success v
-        | None, Some v    -> failure v
+        | None, Some v   -> begin
+            match v with
+            | Dict err ->
+              let (_:int64) = match get "code" err with Int i -> i | _ -> raise (Malformed_method_response "Error code") in
+              let _ = match get "message" err with String s -> s | _ -> raise (Malformed_method_response "Error message") in
+              failure v
+            | _ -> raise (Malformed_method_response "Error object")
+          end
         | Some x, Some y  -> raise (Malformed_method_response (Printf.sprintf "<result=%s><error=%s>" (Rpc.to_string x) (Rpc.to_string y)))
         | None, None      -> raise (Malformed_method_response (Printf.sprintf "neither <result> nor <error> was found"))
       end
