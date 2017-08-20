@@ -17,10 +17,16 @@ let v1_null_id = "{
 	\"id\": null
 }"
 
-let v1_bad_id = "{
+let v1_string_id = "{
 	\"method\": \"session.login_with_password\",
 	\"params\": [\"user\", \"password\"],
 	\"id\": \"0\"
+}"
+
+let v1_bad_id = "{
+	\"method\": \"session.login_with_password\",
+	\"params\": [\"user\", \"password\"],
+	\"id\": [3]
 }"
 
 let v1_no_params ="{
@@ -59,11 +65,18 @@ let v2_no_method = "{
 	\"jsonrpc\": \"2.0\"
 }"
 
-let v2_bad_id = "{
+let v2_string_id = "{
 	\"method\": \"session.login_with_password\",
 	\"params\": [\"user\", \"password\"],
 	\"id\": \"0\",
 	\"jsonrpc\": \"2.0\"
+}"
+
+let v2_bad_id = "{
+	\"method\": \"session.login_with_password\",
+	\"params\": [\"user\", \"password\"],
+	\"id\": \"0\",
+	\"jsonrpc\": [2]
 }"
 
 let v2_bad_jsonrpc = "{
@@ -124,13 +137,15 @@ let tests1 = [
 let tests2 = [
   "v1", v1, true;
   "v1_null_id", v1_null_id, false; (*stricter than the specs*)
-  "v1_bad_id", v1_bad_id, false;
+  "v1_string_id", v1_string_id, true;
+  "v1_bad_id", v1_bad_id, false; (*stricter than the specs*)
   "v1_no_id", v1_no_id, false;
   "v1_no_params", v1_no_params, false;
   "v2", v2, true;
-  "v2_no_params", v2_no_params, false; (*stricter than the specs*)
+  "v2_no_params", v2_no_params, true;
   "v2_null_id", v2_null_id, false; (*stricter than the specs*)
   "v2_no_method", v2_no_method, false;
+  "v2_string_id", v2_string_id, true;
   "v2_bad_id", v2_bad_id, false;
   "v2_bad_jsonrpc", v2_bad_jsonrpc, false;
 ]
