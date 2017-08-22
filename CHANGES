@@ -1,3 +1,8 @@
+2.0.0 (Aug 2017)
+* Fix some cases of non-compliance with the JsonRpc v2.0 specs (@kc284)
+* Check the structure of error objects of JsonRpc v2.0 is spec compliant (@kc284)
+* Add new function to retrieve the version and id of JSON-RPC alongside the Rpc.call from the request body (@kc284)
+    
 1.9.53 (Jul 2017)
 * Delay evaluation of Cmdlinergen terms (API breaking change) (@jonludlam)
 * Accept marshalled ints when unmarshalling floats (@johnelse)
