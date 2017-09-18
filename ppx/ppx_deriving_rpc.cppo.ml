@@ -27,6 +27,9 @@ let core_types = List.map (fun (s, y) -> (Lident s, y))
      "float", [%expr Basic Float];
      "bool", [%expr Basic Bool]]
 
+let attr_default attrs =
+  Ppx_deriving.attr ~deriver "default" attrs |> Ppx_deriving.Arg.(get_attr ~deriver expr)
+
 (* [is_option typ] returns true if the type 'typ' is an option type.
    This is required because of the slightly odd way we serialise records containing optional fields. *)
 let is_option typ =
@@ -129,8 +132,13 @@ module Of_rpc = struct
     | { ptyp_desc = Ptyp_var name } ->
       [%expr [%e evar ("poly_"^name)]]
 
-    | { ptyp_desc = Ptyp_variant (fields, _, _); ptyp_loc } ->
+    | { ptyp_desc = Ptyp_variant (fields, _, _); ptyp_loc; ptyp_attributes } ->
       let inherits, tags = List.partition (function Rinherit _ -> true | _ -> false) fields in
+      let bad = [%expr failwith "Unknown tag/contents"] in
+      let default_expr =
+        match attr_default ptyp_attributes with
+        | None -> bad
+        | Some expr -> [%expr match rpc' with | String _ | Enum ((String _) :: _) -> [%e expr ] | _ -> [%e bad]] in
       let tag_cases =
         tags |> List.map (fun field ->
             match field with
@@ -162,8 +170,7 @@ module Of_rpc = struct
         List.fold_left (fun expr typ ->
             [%expr
               try [%e expr_of_typ typ] rpc (*  :> [%t toplevel_typ]*)
-              with _ -> [%e expr]])
-                [%expr failwith "Unknown tag/contents"] |>
+              with _ -> [%e expr]]) default_expr |>
         Exp.case [%pat? _]
       in
       [%expr fun (rpc : Rpc.t) ->

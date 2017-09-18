@@ -220,6 +220,11 @@ let test_pvar_inherit () =
 let test_pvar_inherit2 () =
   check_marshal_unmarshal (`four "apple", Rpc.Enum [Rpc.String "four"; Rpc.String "apple"], rpc_of_test_pvar_inherit, test_pvar_inherit_of_rpc)
 
+type enum = [ `x | `y | `z | `default ] [@default `default] [@@deriving rpc]
+type enum_string_map = (enum * string) list [@@deriving rpc]
+let test_enum_string_map () =
+  check_marshal_unmarshal ([`x, "x"; `y, "y"; `z, "z"], Rpc.Dict ["x", Rpc.String "x"; "y", Rpc.String "y"; "z", Rpc.String "z"], rpc_of_enum_string_map, enum_string_map_of_rpc)
+
 
 let suite =
   "basic_tests" >:::
@@ -282,7 +287,7 @@ let suite =
     "polyvar_case" >:: test_polyvar_case;
     "pvar_inherit" >:: test_pvar_inherit;
     "pvar_inherit2" >:: test_pvar_inherit2;
-
+    "enum_string_map" >:: test_enum_string_map;
   ]
 
 let _ =
