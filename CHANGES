@@ -1,3 +1,6 @@
+2.1.0 (Sep 2017)
+* Add defaults for polymorphic variants (@jonludlam)
+
 2.0.0 (Aug 2017)
 * Fix some cases of non-compliance with the JsonRpc v2.0 specs (@kc284)
 * Check the structure of error objects of JsonRpc v2.0 is spec compliant (@kc284)
