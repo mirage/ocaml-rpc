@@ -146,15 +146,14 @@ let a_of_response ?(id=Int 0L) ?(version=V1) ~empty ~append response =
 let of_string s = s |> Y.from_string |> json_to_rpc
 let of_a ~next_char b =
   let buf = Buffer.create 2048 in
-  let rec acc buf =
+  let rec acc () =
     try 
       Buffer.add_char buf (next_char b);
-      acc buf
-    with _ -> buf
+      acc ()
+    with _ -> ()
   in
-  acc buf
-  |> Buffer.to_bytes
-  |> Bytes.unsafe_to_string
+  acc ();
+  Buffer.contents buf
   |> of_string
 
 let of_fct f = of_a ~next_char:f ()
