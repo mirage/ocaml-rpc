@@ -37,7 +37,7 @@ Library json
   FindlibParent: rpclib
   Findlibname: json
   Modules: Jsonrpc
-  BuildDepends:	rpclib.core
+  BuildDepends:	rpclib.core, yojson
 
 Library cmdlinergen
   Path: lib

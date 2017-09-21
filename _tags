@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: d2c75c15f67ddb5042f9589ffc4924d5)
+# DO NOT EDIT (digest: dbdec340690c4d0fe926f40e3de3cead)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -28,6 +28,7 @@ true: annot, bin_annot
 <lib/*.ml{,i,y}>: package(cow)
 # Library markdowngen
 "lib/markdowngen.cmxs": use_markdowngen
+<lib/*.ml{,i,y}>: package(yojson)
 <lib/*.ml{,i,y}>: use_json
 # Library rpclib_lwt
 "lib/rpclib_lwt.cmxs": use_rpclib_lwt

@@ -1,7 +1,5 @@
 type version = V1 | V2
 
-val list_iter_between : ('a -> unit) -> (unit -> 'b) -> 'a list -> unit
-val escape_string : string -> string
 val to_fct : Rpc.t -> (string -> unit) -> unit
 val to_buffer : Rpc.t -> Buffer.t -> unit
 val to_string : Rpc.t -> string
@@ -12,13 +10,6 @@ val json_of_response : ?id:Rpc.t -> version -> Rpc.response -> Rpc.t
 val json_of_error_object : ?data:Rpc.t option -> int64 -> string -> Rpc.t
 val string_of_response: ?id:Rpc.t -> ?version:version -> Rpc.response -> string
 val a_of_response : ?id:Rpc.t -> ?version:version -> empty:(unit -> 'a) -> append:('a -> string -> unit) -> Rpc.response -> 'a
-type error =
-    Unexpected_char of int * char * string
-  | Invalid_value of int * string * string
-  | Invalid_leading_zero of int * string
-  | Unterminated_value of int * string
-  | Internal_error of int * string
-exception Parse_error of error
 val of_fct : (unit -> char) -> Rpc.t
 val of_string : string -> Rpc.t
 val of_a : next_char:('a -> char) -> 'a -> Rpc.t
