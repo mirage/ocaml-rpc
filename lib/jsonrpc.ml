@@ -158,11 +158,7 @@ let of_a ~next_char b =
 
 let of_fct f = of_a ~next_char:f ()
 
-let get' name dict =
-  if List.mem_assoc name dict then
-    Some (List.assoc name dict)
-  else
-    None
+let get' name dict = try Some (List.assoc name dict) with Not_found -> None
 
 exception Malformed_method_request of string
 exception Malformed_method_response of string
@@ -222,6 +218,8 @@ let call_of_string str =
   let (_, _, call) = version_id_and_call_of_string str in
   call
 
+(* This functions parses the json and tries to extract a valid jsonrpc response
+ * (See http://www.jsonrpc.org/ for the exact specs). *)
 let get_response extractor str =
     try
       match extractor str with
