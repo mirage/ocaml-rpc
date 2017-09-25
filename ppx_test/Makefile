@@ -16,7 +16,7 @@ test: test.ml
 	$(OCAMLOPT) $(PPXOPTS) -linkpkg -package $(PACKS) $(RPC) $(RPCLINK) -o test -dsource test.ml 2> test.gen.ml
 
 tytest: tytest.ml
-	$(OCAMLOPT) $(PPXOPTS) -linkpkg -package $(PACKS) $(RPC) $(RPCLINK) -dsource -o tytest tytest.ml 2> tytest.gen.ml
+	$(OCAMLOPT) $(PPXOPTS) -linkpkg -package $(PACKS),yojson $(RPC) $(RPCLINK) -dsource -o tytest tytest.ml 2> tytest.gen.ml
 
 clean:
 	rm -f test tytest *.cmxa *.cmo *.cmo *.o *~ *.gen.ml

@@ -168,8 +168,10 @@ let fakegen () =
     let fake = Rpc_genfake.genall 10 "string" ty in
     let ss = List.map (fun f -> Rpcmarshal.marshal ty f |> Jsonrpc.to_string) fake in
     let test2 = List.map (fun json -> Rpcmarshal.unmarshal ty (Jsonrpc.of_string json) ) ss in
-    List.iter2 (function a -> function (Result.Ok b) -> assert(a=b); () | _ -> assert false) fake test2;
-    List.iter (fun s -> Printf.printf "%s\n" s) ss
+    List.iter (fun s -> Printf.printf "%s\n" s) ss;
+    List.iter2 (function a -> function
+      | (Result.Ok b) -> assert(a=b); ()
+      | (Result.Error (`Msg err)) -> print_endline err; assert false) fake test2
   in
   fake typ_of_test_record_opt;
   fake typ_of_test_variant_name;

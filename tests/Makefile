@@ -2,7 +2,7 @@ OCAMLC = ocamlfind ocamlc
 OCAMLOPT = ocamlfind ocamlopt
 OCAMLFLAGS = -annot -g
 
-PACKS = unix,rresult,xmlm
+PACKS = unix,rresult,xmlm,yojson
 RPC = -I ../_build/lib
 RPCLINK = rpclib.cmxa rpclib_core.cmxa json.cmxa xml.cmxa
 
