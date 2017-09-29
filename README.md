@@ -5,6 +5,8 @@ using XML or JSON as transport encodings. The transport mechanism itself
 is outside the scope of this library as all conversions are from and to
 strings.
 
+[![Build Status](https://travis-ci.org/mirage/ocaml-rpc.svg?branch=master)](https://travis-ci.org/mirage/ocaml-rpc)
+
 ## RPC types
 
 An RPC value is defined as follow:
