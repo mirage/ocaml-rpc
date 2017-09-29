@@ -146,9 +146,12 @@ let a_of_response ?(id=Int 0L) ?(version=V1) ~empty ~append response =
 let of_string s = s |> Y.from_string |> json_to_rpc
 let of_a ~next_char b =
   let buf = Buffer.create 2048 in
+  (* As in Xmlrpc.of_a *)
   let rec acc () =
-    try 
-      Buffer.add_char buf (next_char b);
+    try
+      let c = next_char b in
+      ignore(int_of_char c);
+      Buffer.add_char buf c;
       acc ()
     with _ -> ()
   in
