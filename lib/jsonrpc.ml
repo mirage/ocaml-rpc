@@ -67,11 +67,6 @@ let to_string t =
   rpc_to_json t
   |> Y.to_string
 
-let to_a ~empty ~append t =
-  let buf = empty () in
-  to_fct t (fun s -> append buf s);
-  buf
-
 let new_id =
   let count = ref 0L in
   (fun () -> count := Int64.add 1L !count; !count)
@@ -138,25 +133,8 @@ let string_of_response ?(id=Int 0L) ?(version=V1) response =
   let json = json_of_response ~id version response in
   to_string json
 
-let a_of_response ?(id=Int 0L) ?(version=V1) ~empty ~append response =
-  let json = json_of_response ~id version response in
-  to_a ~empty ~append json
-
 
 let of_string s = s |> Y.from_string |> json_to_rpc
-let of_a ~next_char b =
-  let buf = Buffer.create 2048 in
-  let rec acc () =
-    try 
-      Buffer.add_char buf (next_char b);
-      acc ()
-    with _ -> ()
-  in
-  acc ();
-  Buffer.contents buf
-  |> of_string
-
-let of_fct f = of_a ~next_char:f ()
 
 let get' name dict = try Some (List.assoc name dict) with Not_found -> None
 
@@ -263,9 +241,6 @@ let get_response extractor str =
       raise (Malformed_method_response (Printf.sprintf "<%s was not found>" field))
     | JsonToRpcError json ->
       raise (Malformed_method_response (Printf.sprintf "<unable to parse %s>" (Y.to_string json)))
-
-let response_of_stream str =
-  get_response of_fct str
 
 let response_of_string str =
  get_response of_string str
