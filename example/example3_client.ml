@@ -93,6 +93,11 @@ let binary_rpc path (call: Rpc.call) : Rpc.response =
 
 let cli () =
   let rpc = binary_rpc "path" in
-  Cmdliner.Term.eval_choice default_cmd (generate_md_cmd :: (List.map (fun t -> t rpc) (PCmds.implementation () @ DCmds.implementation ())))
+  Cmdliner.Term.eval_choice default_cmd (
+    generate_md_cmd
+    :: (List.map 
+      (fun t -> let (term, info) = t rpc in (Cmdliner.Term.(term $ const ()), info)) 
+      (PCmds.implementation () @ DCmds.implementation ())
+    ))
 
 let _ = cli ()

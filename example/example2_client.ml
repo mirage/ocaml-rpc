@@ -36,4 +36,9 @@ let server_cmd =
 
 let cli () =
   let rpc = binary_rpc Example2_idl.sockpath in
-  Cmdliner.Term.eval_choice default_cmd (server_cmd :: List.map (fun t -> t rpc) (Cmds.implementation ()))
+  Cmdliner.Term.eval_choice default_cmd (
+    server_cmd
+    :: List.map 
+      (fun t -> let (term, info) = t rpc in (Cmdliner.Term.(term $ const ()), info)) 
+      (Cmds.implementation ())
+    )

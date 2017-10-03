@@ -144,19 +144,6 @@ let a_of_response ?(id=Int 0L) ?(version=V1) ~empty ~append response =
 
 
 let of_string s = s |> Y.from_string |> json_to_rpc
-let of_a ~next_char b =
-  let buf = Buffer.create 2048 in
-  let rec acc () =
-    try 
-      Buffer.add_char buf (next_char b);
-      acc ()
-    with _ -> ()
-  in
-  acc ();
-  Buffer.contents buf
-  |> of_string
-
-let of_fct f = of_a ~next_char:f ()
 
 let get' name dict = try Some (List.assoc name dict) with Not_found -> None
 
@@ -263,9 +250,6 @@ let get_response extractor str =
       raise (Malformed_method_response (Printf.sprintf "<%s was not found>" field))
     | JsonToRpcError json ->
       raise (Malformed_method_response (Printf.sprintf "<unable to parse %s>" (Y.to_string json)))
-
-let response_of_stream str =
-  get_response of_fct str
 
 let response_of_string str =
  get_response of_string str
