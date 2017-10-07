@@ -233,6 +233,12 @@ type enum_string_map = (enum * string) list [@@deriving rpc]
 let test_enum_string_map () =
   check_marshal_unmarshal ([`x, "x"; `y, "y"; `z, "z"], Rpc.Dict ["x", Rpc.String "x"; "y", Rpc.String "y"; "z", Rpc.String "z"], rpc_of_enum_string_map, enum_string_map_of_rpc)
 
+type enum2 = [`a | `b | `c] [@@deriving rpc]
+type enum_string_map2 = (enum2 * string) list [@dict] [@@deriving rpc]
+let test_enum_string_map2 () =
+    check_marshal_unmarshal ([`a, "x"; `b, "y"; `c, "z"], Rpc.Dict ["a", Rpc.String "x"; "b", Rpc.String "y"; "c", Rpc.String "z"], rpc_of_enum_string_map2, enum_string_map2_of_rpc)
+
+
 
 let suite =
   "basic_tests" >:::
@@ -297,6 +303,7 @@ let suite =
     "pvar_inherit2" >:: test_pvar_inherit2;
     "default_enum" >:: test_default_enum;
     "enum_string_map" >:: test_enum_string_map;
+    "enum_string_map2" >:: test_enum_string_map2;
   ]
 
 let _ =
