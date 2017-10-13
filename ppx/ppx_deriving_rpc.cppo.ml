@@ -73,6 +73,8 @@ let attr_name  = attr_string "name"
 (* Documentation for variants / record members *)
 let attr_doc = attr_string "doc"
 
+let is_dict attr = match Ppx_deriving.attr ~deriver "dict" attr with Some _ -> [%expr true] | None -> [%expr false]
+
 module Of_rpc = struct
 
   let rec expr_of_typ typ =
@@ -85,8 +87,8 @@ module Of_rpc = struct
       [%expr Rpc.char_of_rpc ]
 
     (* Tuple lists might be representable by a dictionary, if the first type in the tuple is string-like *)
-    | [%type: ([%t? typ1] * [%t? typ2]) list] -> [%expr
-      if [%e is_string typ1]
+    | { ptyp_desc = Ptyp_constr ({txt = Lident "list"}, [{ptyp_desc = Ptyp_tuple [typ1; typ2]}]); ptyp_attributes } -> [%expr
+      if [%e is_dict ptyp_attributes] || [%e is_string typ1]
       then
         function
         | Rpc.Dict l -> List.map (fun (k,v) -> ([%e expr_of_typ typ1] (Rpc.String k),[%e expr_of_typ typ2] v)) l
@@ -293,8 +295,8 @@ module Rpc_of = struct
       [%expr Rpc.(function c -> Rpc.Int (Int64.of_int (Char.code c)))]
 
     (* Tuple lists might be representable by a dictionary, if the first type in the tuple is string-like *)
-    | [%type: ([%t? typ] * [%t? typ2]) list] -> [%expr
-      if [%e is_string typ]
+    | { ptyp_desc = Ptyp_constr ({txt = Lident "list"}, [{ptyp_desc = Ptyp_tuple [typ; typ2]}]); ptyp_attributes } -> [%expr
+      if [%e is_dict ptyp_attributes] || [%e is_string typ]
       then fun l -> Rpc.Dict (List.map (fun (k,v) -> (Rpc.string_of_rpc ([%e expr_of_typ typ] k),[%e expr_of_typ typ2] v)) l)
       else fun l -> Rpc.Enum (List.map (fun (a,b) -> Rpc.Enum [[%e expr_of_typ typ] a; [%e expr_of_typ typ2] b]) l)]
 
