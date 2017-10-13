@@ -10,6 +10,20 @@ type variant_t =
   | Baz of float
 [@@deriving rpcty]
 
+module type ABSMOD = sig
+  type t
+  val of_string : string -> t
+  val string_of : t -> string
+  val init : t
+end
+module AbstractMod : ABSMOD = struct
+  type t=string
+  let of_string t = t
+  let string_of t = t
+  let init = "hello"
+end
+
+
 module API(R:Idl.RPC) = struct
   open R
   open Idl
@@ -21,6 +35,14 @@ module API(R:Idl.RPC) = struct
       version=(1,0,0);
     }
 
+  let abstr = Rpc.Types.{
+    name = "abstr";
+    ty = Abstract ({
+      rpc_of=(fun t -> Rpc.String (AbstractMod.string_of t));
+      of_rpc=(function | Rpc.String s -> Ok (AbstractMod.of_string s) | _ -> Error (`Msg "bad"));
+    });
+    description = ["Abstract"]}
+
   let implementation = implement description
 
   (* Construct a bunch of arguments to use in our RPCs *)
@@ -31,6 +53,7 @@ module API(R:Idl.RPC) = struct
   let argi   = Param.mk ~name:"i" Rpc.Types.int64
   let argu   = Param.mk ~name:"return_u" Rpc.Types.unit
   let return = Param.mk ~name:"return" return_record
+  let abs    = Param.mk ~name:"abs" abstr
 
   (* We'll use the default error type *)
   let e      = Idl.DefaultError.err
@@ -39,6 +62,7 @@ module API(R:Idl.RPC) = struct
   let rpc1 = declare "rpc1" ["Test RPC 1"] (arg1 @-> argx @-> returning return e)
   let rpc2 = declare "rpc2" ["Test RPC 2"] (argopt @-> argv @-> returning argu e)
   let rpc3 = declare "rpc3" ["Test RPC 3"] (argi @-> returning argi e)
+  let rpc4 = declare "rpc4" ["Test RPC 4"] (abs @-> returning arg1 e)
 end
 
 module ImplM = struct
@@ -72,6 +96,9 @@ module ImplM = struct
   let rpc3 i =
     Printf.printf "%Ld\n" i;
     return (Int64.add i 1L)
+
+  let rpc4 : AbstractMod.t -> (string, Idl.DefaultError.t) Rpc_lwt.M.t = fun abs ->
+    return (Printf.sprintf "Abs: %s\n" (AbstractMod.string_of abs))
 end
 
 let rpc rpc_fn call =
@@ -93,6 +120,7 @@ let main () =
   Server.rpc1 ImplM.rpc1;
   Server.rpc2 ImplM.rpc2;
   Server.rpc3 ImplM.rpc3;
+  Server.rpc4 ImplM.rpc4;
 
   let funcs = Server.implementation in
   let rpc = rpc (Rpc_lwt.server funcs) in
@@ -113,7 +141,8 @@ let main () =
   Client.rpc2 rpc None (Foo ["hello";"there"]) >>= fun _ ->
   Client.rpc2 rpc (Some "Optional") (Foo ["hello";"there"]) >>= fun _ ->
   Client.rpc3 rpc 999999999999999999L >>= fun i ->
-  Printf.printf "%Ld\n" i;
+  Client.rpc4 rpc AbstractMod.init >>= fun s ->
+  Printf.printf "%Ld,%s\n" i s;
   return ()
 
 let _ = Lwt_main.run ((main ()).lwt)
