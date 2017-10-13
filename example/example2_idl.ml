@@ -20,6 +20,7 @@ module Datatypes = struct
     } [@@deriving rpcty]
   end
 
+  (** This is the error type *)
   type errty =
     | InternalError of string
     | FrobnicationFailed

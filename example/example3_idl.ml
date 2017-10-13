@@ -15,66 +15,51 @@ let task_id = Param.mk ~name:"task_id"
 
 
 
-type uri = string [@@deriving rpcty] [@@doc [
-  "A URI representing the means for accessing the volume data. The";
-  "interpretation of the URI is specific to the implementation. Xapi will";
-  "choose which implementation to use based on the URI scheme."]]
+type uri = string [@@deriving rpcty]
+(** A URI representing the means for accessing the volume data. The
+    interpretation of the URI is specific to the implementation. Xapi will
+    choose which implementation to use based on the URI scheme. *)
 
+(** A list of blocks for copying *)
 type blocklist = {
-  blocksize : int
-      [@doc [
-        "size of the individual blocks"
-      ]]
-      [@version (1,1,0)];
-  ranges : (int64 * int64) list
-      [@doc [
-        "list of block ranges, where a range is a (start,length) pair,";
-        "measured in units of [blocksize]"
-      ]];
-} [@@deriving rpcty] [@@doc ["List of blocks for copying"]]
+  blocksize : int [@version (1,1,0)]; (** Size of the individual blocks *)
+  ranges : (int64 * int64) list       (** list of block ranges, where a range is
+                                          a (start,length) pair,measured in units
+                                          of [blocksize] *)
+} [@@deriving rpcty]
 
-type error =
-  | Unimplemented of string
-  [@@deriving rpcty]
+
+type error = Unimplemented of string [@@deriving rpcty]
 
 module E = Idl.Error.Make(struct type t=error let t = error end)
 let error = E.error
 
-type domain = string
-  [@@deriving rpcty]
-  [@@doc [
-    "A string representing a Xen domain on the local host. The string is";
-    "guaranteed to be unique per-domain but it is not guaranteed to take any";
-    "particular form. It may (for example) be a Xen domain id, a Xen VM uuid";
-    "or a Xenstore path or anything else chosen by the toolstack.";
-    "Implementations should not assume the string has any meaning."
-  ]]
+(** A string representing a Xen domain on the local host. The string is
+    guaranteed to be unique per-domain but it is not guaranteed to take any
+    particular form. It may (for example) be a Xen domain id, a Xen VM uuid
+    or a Xenstore path or anything else chosen by the toolstack.
+    Implementations should not assume the string has any meaning. *)
+type domain = string [@@deriving rpcty]
 
+(** The choice of blkback to use. *)
 type implementation =
-  | Blkback of string
-        [@doc ["use kernel blkback with the given 'params' key"]]
-  | Qdisk of string
-        [@doc ["use userspace qemu qdisk with the given 'params' key"]]
-  | Tapdisk3 of string
-        [@doc ["use userspace tapdisk3 with the given 'params' key"]]
+  | Blkback of string  (** Use kernel blkback with the given 'params' key *)
+  | Qdisk of string    (** Use userspace qemu qdisk with the given 'params' key *)
+  | Tapdisk3 of string (** Use userspace tapdisk3 with the given 'params' key *)
 [@@deriving rpcty]
-[@@doc ["The choice of blkback to use."]]
 
+(** A description of which Xen block backend to use. The toolstack needs this
+    to setup the shared memory connection to blkfront in the VM. *)
 type backend = {
-  domain_uuid: string
-      [@doc ["UUID of the domain hosting the backend"]];
-  implementation: implementation
-      [@doc ["choice of implementation technology"]];
+  domain_uuid: string;           (** UUID of the domain hosting the backend *)
+  implementation: implementation (** choice of implementation technology *)
 }
 [@@deriving rpcty]
-[@@doc [
-  "A description of which Xen block backend to use. The toolstack needs this";
-  "to setup the shared memory connection to blkfront in the VM."]]
 
-type persistent = bool [@@deriving rpcty] [@@doc [
-  "True means the disk data is persistent and should be preserved when the";
-  "datapath is closed i.e. when a VM is shutdown or rebooted. False means the";
-  "data should be thrown away when the VM is shutdown or rebooted."]]
+(** True means the disk data is persistent and should be preserved when the
+    datapath is closed i.e. when a VM is shutdown or rebooted. False means the
+    data should be thrown away when the VM is shutdown or rebooted. *)
+type persistent = bool [@@deriving rpcty]
 
 
 (* Create some handy parameters for use in the function definitions below *)

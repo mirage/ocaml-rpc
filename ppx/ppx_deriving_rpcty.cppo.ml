@@ -27,11 +27,26 @@ let attr_key  = attr_string "key"
 (* This is for naming variants where there's a keyword clash with ocaml *)
 let attr_name  = attr_string "name"
 
+let rec split s =
+  try
+    let i = String.index s '\n' in
+    (String.sub s 0 i) :: split (String.sub s (i+1) (String.length s - i - 1))
+  with Not_found -> [s]
+
+let convert_doc x = split x |> List.map (String.trim)
+
 (* Documentation for variants / record members *)
 let attr_doc attrs =
-  Ppx_deriving.attr ~deriver "doc" attrs |>
-  Ppx_deriving.Arg.(get_attr ~deriver expr) |>
-  function | Some e -> e | None -> list []
+  let rpcdoc =
+    Ppx_deriving.attr ~deriver "doc" attrs |>
+    Ppx_deriving.Arg.(get_attr ~deriver expr) in
+  let ocamldoc =
+    Ppx_deriving.attr ~deriver "ocaml.doc" attrs |>
+    Ppx_deriving.Arg.(get_attr ~deriver string) in
+  match rpcdoc, ocamldoc with
+  | Some e, _ -> e
+  | _, Some s -> list (convert_doc s |> List.map str)
+  | _, _ -> list []
 
 (* Version information *)
 let attr_version attrs =
