@@ -57,6 +57,7 @@ module Types : sig
     | Tuple : 'a typ * 'b typ -> ('a * 'b) typ
     | Struct : 'a structure -> 'a typ
     | Variant : 'a variant -> 'a typ
+    | Abstract : 'a abstract -> 'a typ
   and 'a def = { name : string; description : string list; ty : 'a typ; }
   and boxed_def = BoxedDef : 'a def -> boxed_def
   and ('a, 's) field = {
@@ -95,6 +96,10 @@ module Types : sig
     vdefault : 'a option;
     vversion : Version.t option;
     vconstructor : string -> tag_getter -> ('a, Rresult.R.msg) Result.result;
+  }
+  and 'a abstract = {
+    rpc_of : 'a -> t;
+    of_rpc : t -> ('a, Rresult.R.msg) Result.result;
   }
   val int : int def
   val int32 : int32 def
