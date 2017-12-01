@@ -39,6 +39,7 @@ let rec string_of_t : type a.a typ -> string list =
   | Unit -> print "unit"
   | Option x -> string_of_t x @ (print " option")
   | Tuple (a, b) -> string_of_t a @ (print " * ") @ (string_of_t b)
+  | Abstract a -> print "abstract"
 
 let table headings rows =
   (* Slightly more convenient to have columns sometimes. This
