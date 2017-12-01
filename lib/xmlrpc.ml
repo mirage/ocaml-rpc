@@ -355,10 +355,10 @@ let of_string ?callback str =
 
 let of_a ?callback ~next_char b =
   let aux () =
-    try
-      let c = next_char b in
-      int_of_char c
-    with _ -> raise End_of_file in
+    match next_char b with
+    | Some c -> int_of_char c
+    | None   -> raise End_of_file
+  in
   let input = Xmlm.make_input (`Fun aux) in
   Parser.of_xml ?callback [] input
 
