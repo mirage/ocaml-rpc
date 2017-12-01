@@ -7,10 +7,12 @@ val new_id : unit -> int64
 
 val to_buffer : Rpc.t -> Buffer.t -> unit
 val to_string : Rpc.t -> string
+val to_a : empty:(unit -> 'a) -> append:('a -> string -> unit) -> Rpc.t -> 'a [@@ocaml.deprecated]
 val string_of_call: ?version:version -> Rpc.call -> string
 val string_of_response: ?id:Rpc.t -> ?version:version -> Rpc.response -> string
 
 val of_string : string -> Rpc.t
+val of_a : next_char:('a -> char option) -> 'a -> Rpc.t [@@ocaml.deprecated]
 val a_of_response : ?id:Rpc.t -> ?version:version -> empty:(unit -> 'a) -> append:('a -> string -> unit) -> Rpc.response -> 'a [@@ocaml.deprecated]
 val json_of_response : ?id:Rpc.t -> version -> Rpc.response -> Rpc.t
 val json_of_error_object : ?data:Rpc.t option -> int64 -> string -> Rpc.t

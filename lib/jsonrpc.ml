@@ -142,8 +142,18 @@ let a_of_response ?(id=Int 0L) ?(version=V1) ~empty ~append response =
   let json = json_of_response ~id version response in
   to_a ~empty ~append json
 
-
 let of_string s = s |> Y.from_string |> json_to_rpc
+
+let of_a ~next_char b =
+  let buf = Buffer.create 2048 in
+  let rec acc () =
+    match next_char b with
+    | Some c -> Buffer.add_char buf c; acc ()
+    | None -> ()
+  in
+  acc ();
+  Buffer.contents buf
+  |> of_string
 
 let get' name dict = try Some (List.assoc name dict) with Not_found -> None
 
