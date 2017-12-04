@@ -107,6 +107,7 @@ module Gen () = struct
              | Rpc.String _ -> x
              | _ -> failwith "Type error"))
         (Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo))
+    | Abstract _ -> failwith "Abstract types not supported by cmdlinergen"
 
   let declare name desc_list ty =
     let generate rpc =

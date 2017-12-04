@@ -11,7 +11,7 @@ val parse_error : string -> string -> Xmlm.input -> unit
 val of_string : ?callback:(string list -> Rpc.t -> unit) -> string -> Rpc.t
 val of_a :
   ?callback:(string list -> Rpc.t -> unit) ->
-  next_char:('b -> char) -> 'b -> Rpc.t [@@ocaml.deprecated]
+  next_char:('b -> char option) -> 'b -> Rpc.t [@@ocaml.deprecated]
 val call_of_string :
   ?callback:(string list -> Rpc.t -> unit) -> string -> Rpc.call
 val response_of_fault :
