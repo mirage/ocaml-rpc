@@ -1,3 +1,13 @@
+2.2.0 (Dec 2017)
+* Remove warnings by extending pattern matches in {cmdliner,markdown}gen
+* Redefined `to_a` with a safer interface
+* Add a way to explicitly mark a tuple list as a dict
+* Allow the use ocamldoc tags rather than [@doc ...]
+* Add an 'abstract' typ.
+* Deprecate xmlrpc from/to char producers
+* Deprecate jsonrpc from/to char producers
+* Port the jsonrpc module to yojson
+    
 2.1.0 (Sep 2017)
 * Add defaults for polymorphic variants (@jonludlam)
 
