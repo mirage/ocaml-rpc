@@ -41,6 +41,32 @@ let rec string_of_t : type a.a typ -> string list =
   | Tuple (a, b) -> string_of_t a @ (print " * ") @ (string_of_t b)
   | Abstract a -> print "<abstract>"
 
+let rec ocaml_patt_of_t : type a. a typ -> string = fun ty ->
+    let of_basic : type b.b basic -> string = function
+    | Int -> "int"
+    | Int32 -> "int32"
+    | Int64 -> "int64"
+    | Bool -> "bool"
+    | Float -> "float"
+    | String -> "str"
+    | Char -> "char"
+  in
+  match ty with
+  | Basic b -> of_basic b
+  | DateTime -> "datetime"
+  | Struct s -> s.Rpc.Types.sname
+  | Variant v -> "v"
+  | Array t -> Printf.sprintf "%s_list" (ocaml_patt_of_t t)
+  | List t -> Printf.sprintf "%s_list" (ocaml_patt_of_t t)
+  | Dict (key, v) -> "dict"
+  | Unit -> "()"
+  | Option x -> Printf.sprintf "%s_opt" (ocaml_patt_of_t x)
+  | Tuple (a, b) -> Printf.sprintf "(%s,%s)" (ocaml_patt_of_t a) (ocaml_patt_of_t b)
+  | Abstract _ -> "abstract"
+
+let rec rpc_of : type a. a typ -> string -> Rpc.t = fun ty hint ->
+  Rpcmarshal.marshal ty (Rpc_genfake.gen_nice ty hint)
+
 let table headings rows =
   (* Slightly more convenient to have columns sometimes. This
      also ensures each row has the correct number of entries. *)
@@ -93,7 +119,7 @@ let of_args args =
     | _ ->
       let name = match arg.Param.name with Some s -> s | None -> "unnamed" in
       let direction = if is_in then "in" else "out" in
-      let ty = string_of_t arg.Param.typedef.ty |> String.concat " " in
+      let ty = arg.Param.typedef.name in
       let description = String.concat " " arg.Param.description in
       [name; direction; ty; description]
   in
@@ -118,32 +144,147 @@ let of_type_decl i_opt ((BoxedDef t) as t') =
   let name = t.name in
   let defn = String.concat "" (string_of_t t.ty) in
   let description = String.concat " " t.description in
-  let common =
-    [ Printf.sprintf "### type `%s` = %s" name defn;
-      description ]
+  let header = [ Printf.sprintf "### %s" name ]
   in
   let example_tys = Rpc_genfake.genall 0 name t.ty in
   let marshalled = List.map (fun example -> Rpcmarshal.marshal t.ty example) example_tys in
-  let example = "```json" :: (List.map Jsonrpc.to_string marshalled) @  ["```"] in
+  let example = "```json" :: (List.map (fun x -> Jsonrpc.to_string x |> Yojson.Basic.from_string |> Yojson.Basic.pretty_to_string) marshalled) @  ["```"] in
+  let definition = [
+    Printf.sprintf "type `%s` = %s" name defn;
+    description ]
+  in
   let rest = match t.ty with
-    | Struct structure -> h4 "Members" @ of_struct_fields structure.fields
-    | Variant variant -> h4 "Constructors" @ of_variant_tags variant.variants
-    | _ -> [] in
-  common @ rest @ example
+  | Struct structure -> h4 "Members" @ of_struct_fields structure.fields
+  | Variant variant -> h4 "Constructors" @ of_variant_tags variant.variants
+  | _ -> [] in
+  header @ example @ definition @ rest
 
-let of_method is i (Codegen.BoxedFunction m) =
+let json_of_method namespace is i (Codegen.BoxedFunction m) =
+  let inputs = Codegen.Method.find_inputs (m.Codegen.Method.ty) in
+  let Idl.Param.Boxed output = Codegen.Method.find_output (m.Codegen.Method.ty) in
+  let (named,unnamed) = List.fold_left (fun (named, unnamed) bp ->
+      match bp with
+      | Idl.Param.Boxed p -> begin
+          let rpc = rpc_of p.Idl.Param.typedef.Rpc.Types.ty (match p.Idl.Param.name with | Some n -> n | None -> p.Idl.Param.typedef.Rpc.Types.name) in
+          match p.Idl.Param.name with
+          | Some n ->
+            ((n, rpc)::named, unnamed)
+          | None ->
+            (named, rpc::unnamed)
+        end) ([],[]) inputs
+  in
+  let get_wire_name name =
+    match namespace with
+    | Some ns -> Printf.sprintf "%s.%s" ns name
+    | None -> name
+  in
+  let wire_name = get_wire_name m.Codegen.Method.name in
+  let args =
+    match named with
+    | [] -> List.rev unnamed
+    | _ -> (Rpc.Dict named) :: List.rev unnamed
+  in
+  let call = Rpc.call wire_name args in
+  let input = Jsonrpc.string_of_call call |> Yojson.Basic.from_string |> Yojson.Basic.pretty_to_string in
+  let example_ty = Rpc_genfake.gen_nice output.Idl.Param.typedef.Rpc.Types.ty (match output.Idl.Param.name with | Some n -> n | None -> output.Idl.Param.typedef.Rpc.Types.name) in
+  let marshalled = Rpcmarshal.marshal output.Idl.Param.typedef.Rpc.Types.ty example_ty in
+  let output = Jsonrpc.to_string marshalled |> Yojson.Basic.from_string |> Yojson.Basic.pretty_to_string in
+  (input,output)
+
+let ocaml_of_method (Codegen.BoxedFunction m) =
+  let inputs = Codegen.Method.find_inputs (m.Codegen.Method.ty) in
+  let (Idl.Param.Boxed output) = Codegen.Method.find_output (m.Codegen.Method.ty) in
+  let (Rpc.Types.BoxedDef error) = Codegen.Method.find_errors (m.Codegen.Method.ty) in
+  let patt_of_var = function
+    | Rpc.Types.BoxedTag t ->
+      Printf.sprintf "%s%s" t.Rpc.Types.tname (match t.Rpc.Types.tcontents with | Unit -> "" | t -> Printf.sprintf " %s" (ocaml_patt_of_t t))
+  in
+  let err_pre, err_post =
+    match error.Rpc.Types.ty with
+    | Variant v ->
+      let pre = "try\n    " in
+      let post = Printf.sprintf "with %s"
+          (String.concat "\n| "
+             (List.map (fun v -> Printf.sprintf "Exn (%s) -> ..." (patt_of_var v)) v.Rpc.Types.variants)) in
+      (pre,post)
+    | _ ->
+      let pre = "try\n    " in
+      let post = "with _ -> ..." in
+      (pre,post)
+  in
+  let gen_arg p =
+    match p with
+    | Idl.Param.Boxed p ->
+      match p.Idl.Param.name with
+      | Some n -> n
+      | None -> p.Idl.Param.typedef.Rpc.Types.name
+  in
+  let result_patt =
+    match output.Idl.Param.typedef.Rpc.Types.ty with
+    | Unit -> "()"
+    | _ ->
+      match output.Idl.Param.name with
+      | Some n -> n
+      | None -> output.Idl.Param.typedef.Rpc.Types.name
+  in
+  Printf.sprintf "%slet %s = Client.%s %s in\n    ...\n%s\n"
+    err_pre
+    result_patt
+    m.Codegen.Method.name
+    (String.concat " "
+       (List.map gen_arg inputs))
+    err_post
+
+(*let ocaml_server_of_method is i (Codegen.BoxedFunction m) = [
+    Printf.sprintf "module S=%s(Idl.GenServerExn ())" (String.capitalize i.Interface.name);
+    "";
+    Printf.sprintf "let %s_impl %s =" (m.Method.name) args;
+    "   let result = %s in";
+    "   result";
+    "";
+    "let bind () =";
+    "   S.%s %s_impl"
+  ]*)
+
+let tabs_of namespace is i m =
+  let (json,json_response) = json_of_method namespace is i m in
+  let ocaml = ocaml_of_method m in
+  let python = Pythongen.example_stub_user i m |> Pythongen.string_of_ts in
+  let python_server = Pythongen.example_skeleton_user i m |> Pythongen.string_of_ts in
+  [ "> Client"; "";
+    Printf.sprintf "```json\n%s\n```" json; "";
+    Printf.sprintf "```ocaml\n%s\n```" ocaml; "";
+    Printf.sprintf "```python\n%s\n```" python; "";
+    "> Server"; "";
+    Printf.sprintf "```json\n%s\n```" json_response; "";
+    Printf.sprintf "```ocaml\n%s\n```" ocaml; "";
+    Printf.sprintf "```python\n%s\n```" python_server; "";
+  ]
+
+let of_method namespace is i (Codegen.BoxedFunction m) =
   let name = m.Method.name in
   let description = String.concat " " m.Method.description in
-  h3 (Printf.sprintf "Method: `%s`" name) @ [ description ] @
+  h2 (Printf.sprintf "Method: `%s`" name) @
+  [ description ] @ [""] @ (tabs_of namespace is i (Codegen.BoxedFunction m)) @ [""] @
     (of_args (
         List.map (fun p -> (true,p)) Method.(find_inputs m.ty) @
         [ (false, Method.(find_output m.ty)) ]))
-    (* tabs_of *)
+
+let all_errors is i =
+  let errors = List.map (function (BoxedFunction m) -> Codegen.Method.find_errors m.Codegen.Method.ty) i.Interface.methods in
+  let rec uniq acc errors =
+    match errors with
+    | e::es -> if List.mem e acc then uniq acc es else uniq (e::acc) es
+    | [] -> List.rev acc
+  in uniq [] errors
+
 
 let of_interface is i =
   let name = i.Interface.details.Idl.Interface.name in
+  let namespace = i.Interface.details.Idl.Interface.namespace in
   let description = String.concat " " i.Interface.details.Idl.Interface.description in
-  h2 (Printf.sprintf "Interface: `%s`" name) @ [ description ] @ List.concat (List.map (of_method is i) i.Interface.methods)
+  h2 (Printf.sprintf "Interface: `%s`" name) @ [ description ] @ List.concat (List.map (of_method namespace is i) i.Interface.methods)
+
 
 let of_interfaces x =
   let name = x.Interfaces.name in
@@ -152,7 +293,8 @@ let of_interfaces x =
   [ description ] @
   h2 "Type definitions" @
   List.concat (List.map (of_type_decl None) x.Interfaces.type_decls) @
-  h2 "Method definitions" @
-  List.concat (List.map (of_interface x) x.Interfaces.interfaces)
+  List.concat (List.map (of_interface x) x.Interfaces.interfaces) @
+  h2 "Errors" @
+  List.concat (List.map (of_type_decl None) (List.flatten (List.map (all_errors x) x.Interfaces.interfaces)))
 
 let to_string x = String.concat "\n" (of_interfaces x)
