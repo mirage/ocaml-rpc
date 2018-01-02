@@ -13,4 +13,5 @@
 <ppx/*>: cppo_n
 <lib/*>: cppo_V_OCAML
 <lib/*>: cppo_n
+<lib/rpc.*>: warn(-30)
 <true>: thread, safe_string
