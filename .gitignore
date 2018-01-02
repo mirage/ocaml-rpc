@@ -17,3 +17,8 @@ setup.data
 setup.log
 ppx_test/test
 ppx_test/tytest
+
+example/example.ml
+example/example
+example/example2
+example/example3
