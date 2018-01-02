@@ -27,4 +27,4 @@ example3: example3_idl.ml example3_client.ml
 	$(OCAMLOPT) $(OCAMLFLAGS) $(PPXOPTS) -linkpkg -package $(PACKS) $(RPC) $(RPCLINK) -o example3 example3_idl.ml example3_client.ml
 
 clean:
-	rm -f example example2 example3 *.cmx *.cmi *.cmo *.o example.ml example.gen.ml *~ *.annot
+	rm -f example example2 example3 *.cmx *.cmi *.cmo *.o example.ml example.gen.ml *~ *.annot vm.md

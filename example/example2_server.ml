@@ -45,11 +45,11 @@ let binary_handler process s =
   let ic = Unix.in_channel_of_descr s in
   let oc = Unix.out_channel_of_descr s in
   (* Read a 16 byte length encoded as a string *)
-  let len_buf = String.make 16 '\000' in
-  really_input ic len_buf 0 (String.length len_buf);
-  let len = int_of_string len_buf in
-  let msg_buf = String.make len '\000' in
-  really_input ic msg_buf 0 (String.length msg_buf);
+  let len_buf = Bytes.make 16 '\000' in
+  really_input ic len_buf 0 (Bytes.length len_buf);
+  let len = int_of_string (Bytes.unsafe_to_string len_buf) in
+  let msg_buf = Bytes.make len '\000' in
+  really_input ic msg_buf 0 (Bytes.length msg_buf);
   let result = process msg_buf in
   let len_buf = Printf.sprintf "%016d" (String.length result) in
   output_string oc len_buf;
@@ -84,6 +84,6 @@ let start_server () =
   let rpc_fn = server Server.implementation in
 
   let process x =
-    Jsonrpc.string_of_response (rpc_fn (Jsonrpc.call_of_string x)) in
+    Jsonrpc.string_of_response (rpc_fn (Jsonrpc.call_of_string (Bytes.unsafe_to_string x))) in
 
   serve_requests process sockpath
