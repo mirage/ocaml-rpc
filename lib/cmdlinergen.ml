@@ -107,7 +107,14 @@ module Gen () = struct
              | Rpc.String _ -> x
              | _ -> failwith "Type error"))
         (Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo))
-    | Abstract _ -> failwith "Abstract types not supported by cmdlinergen"
+    | Abstract {of_rpc; _} -> 
+      Term.app
+        (Term.pure (fun x -> 
+          let x = Jsonrpc.of_string x in
+          match of_rpc x with
+          | Ok _ -> x
+          | Error _ -> failwith "Type error"))
+        (Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo))
 
   let declare name desc_list ty =
     let generate rpc =
