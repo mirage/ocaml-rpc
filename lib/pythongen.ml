@@ -119,7 +119,8 @@ let rec typecheck : type a.a typ -> string -> t list = fun ty v ->
         typecheck a (Printf.sprintf "%s[0]" v) @
         typecheck b (Printf.sprintf "%s[1]" v))
     ]
-  | Abstract _ -> failwith "Abstract types not supported by pythongen"
+  | Abstract _ ->
+    failwith "Abstract types cannot be typechecked by pythongen"
 
 let rec value_of : type a. a typ -> string =
   let open Printf in function
@@ -150,7 +151,7 @@ let rec value_of : type a. a typ -> string =
       "None"
     | Tuple (a, b) ->
       "[]"
-    | Abstract _ -> failwith "Abstract types not supported by pythongen"
+    | Abstract _ -> failwith "Cannot get default value for abstract types"
 
 
 let exn_var myarg =
