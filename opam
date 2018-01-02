@@ -9,7 +9,6 @@ tags: [
   "org:xapi-project"
 ]
 build: [
-  [configure]
   [make]
 ]
 install: [
