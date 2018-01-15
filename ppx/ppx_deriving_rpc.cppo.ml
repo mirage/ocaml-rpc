@@ -145,11 +145,17 @@ module Of_rpc = struct
         tags |> List.map (fun field ->
             match field with
             | Rtag (label, attrs, true, []) ->
+#if OCAML_VERSION > (4, 05, 0)
+              let label = label.txt in
+#endif
               let label' = lowercase label in
               Exp.case
                 [%pat? Rpc.String [%p pstr (attr_name label' attrs)]]
                 (Exp.variant label None)
             | Rtag (label, attrs, false, [ { ptyp_desc = Ptyp_tuple typs }]) ->
+#if OCAML_VERSION > (4, 05, 0)
+              let label = label.txt in
+#endif
               let label' = lowercase label in
               let exprs = List.mapi (fun i typ -> [%expr [%e expr_of_typ typ] [%e evar (argn i) ] ] ) typs in
               Exp.case
@@ -157,6 +163,9 @@ module Of_rpc = struct
                                  Rpc.Enum [%p plist (List.mapi (fun i _ -> pvar (argn i)) typs)]]]
                 (Exp.variant label (Some (tuple exprs)))
             | Rtag (label, attrs, false, [typ]) ->
+#if OCAML_VERSION > (4, 05, 0)
+              let label = label.txt in
+#endif
               let label' = lowercase label in
               Exp.case
                 [%pat? Rpc.Enum [Rpc.String [%p pstr (attr_name label' attrs)]; y]]
@@ -319,16 +328,25 @@ module Rpc_of = struct
         fields |> List.map (fun field ->
             match field with
             | Rtag (label, attrs, true, []) ->
+#if OCAML_VERSION > (4, 05, 0)
+              let label = label.txt in
+#endif
               Exp.case
                 (Pat.variant label None)
                 [%expr Rpc.String [%e str (attr_name label attrs)]]
             | Rtag (label, attrs, false, [{ ptyp_desc = Ptyp_tuple typs }]) ->
+#if OCAML_VERSION > (4, 05, 0)
+              let label = label.txt in
+#endif
               let l = list (List.mapi (fun i typ -> app (expr_of_typ  typ) [evar (argn i)]) typs) in
               Exp.case
                 (Pat.variant label (Some (ptuple (List.mapi (fun i _ -> pvar (argn i)) typs))))
                 [%expr Rpc.Enum ( Rpc.String ([%e str (attr_name label attrs)]) ::
                                   [Rpc.Enum [%e l]])]
             | Rtag (label, attrs, false, [typ]) ->
+#if OCAML_VERSION > (4, 05, 0)
+              let label = label.txt in
+#endif
               Exp.case
                 (Pat.variant label (Some [%pat? x]))
                 [%expr Rpc.Enum ( (Rpc.String ([%e str (attr_name label attrs)])) :: [ [%e expr_of_typ  typ] x])]

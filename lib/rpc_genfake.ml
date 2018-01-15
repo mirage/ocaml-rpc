@@ -46,6 +46,8 @@ let rec gentest : type a. a typ -> a list  = fun t ->
         let contents = gentest v.tcontents in
         let content = List.nth contents (Random.int (List.length contents)) in
         v.treview content) variants
+  | Abstract _ -> failwith "Abstract types not supported by rpc_genfake"
+
 
 let thin d result =
   if d < 0
@@ -98,3 +100,4 @@ let rec genall : type a. int -> string -> a typ -> a list  = fun depth strhint t
     List.map (function Rpc.Types.BoxedTag v ->
         let contents = genall (depth - 1) strhint v.tcontents in
         List.map (fun content -> v.treview content) contents) variants |> List.flatten |> thin depth
+  | Abstract _ -> failwith "Abstract types not supported by rpc_genfake"

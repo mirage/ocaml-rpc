@@ -9,7 +9,6 @@ tags: [
   "org:xapi-project"
 ]
 build: [
-  [configure]
   [make]
 ]
 install: [
@@ -26,7 +25,7 @@ build-test: [
 depends: [
   "oasis" {build}
   "cppo"  {build}
-  "async"
+  "async" {< "v0.10.0"}
   "cmdliner"
   "cow"
   "lwt"

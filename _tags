@@ -11,4 +11,7 @@
 <ppx_test/*>: not_hygienic
 <ppx/*>: cppo_V_OCAML
 <ppx/*>: cppo_n
-<true>: thread
+<lib/*>: cppo_V_OCAML
+<lib/*>: cppo_n
+<lib/rpc.*>: warn(-30)
+<true>: thread, safe_string
