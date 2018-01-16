@@ -87,7 +87,7 @@ module Typ_of = struct
         [%expr Array [%e expr_of_typ  typ]]
       | {ptyp_desc = Ptyp_tuple typs } ->
         let typs = List.rev typs in
-        List.fold_right (fun t acc -> [%expr Tuple ([%e expr_of_typ  t], [%e acc])]) (List.tl typs) [%expr [%e (expr_of_typ  (List.hd typs))] ]
+        List.fold_right (fun t acc -> [%expr Tuple ([%e expr_of_typ  t], [%e acc])]) (List.rev (List.tl typs)) [%expr [%e (expr_of_typ  (List.hd typs))] ]
       | [%type: [%t? typ] option] ->
         [%expr Option [%e expr_of_typ typ]]
       | { ptyp_desc = Ptyp_constr ( { txt = lid }, args ) } ->
