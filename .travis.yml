@@ -9,12 +9,13 @@ env:
         - DISTRO=debian-unstable
         - PACKAGE=rpc
     matrix:
-        - OCAML_VERSION=4.02.3
         - OCAML_VERSION=4.03.0
-        - OCAML_VERSION=4.04.2 REVDEPS=true
+        - OCAML_VERSION=4.04.2
         - OCAML_VERSION=4.05.0
         - OCAML_VERSION=4.06.0
+        - OCAML_VERSION=4.05.0 REVDEPS=true
 matrix:
     fast_finish: true
     allow_failures:
         - env: OCAML_VERSION=4.06.0
+        - env: OCAML_VERSION=4.05.0 REVDEPS=true

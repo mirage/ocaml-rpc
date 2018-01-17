@@ -75,7 +75,7 @@ module ImplM = struct
 end
 
 let rpc rpc_fn call =
-  let open Async.Std.Deferred in
+  let open Async.Deferred in
   let call_string = Jsonrpc.string_of_call call in
   Printf.printf "rpc function: call_string='%s'\n" call_string;
   let call = Jsonrpc.call_of_string call_string in
@@ -120,4 +120,4 @@ let main () =
 
 let _ =
   ignore (main ());
-  Core.Std.never_returns (Async.Std.Scheduler.go ())
+  Core.never_returns (Async.Scheduler.go ())
