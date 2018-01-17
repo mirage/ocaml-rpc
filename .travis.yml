@@ -6,10 +6,9 @@ install: wget https://raw.githubusercontent.com/ocaml/ocaml-travisci-skeleton/ma
 script: bash -ex .travis-docker.sh
 env:
     global:
-        - DISTRO=debian-unstable
+        - DISTRO=debian-stable
         - PACKAGE=rpc
     matrix:
-        - OCAML_VERSION=4.02.3
         - OCAML_VERSION=4.03.0
         - OCAML_VERSION=4.04.2 REVDEPS=true
         - OCAML_VERSION=4.05.0

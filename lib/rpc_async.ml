@@ -1,5 +1,5 @@
 open Idl
-module Deferred = Async.Std.Deferred
+module Deferred = Async.Deferred
 
 type async_rpcfn = Rpc.call -> Rpc.response Deferred.t
 
