@@ -1,11 +1,3 @@
-#if OCAML_VERSION < (4, 03, 0)
-    #define Pconst_string Const_string
-    #define Pcstr_tuple(x) x
-    #define lowercase String.lowercase
-#else
-    #define lowercase String.lowercase_ascii
-#endif
-
 open Longident
 open Asttypes
 open Parsetree
@@ -186,13 +178,11 @@ module Typ_of = struct
         let cases =
           constrs |> List.map (fun { pcd_name = { txt = name }; pcd_args; pcd_attributes } ->
               let rpc_name = attr_name name pcd_attributes in
-              let lower_rpc_name = lowercase rpc_name in
+              let lower_rpc_name = String.lowercase_ascii rpc_name in
               let typs = match pcd_args with
               | Pcstr_tuple(typs) -> typs
-#if OCAML_VERSION >= (4, 03, 0)
               | Pcstr_record _ ->
                 raise_errorf "%s: record variants are not supported" deriver
-#endif
               in
               let contents = match typs with
                 | [] -> [%expr Unit]
@@ -223,7 +213,7 @@ module Typ_of = struct
                          (match default_case with
                          | None -> [%expr Rresult.R.error_msg (Printf.sprintf "Unknown tag '%s'" s)]
                          | Some d -> [%expr Result.Ok [%e d]])] in
-        let vconstructor = [%expr fun s' t -> let s = lowercase s' in [%e Exp.match_ (evar "s") ((List.map snd cases) @ default)]] in
+        let vconstructor = [%expr fun s' t -> let s = String.lowercase_ascii s' in [%e Exp.match_ (evar "s") ((List.map snd cases) @ default)]] in
         [ Vb.mk (pvar typ_of_lid) (wrap_runtime (polymorphize (
               [%expr Variant ({
                   variants=([%e list (List.map fst cases)]);

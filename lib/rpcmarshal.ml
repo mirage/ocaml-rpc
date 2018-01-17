@@ -1,9 +1,3 @@
-#if OCAML_VERSION < (4, 03, 0)
-    #define lowercase String.lowercase
-#else
-    #define lowercase String.lowercase_ascii
-#endif
-
 (* Basic type definitions *)
 open Rpc.Types
 
@@ -91,10 +85,10 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result  = fun t v 
   | Struct { constructor; sname } -> begin
       match v with
       | Rpc.Dict keys' ->
-        let keys = List.map (fun (s,v) -> (lowercase s, v)) keys' in
+        let keys = List.map (fun (s,v) -> (String.lowercase_ascii s, v)) keys' in
         constructor { fget = (
             let x : type a. string -> a typ -> (a, Rresult.R.msg) Result.result  = fun s ty ->
-              let s = lowercase s in
+              let s = String.lowercase_ascii s in
               match ty with
               | Option x -> begin try List.assoc s keys |> unmarshal x >>= fun o -> return (Some o) with _ -> return None end
               | y ->

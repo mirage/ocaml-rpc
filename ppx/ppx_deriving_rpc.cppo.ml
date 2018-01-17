@@ -1,11 +1,3 @@
-#if OCAML_VERSION < (4, 03, 0)
-    #define Pconst_string Const_string
-    #define Pcstr_tuple(x) x
-    #define lowercase String.lowercase
-#else
-    #define lowercase String.lowercase_ascii
-#endif
-
 open Longident
 open Asttypes
 open Parsetree
@@ -148,7 +140,7 @@ module Of_rpc = struct
 #if OCAML_VERSION > (4, 05, 0)
               let label = label.txt in
 #endif
-              let label' = lowercase label in
+              let label' = String.lowercase_ascii label in
               Exp.case
                 [%pat? Rpc.String [%p pstr (attr_name label' attrs)]]
                 (Exp.variant label None)
@@ -156,7 +148,7 @@ module Of_rpc = struct
 #if OCAML_VERSION > (4, 05, 0)
               let label = label.txt in
 #endif
-              let label' = lowercase label in
+              let label' = String.lowercase_ascii label in
               let exprs = List.mapi (fun i typ -> [%expr [%e expr_of_typ typ] [%e evar (argn i) ] ] ) typs in
               Exp.case
                 [%pat? Rpc.Enum [Rpc.String [%p pstr (attr_name label' attrs)];
@@ -166,7 +158,7 @@ module Of_rpc = struct
 #if OCAML_VERSION > (4, 05, 0)
               let label = label.txt in
 #endif
-              let label' = lowercase label in
+              let label' = String.lowercase_ascii label in
               Exp.case
                 [%pat? Rpc.Enum [Rpc.String [%p pstr (attr_name label' attrs)]; y]]
                 [%expr [%e expr_of_typ typ] y |> fun x ->
@@ -186,8 +178,8 @@ module Of_rpc = struct
       in
       [%expr fun (rpc : Rpc.t) ->
              let rpc' = match rpc with
-               | Rpc.Enum ((Rpc.String x)::xs) -> Rpc.Enum ((Rpc.String (lowercase x))::xs)
-               | Rpc.String x -> Rpc.String (lowercase x)
+               | Rpc.Enum ((Rpc.String x)::xs) -> Rpc.Enum ((Rpc.String (String.lowercase_ascii x))::xs)
+               | Rpc.String x -> Rpc.String (String.lowercase_ascii x)
                | y -> y in
              [%e Exp.match_ [%expr rpc'] (tag_cases @ [inherits_case])]]
 
@@ -224,7 +216,7 @@ module Of_rpc = struct
         let record =
           List.fold_left (fun expr (i,label) ->
               let { pld_name = { txt = name }; pld_attributes } = label in
-              let key = lowercase (attr_key name pld_attributes) in
+              let key = String.lowercase_ascii (attr_key name pld_attributes) in
               [%expr let [%p pvar (argn i)] = match [%e evar (argn i)] with | Some x -> x | None -> failwith (Printf.sprintf "Undefined field: Expecting '%s'" [%e str key]) in [%e expr]])
             [%expr [%e Exp.record (labels |> List.mapi (fun i { pld_name = { txt = name } } ->
                 mknoloc (Lident name), evar (argn i))) None]]
@@ -237,7 +229,7 @@ module Of_rpc = struct
                    if i = j
                    then [%expr Some [%e app (expr_of_typ pld_type) [(wrap_opt pld_type (evar "x"))]]]
                    else evar (argn j)) in
-               Exp.case [%pat? ([%p pstr (lowercase (attr_key name pld_attributes))], x) :: xs]
+               Exp.case [%pat? ([%p pstr (String.lowercase_ascii (attr_key name pld_attributes))], x) :: xs]
                  [%expr loop xs [%e tuple thunks]])) @
           [Exp.case [%pat? []] record;
            Exp.case [%pat? _ :: xs] [%expr loop xs _state]]
@@ -250,7 +242,7 @@ module Of_rpc = struct
         [%expr fun x ->
           match x with
           | Rpc.Dict dict ->
-            let d' = List.map (fun (k,v) -> (lowercase k, v)) dict in
+            let d' = List.map (fun (k,v) -> (String.lowercase_ascii k, v)) dict in
             let rec loop xs ([%p ptuple (List.mapi (fun i _ -> pvar (argn i)) labels)] as _state) =
               [%e Exp.match_ [%expr xs] cases]
             in loop d' [%e tuple thunks]
@@ -267,16 +259,14 @@ module Of_rpc = struct
                 let subpattern = List.mapi (fun i _ -> pvar (argn i)) typs |> plist in
                 let exprs = List.mapi (fun i typ -> [%expr [%e expr_of_typ typ] [%e evar (argn i) ] ] ) typs in
                 let rpc_of = constr name exprs in
-                let main = [%pat? Rpc.String [%p pstr (lowercase (attr_name name pcd_attributes))]] in
+                let main = [%pat? Rpc.String [%p pstr (String.lowercase_ascii (attr_name name pcd_attributes))]] in
                 let pattern = match typs with
                   | [] -> main
                   | _ -> [%pat? Rpc.Enum ([%p main] :: [%p subpattern])]
                 in
                 Exp.case pattern rpc_of
-#if OCAML_VERSION >= (4, 03, 0)
               | Pcstr_record _ ->
                 raise_errorf "%s: record variants are not supported" deriver
-#endif
           ) in
         let default =
           Exp.case
@@ -420,10 +410,8 @@ module Rpc_of = struct
                   | args -> [%expr Rpc.Enum ((Rpc.String [%e str (attr_name name pcd_attributes)]) :: [%e argsl])]
                 in
                 Exp.case (pconstr name pattern) rpc_of
-#if OCAML_VERSION >= (4, 03, 0)
               | Pcstr_record _ ->
                 raise_errorf "%s: record variants are not supported" deriver
-#endif
           ) in
         Exp.function_ cases
     in
