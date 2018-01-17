@@ -1,3 +1,13 @@
+2.3.0 (Jan 2018)
+* For tuple contains more than 2 elements, fix the element order when deriving rpcty
+* pythongen, rpc_genfake: improved failures for Abstract types
+* cmdlinergen: implement Abstract
+* add support for ocaml 4.06
+* Remove unnecessary warnings
+* Add failable tests for ocaml-4.06
+* opam: add upper bound to async
+* opam: remove [configure] from the build stanza
+
 2.2.0 (Dec 2017)
 * Remove warnings by extending pattern matches in {cmdliner,markdown}gen
 * Redefined `to_a` with a safer interface
