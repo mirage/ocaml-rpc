@@ -15,13 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 *)
 
-#if OCAML_VERSION < (4, 03, 0)
-    #define lowercase String.lowercase
-#else
-    #define lowercase String.lowercase_ascii
-#endif
-
-
 let debug = ref false
 let set_debug x = debug := x
 let get_debug () = !debug
@@ -196,7 +189,7 @@ let char_of_rpc x =
   then failwith (Printf.sprintf "Char out of range (%d)" x)
   else Char.chr x
 let t_of_rpc t = t
-let lowerfn = function | String s -> String (lowercase s) | Enum (String s::ss) -> Enum ((String (lowercase s))::ss) | x -> x
+let lowerfn = function | String s -> String (String.lowercase_ascii s) | Enum (String s::ss) -> Enum ((String (String.lowercase_ascii s))::ss) | x -> x
 
 module ResultUnmarshallers = struct
   open Rresult

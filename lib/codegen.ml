@@ -1,9 +1,3 @@
-#if OCAML_VERSION < (4, 03, 0)
-    #define capitalize String.capitalize
-#else
-    #define capitalize String.capitalize_ascii
-#endif
-
 open Rpc.Types
 
 type _ outerfn =
@@ -100,7 +94,7 @@ module Gen () = struct
 
   let implement i () =
     let n = i.Interface.name in
-    if capitalize n <> n then failwith "Interface names must be capitalized";
+    if String.capitalize_ascii n <> n then failwith "Interface names must be capitalized";
     let i = Interface.({details=i; methods=(List.rev !methods)}) in
     i
 
