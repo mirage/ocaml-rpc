@@ -151,7 +151,7 @@ module Typ_of = struct
             | Some d ->
               [%expr (match getter.Rpc.Types.fget
                               [%e str rpc_name] [%e expr_of_typ pld_type] with
-                     | Result.Ok x as y -> y
+                     | Result.Ok _ as y -> y
                      | Result.Error _ -> Result.Ok [%e d])>>= fun [%p pvar field_name] -> [%e expr]]
             | None ->
               [%expr getter.Rpc.Types.fget [%e str rpc_name] [%e expr_of_typ pld_type] >>= fun [%p pvar field_name] -> [%e expr]]
