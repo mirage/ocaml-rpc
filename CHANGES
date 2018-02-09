@@ -1,3 +1,11 @@
+3.1.0 (Feb 2018)
+* ppx_deriving_rpcty: use native split_on_char on ocaml >= 4.04.0
+* ppx_deriving_rpcty: Fix 'Warning 27: unused variable x.' on deriving rpcty for structs
+
+3.0.0 (Jan 2018)
+* lib: remove use of cppo after dropping support for ocaml 4.02.3
+* add support for async and core >= v0.9.0
+
 2.3.0 (Jan 2018)
 * For tuple contains more than 2 elements, fix the element order when deriving rpcty
 * pythongen, rpc_genfake: improved failures for Abstract types
