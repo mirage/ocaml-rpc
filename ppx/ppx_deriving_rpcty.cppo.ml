@@ -19,11 +19,15 @@ let attr_key  = attr_string "key"
 (* This is for naming variants where there's a keyword clash with ocaml *)
 let attr_name  = attr_string "name"
 
+#if OCAML_VERSION < (4, 04, 0)
 let rec split s =
   try
     let i = String.index s '\n' in
     (String.sub s 0 i) :: split (String.sub s (i+1) (String.length s - i - 1))
   with Not_found -> [s]
+#else
+let split = String.split_on_char '\n'
+#endif
 
 let convert_doc x = split x |> List.map (String.trim)
 
@@ -151,7 +155,7 @@ module Typ_of = struct
             | Some d ->
               [%expr (match getter.Rpc.Types.fget
                               [%e str rpc_name] [%e expr_of_typ pld_type] with
-                     | Result.Ok x as y -> y
+                     | Result.Ok _ as y -> y
                      | Result.Error _ -> Result.Ok [%e d])>>= fun [%p pvar field_name] -> [%e expr]]
             | None ->
               [%expr getter.Rpc.Types.fget [%e str rpc_name] [%e expr_of_typ pld_type] >>= fun [%p pvar field_name] -> [%e expr]]
