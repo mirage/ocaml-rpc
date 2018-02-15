@@ -404,6 +404,7 @@ module DefaultError = struct
 
   (* And then we can create the 'variant' type *)
   let t : t Rpc.Types.variant = Rpc.Types.{
+      vname    = "t";
       variants = [ BoxedTag internalerror ];
       vversion = Some (1,0,0);
       vdefault = Some (InternalError "Unknown error tag!");
