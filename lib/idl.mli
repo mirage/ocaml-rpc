@@ -34,15 +34,7 @@ module Error : sig
   module type ERROR = sig
     type t
     val t : t Rpc.Types.def
-  end
-
-  module type INTERNAL_ERROR = sig 
-    include ERROR
     val internal_error_of: exn -> t option
-  end
-
-  module MakeInternalError(T : INTERNAL_ERROR) : sig
-    val error : T.t t
   end
 
   module Make(T : ERROR) : sig
