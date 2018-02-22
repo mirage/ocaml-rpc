@@ -29,9 +29,13 @@ type blocklist = {
 } [@@deriving rpcty]
 
 
-type error = Unimplemented of string [@@deriving rpcty]
+type error = Unimplemented of string | UnexpectedError of string [@@deriving rpcty]
 
-module E = Idl.Error.Make(struct type t=error let t = error end)
+module E = Idl.Error.Make(struct
+    type t = error
+    let t = error
+    let internal_error_of e = Some (UnexpectedError (Printexc.to_string e))
+    end)
 let error = E.error
 
 (** A string representing a Xen domain on the local host. The string is
