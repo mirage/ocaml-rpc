@@ -31,7 +31,13 @@ module Error : sig
     matcher : exn -> 'a option;
   }
 
-  module Make(T : sig type t val t : t Rpc.Types.def end) : sig
+  module type ERROR = sig
+    type t
+    val t : t Rpc.Types.def
+    val internal_error_of: exn -> t option
+  end
+
+  module Make(T : ERROR) : sig
     val error : T.t t
   end
 end
