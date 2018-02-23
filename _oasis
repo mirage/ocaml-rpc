@@ -61,7 +61,7 @@ Library markdowngen
   FindlibParent: rpclib
   Findlibname: markdown
   Modules: Markdowngen
-  BuildDepends: rpclib.core, rpclib.xml, rpclib.json
+  BuildDepends: yojson, rpclib.core, rpclib.xml, rpclib.json
 
 Library rpclib_lwt
   Path: lib

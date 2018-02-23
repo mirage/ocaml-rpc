@@ -7,6 +7,7 @@ module Method :
     type 'a t = { name : string; description : string list; ty : 'a outerfn; }
     val find_inputs : 'a outerfn -> Idl.Param.boxed list
     val find_output : 'a outerfn -> Idl.Param.boxed
+    val find_errors : 'a outerfn -> Rpc.Types.boxed_def
   end
 type boxed_fn = BoxedFunction : 'a Method.t -> boxed_fn
 module Interface :

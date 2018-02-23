@@ -220,6 +220,7 @@ module Typ_of = struct
         let vconstructor = [%expr fun s' t -> let s = String.lowercase_ascii s' in [%e Exp.match_ (evar "s") ((List.map snd cases) @ default)]] in
         [ Vb.mk (pvar typ_of_lid) (wrap_runtime (polymorphize (
               [%expr Variant ({
+                  vname=[%e str name ];
                   variants=([%e list (List.map fst cases)]);
                   vdefault=[%e match default_case with None -> [%expr None] | Some d -> [%expr Some [%e d]]];
                   vversion=[%e match attr_version type_decl.ptype_attributes with | Some v -> [%expr Some [%e v]] | None -> [%expr None];];

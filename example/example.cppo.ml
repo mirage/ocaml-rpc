@@ -209,6 +209,7 @@ let errors : (string, exnt) Rpc.Types.tag = Rpc.Types.{
 
 (* And then we can create the 'variant' type *)
 let exnt_variant : exnt variant = Rpc.Types.{
+    vname = "exnt";
     variants = [ BoxedTag errors ];
     vversion = None;
     vdefault = Some (Errors "unknown error tag!");

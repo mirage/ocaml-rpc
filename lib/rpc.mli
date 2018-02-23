@@ -92,6 +92,7 @@ module Types : sig
     tget : 'a. 'a typ -> ('a, Rresult.R.msg) Result.result;
   }
   and 'a variant = {
+    vname    : string;
     variants : 'a boxed_tag list;
     vdefault : 'a option;
     vversion : Version.t option;
