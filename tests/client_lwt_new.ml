@@ -38,6 +38,8 @@ module API(R:Idl.RPC) = struct
   let abstr = Rpc.Types.{
     name = "abstr";
     ty = Abstract ({
+      aname="abstr";
+      test_data = [AbstractMod.init];
       rpc_of=(fun t -> Rpc.String (AbstractMod.string_of t));
       of_rpc=(function | Rpc.String s -> Ok (AbstractMod.of_string s) | _ -> Error (`Msg "bad"));
     });
