@@ -245,16 +245,17 @@ type rpcfn = Rpc.call -> Rpc.response
 type server_implementation = (string, rpcfn option) Hashtbl.t
 
 let server hashtbl =
+  let impl = Hashtbl.create (Hashtbl.length hashtbl) in
   let unbound_impls = Hashtbl.fold (fun key fn acc ->
-      if fn = None then key::acc else acc
+      match fn with
+      | None -> key::acc
+      | Some fn -> Hashtbl.add impl key fn; acc
     ) hashtbl [] in
   if unbound_impls <> [] then
     raise (UnboundImplementation unbound_impls);
   fun call ->
-    let fn = try Hashtbl.find hashtbl call.Rpc.name with Not_found -> raise (UnknownMethod call.Rpc.name) in
-    match fn with
-    | Some fn -> fn call
-    | None -> failwith "Unboud implementation. This is impossible"
+    let fn = try Hashtbl.find impl call.Rpc.name with Not_found -> raise (UnknownMethod call.Rpc.name) in
+    fn call
 
 let combine hashtbls =
   let result = Hashtbl.create 16 in
