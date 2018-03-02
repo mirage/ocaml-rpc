@@ -168,7 +168,7 @@ end
 
 
 type rpcfn = Rpc.call -> Rpc.response
-type server_implementation = (string, rpcfn) Hashtbl.t
+type server_implementation
 val server : server_implementation -> rpcfn
 val combine : server_implementation list -> server_implementation
 
