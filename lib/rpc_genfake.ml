@@ -49,7 +49,7 @@ let rec gentest : type a. a typ -> a list  = fun t ->
         let contents = gentest v.tcontents in
         let content = List.nth contents (Random.int (List.length contents)) in
         v.treview content) variants
-  | Abstract _ -> failwith "Abstract types not supported by rpc_genfake"
+  | Abstract { test_data } -> test_data
 
 let thin d result =
   if d < 0
@@ -102,7 +102,7 @@ let rec genall : type a. int -> string -> a typ -> a list  = fun depth strhint t
     List.map (function Rpc.Types.BoxedTag v ->
         let contents = genall (depth - 1) strhint v.tcontents in
         List.map (fun content -> v.treview content) contents) variants |> List.flatten |> thin depth
-  | Abstract _ -> failwith "Abstract types not supported by rpc_genfake"
+  | Abstract { test_data } -> test_data
 
 let rec gen_nice : type a. a typ -> string -> a = fun ty hint ->
   let narg n = Printf.sprintf "%s_%d" hint n in
@@ -139,6 +139,4 @@ let rec gen_nice : type a. a typ -> string -> a = fun ty hint ->
         let content = gen_nice v.tcontents v.tname in
         v.treview content
     end
-  | Abstract _ -> begin
-      failwith "Can't generate abstract types"
-  end
+  | Abstract { test_data } -> List.hd test_data

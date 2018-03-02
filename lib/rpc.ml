@@ -108,6 +108,8 @@ module Types = struct
     vconstructor : string -> tag_getter -> ('a, Rresult.R.msg) Result.result;
   }
   and 'a abstract = {
+    aname : string;
+    test_data : 'a list;
     rpc_of : 'a -> t;
     of_rpc : t -> ('a, Rresult.R.msg) Result.result;
   }
