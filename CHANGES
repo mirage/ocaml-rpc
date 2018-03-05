@@ -1,3 +1,11 @@
+3.2.0 (Mar 2018)
+* idl.ml: make server check for completeness of the implementation
+* idl.mli: hide details of server impl
+* Add a space to store test data in an abstract type
+* Add the type name to the ppx-generated variant value
+* Improve the markdown documentation generator.
+* idl: enforce use of 'internal_error_of' in Error.Make
+
 3.1.0 (Feb 2018)
 * ppx_deriving_rpcty: use native split_on_char on ocaml >= 4.04.0
 * ppx_deriving_rpcty: Fix 'Warning 27: unused variable x.' on deriving rpcty for structs
