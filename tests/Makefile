@@ -58,7 +58,7 @@ client_lwt_new.cmx: client_lwt_new.ml
 	$(OCAMLOPT) $(PPXOPTS) $(OCAMLFLAGS) -package $(PACKS),lwt,lwt.unix $(RPC) $(RPCLINK) rpclib_lwt.cmxa -c -o $@ $<
 
 client_async_new.cmx: client_async_new.ml
-	$(OCAMLOPT) $(PPXOPTS) $(OCAMLFLAGS) -package threads,$(PACKS),async $(RPC) $(RPCLINK) -thread -c -o $@ $<
+	$(OCAMLOPT) $(PPXOPTS) $(OCAMLFLAGS) -package threads,$(PACKS),async,async_kernel $(RPC) $(RPCLINK) -thread -c -o $@ $<
 
 %.cmx: %.ml
 	$(OCAMLOPT) $(OCAMLFLAGS) -package $(PACKS) $(RPC) $(RPCLINK) -pp "$(CAMLP4)" -c -o $@ $<

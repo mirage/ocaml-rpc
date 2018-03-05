@@ -69,6 +69,7 @@ let debug_rpc call =
 
 exception MarshalError of string
 exception UnknownMethod of string
+exception UnboundImplementation of string list
 
 let get_wire_name description name =
   match description with
@@ -80,14 +81,14 @@ let get_wire_name description name =
 let get_arg call has_named name =
   match has_named, name, call.Rpc.params with
   | true, Some n, (Rpc.Dict named)::unnamed -> begin
-    match List.partition (fun (x,y) -> x = n) named with
-    | (_,arg)::dups,others -> Result.Ok (arg, {call with Rpc.params = (Rpc.Dict (dups @ others))::unnamed })
-    | _,_ -> Result.Error (`Msg (Printf.sprintf "Expecting named argument '%s'" n))
+      match List.partition (fun (x,y) -> x = n) named with
+      | (_,arg)::dups,others -> Result.Ok (arg, {call with Rpc.params = (Rpc.Dict (dups @ others))::unnamed })
+      | _,_ -> Result.Error (`Msg (Printf.sprintf "Expecting named argument '%s'" n))
     end
   | true, None, (Rpc.Dict named)::unnamed -> begin
-    match unnamed with
-    | head::tail -> Result.Ok (head, {call with Rpc.params = (Rpc.Dict named)::tail})
-    | _ -> Result.Error (`Msg "Incorrect number of arguments")
+      match unnamed with
+      | head::tail -> Result.Ok (head, {call with Rpc.params = (Rpc.Dict named)::tail})
+      | _ -> Result.Error (`Msg "Incorrect number of arguments")
     end 
   | true, _, _ -> begin
       Result.Error (`Msg "Marshalling error: Expecting dict as first argument when named parameters exist")
@@ -96,9 +97,9 @@ let get_arg call has_named name =
       Result.Ok (head, {call with Rpc.params = tail})
     end
   | false, None, [] ->
-      Result.Error (`Msg "Incorrect number of arguments")
+    Result.Error (`Msg "Incorrect number of arguments")
   | false, Some x, _ ->
-      failwith "Can't happen by construction"
+    failwith "Can't happen by construction"
 
 type client_implementation = unit
 
@@ -125,11 +126,11 @@ struct
     let rec inner : type b. ((string * Rpc.t) list * Rpc.t list) -> b fn -> b = fun (named,unnamed) ->
       function
       | Function (t, f) -> begin
-        fun v ->
-          let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
-          match t.Param.name with
-          | Some n -> inner (((n,marshalled)::named),unnamed) f
-          | None -> inner (named,(marshalled::unnamed)) f
+          fun v ->
+            let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
+            match t.Param.name with
+            | Some n -> inner (((n,marshalled)::named),unnamed) f
+            | None -> inner (named,(marshalled::unnamed)) f
         end
       | Returning (t, e) ->
         let wire_name = get_wire_name !description name in
@@ -168,11 +169,11 @@ struct
     let rec inner : type b. ((string * Rpc.t) list * Rpc.t list) -> b fn -> b = fun (named,unnamed) ->
       function
       | Function (t, f) -> begin
-        fun v ->
-          let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
-          match t.Param.name with
-          | Some n -> inner (((n,marshalled)::named),unnamed) f
-          | None -> inner (named,(marshalled::unnamed)) f
+          fun v ->
+            let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
+            match t.Param.name with
+            | Some n -> inner (((n,marshalled)::named),unnamed) f
+            | None -> inner (named,(marshalled::unnamed)) f
         end
       | Returning (t, e) ->
         let wire_name = get_wire_name !description name in
@@ -214,11 +215,11 @@ struct
     let rec inner : type b. ((string * Rpc.t) list * Rpc.t list) -> b fn -> b = fun (named,unnamed) ->
       function
       | Function (t, f) -> begin
-        fun v ->
-          let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
-          match t.Param.name with
-          | Some n -> inner (((n,marshalled)::named),unnamed) f
-          | None -> inner (named,(marshalled::unnamed)) f
+          fun v ->
+            let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
+            match t.Param.name with
+            | Some n -> inner (((n,marshalled)::named),unnamed) f
+            | None -> inner (named,(marshalled::unnamed)) f
         end
       | Returning (t, e) ->
         let wire_name = get_wire_name !description name in
@@ -241,11 +242,20 @@ end
 exception NoDescription
 
 type rpcfn = Rpc.call -> Rpc.response
-type server_implementation = (string, rpcfn) Hashtbl.t
+type server_implementation = (string, rpcfn option) Hashtbl.t
 
-let server hashtbl call =
-  let fn = try Hashtbl.find hashtbl call.Rpc.name with Not_found -> raise (UnknownMethod call.Rpc.name) in
-  fn call
+let server hashtbl =
+  let impl = Hashtbl.create (Hashtbl.length hashtbl) in
+  let unbound_impls = Hashtbl.fold (fun key fn acc ->
+      match fn with
+      | None -> key::acc
+      | Some fn -> Hashtbl.add impl key fn; acc
+    ) hashtbl [] in
+  if unbound_impls <> [] then
+    raise (UnboundImplementation unbound_impls);
+  fun call ->
+    let fn = try Hashtbl.find impl call.Rpc.name with Not_found -> raise (UnknownMethod call.Rpc.name) in
+    fn call
 
 let combine hashtbls =
   let result = Hashtbl.create 16 in
@@ -262,7 +272,7 @@ module GenServer () = struct
   let implement x = description := Some x; funcs
 
   type ('a,'b) comp = ('a,'b) Result.result
-  type funcs = (string, rpcfn) Hashtbl.t
+  type funcs = (string, rpcfn option) Hashtbl.t
   type 'a res = 'a -> unit
 
   type _ fn =
@@ -282,7 +292,7 @@ module GenServer () = struct
     | Returning (t, e) ->
       false
 
-  let declare : string -> string list -> 'a fn -> 'a res = fun name _ ty impl ->
+  let declare : string -> string list -> 'a fn -> 'a res = fun name _ ty ->
     begin
       (* Sanity check: ensure the description has been set before we declare
          any RPCs *)
@@ -291,31 +301,33 @@ module GenServer () = struct
       | None -> raise NoDescription
     end;
     let open Rresult.R in
-    let rpcfn =
-      let has_named = has_named_args ty in
-      let rec inner : type a. a fn -> a -> call -> response = fun f impl call ->
-        match f with
-        | Function (t, f) -> begin
-            let (arg_rpc, call') = 
-              match get_arg call has_named t.Param.name  with
-              | Result.Ok (x,y) -> (x,y)
-              | Result.Error (`Msg m) -> raise (MarshalError m)
-            in
-            let z = Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty arg_rpc in
-            match z with
-            | Result.Ok arg -> inner f (impl arg) call'
-            | Result.Error (`Msg m) -> raise (MarshalError m)
-          end
-        | Returning (t,e) -> begin
-          match impl with
-          | Result.Ok x -> success (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty x)
-          | Result.Error y -> failure (Rpcmarshal.marshal e.Error.def.Rpc.Types.ty y)
-          end
-      in inner ty impl
-    in
-
     let wire_name = get_wire_name !description name in
-    Hashtbl.add funcs wire_name rpcfn
+    Hashtbl.add funcs wire_name None;
+    fun impl ->
+      let rpcfn =
+        let has_named = has_named_args ty in
+        let rec inner : type a. a fn -> a -> call -> response = fun f impl call ->
+          match f with
+          | Function (t, f) -> begin
+              let (arg_rpc, call') =
+                match get_arg call has_named t.Param.name  with
+                | Result.Ok (x,y) -> (x,y)
+                | Result.Error (`Msg m) -> raise (MarshalError m)
+              in
+              let z = Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty arg_rpc in
+              match z with
+              | Result.Ok arg -> inner f (impl arg) call'
+              | Result.Error (`Msg m) -> raise (MarshalError m)
+            end
+          | Returning (t,e) -> begin
+              match impl with
+              | Result.Ok x -> success (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty x)
+              | Result.Error y -> failure (Rpcmarshal.marshal e.Error.def.Rpc.Types.ty y)
+            end
+        in inner ty impl
+      in
+
+      Hashtbl.replace funcs wire_name (Some rpcfn)
 end
 
 module GenServerExn () = struct
@@ -328,7 +340,7 @@ module GenServerExn () = struct
   let implement x = description := Some x; funcs
 
   type ('a,'b) comp = 'a
-  type funcs = (string, rpcfn) Hashtbl.t
+  type funcs = (string, rpcfn option) Hashtbl.t
   type 'a res = 'a -> unit
 
   type _ fn =
@@ -354,37 +366,39 @@ module GenServerExn () = struct
     | Returning (t, e) ->
       false
 
-  let declare : string -> string list -> 'a fn -> 'a res = fun name _ ty impl ->
+  let declare : string -> string list -> 'a fn -> 'a res = fun name _ ty ->
     let open Rresult.R in
-    let rpcfn =
-      let has_named = has_named_args ty in
-      let rec inner : type a. a fn -> a -> call -> response = fun f impl call ->
-        try
-          match f with
-          | Function (t, f) ->
-            let (arg_rpc, call') = 
-              match get_arg call has_named t.Param.name  with
-              | Result.Ok (x,y) -> (x,y)
-              | Result.Error (`Msg m) -> raise (MarshalError m)
-            in
-            let z = Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty arg_rpc in
-            let arg =
-              match z with
-              | Result.Ok arg -> arg
-              | Result.Error (`Msg m) -> raise (MarshalError m)
-            in
-            inner f (impl arg) call'
-          | Returning (t,e) -> success (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty impl)
-        with e ->
-          let BoxedError error_ty = get_error_ty f in
-          match error_ty.Error.matcher e with
-          | Some y -> failure (Rpcmarshal.marshal error_ty.Error.def.Rpc.Types.ty y)
-          | None -> raise e
-      in inner ty impl
-    in
-
     let wire_name = get_wire_name !description name in
-    Hashtbl.add funcs wire_name rpcfn
+    Hashtbl.add funcs wire_name None;
+    fun impl ->
+      let rpcfn =
+        let has_named = has_named_args ty in
+        let rec inner : type a. a fn -> a -> call -> response = fun f impl call ->
+          try
+            match f with
+            | Function (t, f) ->
+              let (arg_rpc, call') =
+                match get_arg call has_named t.Param.name  with
+                | Result.Ok (x,y) -> (x,y)
+                | Result.Error (`Msg m) -> raise (MarshalError m)
+              in
+              let z = Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty arg_rpc in
+              let arg =
+                match z with
+                | Result.Ok arg -> arg
+                | Result.Error (`Msg m) -> raise (MarshalError m)
+              in
+              inner f (impl arg) call'
+            | Returning (t,e) -> success (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty impl)
+          with e ->
+            let BoxedError error_ty = get_error_ty f in
+            match error_ty.Error.matcher e with
+            | Some y -> failure (Rpcmarshal.marshal error_ty.Error.def.Rpc.Types.ty y)
+            | None -> raise e
+        in inner ty impl
+      in
+
+      Hashtbl.replace funcs wire_name (Some rpcfn)
 
 end
 
@@ -392,7 +406,7 @@ end
 (* A default error variant as an example. In real code, this is more easily expressed by using the PPX:
 
        type default_error = InternalError of string [@@deriving rpcty]
-z*)
+   z*)
 
 module DefaultError = struct
   type t = InternalError of string
@@ -421,8 +435,8 @@ module DefaultError = struct
   let def = Rpc.Types.{ name="default_error"; description=["Errors declared as part of the interface"]; ty=Variant t }
 
   let err = Error.{
-    def = def;
-    raiser = (function | InternalError s -> raise (InternalErrorExn s));
-    matcher = function | InternalErrorExn s -> Some (InternalError s) | _ -> None
+      def = def;
+      raiser = (function | InternalError s -> raise (InternalErrorExn s));
+      matcher = function | InternalErrorExn s -> Some (InternalError s) | _ -> None
     }
 end
