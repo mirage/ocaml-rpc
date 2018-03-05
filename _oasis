@@ -1,6 +1,6 @@
 OASISFormat: 0.4
 Name:        rpclib
-Version:     3.1.0
+Version:     3.2.0
 Synopsis:    RPC library
 Authors:     Thomas Gazagnaire, Jon Ludlam
 License:     ISC
@@ -8,7 +8,7 @@ Plugins:     META(0.4)
 BuildTools:  ocamlbuild
 AlphaFeatures: ocamlbuild_more_args
 XOCamlbuildPluginTags: package(cppo_ocamlbuild)
-OCamlVersion: >= 4.02
+OCamlVersion: >= 4.03
 
 
 Flag js
