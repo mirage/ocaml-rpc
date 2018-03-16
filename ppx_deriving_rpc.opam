@@ -11,11 +11,14 @@ tags: [
 build: [["jbuilder" "build" "-p" name "-j" jobs]]
 build-test: [["jbuilder" "runtest" "-p" name "-j" jobs]]
 depends: [
-  "jbuilder" {build}
-  "cppo"  {build}
+  "jbuilder"  {build}
+  "cppo"      {build}
   "rpclib"
-  "ocaml-migrate-parsetree"
+  "rresult"
   "ppx_deriving"
-  "ppx_tools_versioned"
-  "ppxfind" {build}
+  "ppx_tools"
+  "ppxfind"
+  "lwt" {test}
+  "async" {test}
 ]
+available: [ ocaml-version >= "4.03.0" ]

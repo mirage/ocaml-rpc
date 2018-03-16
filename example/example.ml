@@ -203,11 +203,12 @@ let errors : (string, exnt) Rpc.Types.tag = Rpc.Types.{
 
 (* And then we can create the 'variant' type *)
 let exnt_variant : exnt variant = Rpc.Types.{
+    vname = "exnt";
     variants = [ BoxedTag errors ];
     vversion = None;
     vdefault = Some (Errors "unknown error tag!");
     vconstructor = (fun s t ->
-        match String.lowercase s with
+        match String.lowercase_ascii s with
         | "errors" -> Rresult.R.map errors.treview (t.tget (Basic String))
         | s -> Rresult.R.error_msg (Printf.sprintf "Unknown tag '%s'" s))
   }

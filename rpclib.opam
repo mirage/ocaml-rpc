@@ -10,9 +10,23 @@ tags: [
 ]
 build: [["jbuilder" "build" "-p" name "-j" jobs]]
 depends: [
-  "jbuilder" {build}
+  "jbuilder"  {build}
   "cmdliner"
   "rresult"
   "xmlm"
   "yojson"
 ]
+depopts: [
+  "async"
+  "cow"
+  "js_of_ocaml"
+  "lwt"
+]
+conflicts: [
+    "core"  {< "v0.9.0"}
+    "async" {< "v0.9.0"}
+    "js_of_ocaml" {>= "3.0.0"}
+]
+
+
+available: [ ocaml-version >= "4.03.0" ]

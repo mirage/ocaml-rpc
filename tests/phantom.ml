@@ -5,7 +5,7 @@ module P : sig
   val to_string: 'a t -> string
   val of_string: string -> 'a t
 end = struct
-  type 'a t = string with rpc
+  type 'a t = string [@@deriving rpc]
   let to_string x = x
   let of_string x = x
 end
@@ -16,8 +16,8 @@ module Q = struct
   let t_of_rpc _ x = of_string (Rpc.string_of_rpc x)
 end
 
-type x = [`foo] Q.t with rpc
-type y = [`bar] Q.t with rpc
+type x = [`foo] Q.t [@@deriving rpc]
+type y = [`bar] Q.t [@@deriving rpc]
 
 let _ =
   let p : [`p] P.t = P.of_string "foo" in
