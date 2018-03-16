@@ -7,12 +7,11 @@ script: bash -ex .travis-docker.sh
 env:
     global:
         - DISTRO=debian-unstable
-        - PINS="rpclib:. rpclib-js:. rpclib-html:. rpclib-lwt:. rpclib-async:. rpclib-camlp4:. ppx_deriving_rpc:."
+        - PINS="rpclib:. rpclib-js:. rpclib-html:. rpclib-lwt:. rpclib-async:. ppx_deriving_rpc:."
         - PACKAGE=rpc
     matrix:
         - OCAML_VERSION=4.04.2
         - PACKAGE=rpclib OCAML_VERSION=4.04.2
-        - PACKAGE=rpclib-camlp4 OCAML_VERSION=4.04.2
         - PACKAGE=ppx_deriving_rpc OCAML_VERSION=4.04.2
         - OCAML_VERSION=4.02.3
         - OCAML_VERSION=4.03.0

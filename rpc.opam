@@ -12,7 +12,6 @@ depends: [
     "ppx_deriving_rpc"
     "rpclib"
     "rpclib-async"
-    "rpclib-camlp4"
     # rpclib-js
     "rpclib-html"
     "rpclib-lwt"
