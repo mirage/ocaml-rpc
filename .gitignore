@@ -1,24 +1,7 @@
-*.opt
-*.o
-*.cmi
-*.cmx
-*.cma
-*.cmxa
-*.cmo
-*.annot
-*~
 _build
 idl_test_gen.ml
 *.gen.ml
-*.mldylib
-*.mllib
-lib/META
-setup.data
-setup.log
-ppx_test/test
-ppx_test/tytest
 
-example/example.ml
-example/example
-example/example2
-example/example3
+*.install
+.merlin
+**/.merlin
