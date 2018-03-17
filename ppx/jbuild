@@ -15,10 +15,9 @@
   (synopsis "[@@deriving rpc]")
   (kind ppx_deriver)
   (libraries (compiler-libs.common
-              ocaml-migrate-parsetree
               ppx_deriving
               ppx_deriving.api
-              ppx_tools_versioned
+              ppx_tools
               rpclib.core))
   (preprocess (action (run ppxfind -legacy ppx_deriving.runtime,ppx_tools.metaquot --as-pp ${<})))
   (wrapped false)
