@@ -18,6 +18,8 @@ depends: [
   "ppx_deriving"
   "ppx_tools"
   "ppxfind"
+  "rpclib-lwt" {test}
+  "rpclib-async" {test}
   "lwt" {test}
   "async" {test}
 ]
