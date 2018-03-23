@@ -30,8 +30,9 @@ module GenClient () :
 
 exception MarshalError of string
 exception UnknownMethod of string
+exception UnboundImplementation of string list
 
-type server_implementation = (string, lwt_rpcfn) Hashtbl.t
+type server_implementation
 val server : server_implementation -> lwt_rpcfn
 val combine : server_implementation list -> server_implementation
 
@@ -41,7 +42,7 @@ module GenServer () :
     val implement : Idl.Interface.description -> implementation
     type ('a,'b) comp = ('a,'b) Result.result M.lwt
     type rpcfn = Rpc.call -> Rpc.response Lwt.t
-    type funcs = (string, rpcfn) Hashtbl.t
+    type funcs = (string, rpcfn option) Hashtbl.t
     type 'a res = 'a -> unit
     type _ fn =
         Function : 'a Idl.Param.t * 'b fn -> ('a -> 'b) fn
