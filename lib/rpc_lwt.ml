@@ -111,12 +111,12 @@ module GenServer () = struct
       if is_opt
       then begin
         if List.mem_assoc name args
-        then Rpc.Enum [List.assoc name args]
-        else Rpc.Enum []
+        then Lwt.return (Rpc.Enum [List.assoc name args])
+        else Lwt.return (Rpc.Enum [])
       end else begin
         if List.mem_assoc name args
-        then List.assoc name args
-        else raise (MarshalError (Printf.sprintf "Argument missing: %s" name))
+        then Lwt.return (List.assoc name args)
+        else Lwt.fail (MarshalError (Printf.sprintf "Argument missing: %s" name))
       end
     in
 
