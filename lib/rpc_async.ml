@@ -40,7 +40,7 @@ module GenClient () = struct
     let rec inner : type b. (string * Rpc.t) list -> b fn -> b = fun cur ->
       function
       | Function (t, f) -> begin
-        let n = match t.Param.name with Some s -> s | None -> raise (MarshalError "Named parameters required for Lwt") in
+        let n = match t.Param.name with Some s -> s | None -> raise (MarshalError "Named parameters required for Async") in
         fun v ->
           match t.Param.typedef.Rpc.Types.ty, v with
           | Rpc.Types.Option t1, None ->
