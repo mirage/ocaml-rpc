@@ -39,9 +39,19 @@ module GenClient () = struct
     let open Result in
     let rec inner : type b. (string * Rpc.t) list -> b fn -> b = fun cur ->
       function
-      | Function (t, f) ->
-        let n = match t.Param.name with | Some s -> s | None -> raise (MarshalError "Named parameters required for Async") in
-        fun v -> inner ((n, Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v) :: cur) f
+      | Function (t, f) -> begin
+        let n = match t.Param.name with Some s -> s | None -> raise (MarshalError "Named parameters required for Lwt") in
+        fun v ->
+          match t.Param.typedef.Rpc.Types.ty, v with
+          | Rpc.Types.Option t1, None ->
+            inner cur f
+          | Rpc.Types.Option t1, Some v' ->
+            let marshalled = Rpcmarshal.marshal t1 v' in
+            inner ((n, marshalled) :: cur) f
+          | _, v ->
+            let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
+            inner ((n, marshalled) :: cur) f
+        end
       | Returning (t, e) ->
         let call = Rpc.call name [(Rpc.Dict cur)] in
         let res = Deferred.bind (rpc call) (fun r ->
@@ -95,10 +105,17 @@ module GenServer () = struct
       | _ -> raise (MarshalError "All arguments must be named currently")
     in
 
-    let get_arg args name =
-      if not (List.mem_assoc name args)
-      then raise (MarshalError (Printf.sprintf "Argument missing: %s" name))
-      else List.assoc name args
+    let get_arg args name is_opt =
+      if is_opt
+      then begin
+        if List.mem_assoc name args
+        then Rpc.Enum [List.assoc name args]
+        else Rpc.Enum []
+      end else begin
+        if List.mem_assoc name args
+        then List.assoc name args
+        else raise (MarshalError (Printf.sprintf "Argument missing: %s" name))
+      end
     in
 
     let rpcfn =
@@ -107,7 +124,8 @@ module GenServer () = struct
         match f with
         | Function (t, f) -> begin
             let n = match t.Param.name with Some s -> s | None -> raise (MarshalError "Named parameters required for Async") in
-            let arg_rpc = get_arg args n in
+            let is_opt = match t.Param.typedef.Rpc.Types.ty with | Rpc.Types.Option _ -> true | _ -> false in
+            let arg_rpc = get_arg args n is_opt in
             let z = Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty arg_rpc in
             match z with
             | Result.Ok arg -> inner f (impl arg) call

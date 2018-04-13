@@ -78,18 +78,20 @@ let get_wire_name description name =
     | Some ns -> Printf.sprintf "%s.%s" ns name
     | None -> name
 
-let get_arg call has_named name =
+let get_arg call has_named name is_opt =
   match has_named, name, call.Rpc.params with
   | true, Some n, (Rpc.Dict named)::unnamed -> begin
       match List.partition (fun (x,y) -> x = n) named with
+      | (_,arg)::dups,others when is_opt -> Result.Ok (Rpc.Enum [arg], {call with Rpc.params = (Rpc.Dict (dups @ others))::unnamed })
       | (_,arg)::dups,others -> Result.Ok (arg, {call with Rpc.params = (Rpc.Dict (dups @ others))::unnamed })
+      | [], others when is_opt -> Result.Ok (Rpc.Enum [], call)
       | _,_ -> Result.Error (`Msg (Printf.sprintf "Expecting named argument '%s'" n))
     end
   | true, None, (Rpc.Dict named)::unnamed -> begin
       match unnamed with
       | head::tail -> Result.Ok (head, {call with Rpc.params = (Rpc.Dict named)::tail})
       | _ -> Result.Error (`Msg "Incorrect number of arguments")
-    end 
+    end
   | true, _, _ -> begin
       Result.Error (`Msg "Marshalling error: Expecting dict as first argument when named parameters exist")
     end
@@ -127,11 +129,22 @@ struct
       function
       | Function (t, f) -> begin
           fun v ->
-            let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
             match t.Param.name with
-            | Some n -> inner (((n,marshalled)::named),unnamed) f
-            | None -> inner (named,(marshalled::unnamed)) f
-        end
+            | Some n -> begin
+              match t.Param.typedef.Rpc.Types.ty, v with
+              | Rpc.Types.Option ty, Some v' ->
+                let marshalled = Rpcmarshal.marshal ty v' in
+                inner (((n,marshalled)::named),unnamed) f
+              | Rpc.Types.Option ty, None ->
+                inner (named, unnamed) f
+              | ty, v ->
+                let marshalled = Rpcmarshal.marshal ty v in
+                inner (((n,marshalled)::named),unnamed) f
+              end
+            | None ->
+              let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
+              inner (named,(marshalled::unnamed)) f
+          end
       | Returning (t, e) ->
         let wire_name = get_wire_name !description name in
         let args =
@@ -169,13 +182,24 @@ struct
     let rec inner : type b. ((string * Rpc.t) list * Rpc.t list) -> b fn -> b = fun (named,unnamed) ->
       function
       | Function (t, f) -> begin
-          fun v ->
-            let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
-            match t.Param.name with
-            | Some n -> inner (((n,marshalled)::named),unnamed) f
-            | None -> inner (named,(marshalled::unnamed)) f
-        end
-      | Returning (t, e) ->
+        fun v ->
+        match t.Param.name with
+        | Some n -> begin
+          match t.Param.typedef.Rpc.Types.ty, v with
+          | Rpc.Types.Option ty, Some v' ->
+            let marshalled = Rpcmarshal.marshal ty v' in
+            inner (((n,marshalled)::named),unnamed) f
+          | Rpc.Types.Option ty, None ->
+            inner (named, unnamed) f
+          | ty, v ->
+            let marshalled = Rpcmarshal.marshal ty v in
+            inner (((n,marshalled)::named),unnamed) f
+          end
+        | None ->
+          let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
+          inner (named,(marshalled::unnamed)) f
+      end
+  | Returning (t, e) ->
         let wire_name = get_wire_name !description name in
         let args =
           match named with
@@ -215,13 +239,24 @@ struct
     let rec inner : type b. ((string * Rpc.t) list * Rpc.t list) -> b fn -> b = fun (named,unnamed) ->
       function
       | Function (t, f) -> begin
-          fun v ->
-            let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
-            match t.Param.name with
-            | Some n -> inner (((n,marshalled)::named),unnamed) f
-            | None -> inner (named,(marshalled::unnamed)) f
-        end
-      | Returning (t, e) ->
+        fun v ->
+        match t.Param.name with
+        | Some n -> begin
+          match t.Param.typedef.Rpc.Types.ty, v with
+          | Rpc.Types.Option ty, Some v' ->
+            let marshalled = Rpcmarshal.marshal ty v' in
+            inner (((n,marshalled)::named),unnamed) f
+          | Rpc.Types.Option ty, None ->
+            inner (named, unnamed) f
+          | ty, v ->
+            let marshalled = Rpcmarshal.marshal ty v in
+            inner (((n,marshalled)::named),unnamed) f
+          end
+        | None ->
+          let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
+          inner (named,(marshalled::unnamed)) f
+      end
+  | Returning (t, e) ->
         let wire_name = get_wire_name !description name in
         let args =
           match named with
@@ -309,8 +344,9 @@ module GenServer () = struct
         let rec inner : type a. a fn -> a -> call -> response = fun f impl call ->
           match f with
           | Function (t, f) -> begin
+              let is_opt = match t.Param.typedef.Rpc.Types.ty with | Rpc.Types.Option _ -> true | _ -> false in
               let (arg_rpc, call') =
-                match get_arg call has_named t.Param.name  with
+                match get_arg call has_named t.Param.name is_opt with
                 | Result.Ok (x,y) -> (x,y)
                 | Result.Error (`Msg m) -> raise (MarshalError m)
               in
@@ -377,8 +413,9 @@ module GenServerExn () = struct
           try
             match f with
             | Function (t, f) ->
+              let is_opt = match t.Param.typedef.Rpc.Types.ty with | Rpc.Types.Option _ -> true | _ -> false in
               let (arg_rpc, call') =
-                match get_arg call has_named t.Param.name  with
+                match get_arg call has_named t.Param.name is_opt with
                 | Result.Ok (x,y) -> (x,y)
                 | Result.Error (`Msg m) -> raise (MarshalError m)
               in

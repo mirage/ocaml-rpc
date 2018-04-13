@@ -39,9 +39,19 @@ module GenClient () = struct
     let open Result in
     let rec inner : type b. (string * Rpc.t) list -> b fn -> b = fun cur ->
       function
-      | Function (t, f) ->
+      | Function (t, f) -> begin
         let n = match t.Param.name with Some s -> s | None -> raise (MarshalError "Named parameters required for Lwt") in
-        fun v -> inner ((n, Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v) :: cur) f
+        fun v ->
+          match t.Param.typedef.Rpc.Types.ty, v with
+          | Rpc.Types.Option t1, None ->
+            inner cur f
+          | Rpc.Types.Option t1, Some v' ->
+            let marshalled = Rpcmarshal.marshal t1 v' in
+            inner ((n, marshalled) :: cur) f
+          | _, v ->
+            let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
+            inner ((n, marshalled) :: cur) f
+        end
       | Returning (t, e) ->
         let call = Rpc.call name [(Rpc.Dict cur)] in
         let res = Lwt.bind (rpc call) (fun r ->
@@ -97,10 +107,17 @@ module GenServer () = struct
       | _ -> Lwt.fail (MarshalError "All arguments must be named currently")
     in
 
-    let get_arg args name =
-      if not (List.mem_assoc name args)
-      then Lwt.fail (MarshalError (Printf.sprintf "Argument missing: %s" name))
-      else Lwt.return (List.assoc name args)
+    let get_arg args name is_opt =
+      if is_opt
+      then begin
+        if List.mem_assoc name args
+        then Rpc.Enum [List.assoc name args]
+        else Rpc.Enum []
+      end else begin
+        if List.mem_assoc name args
+        then List.assoc name args
+        else raise (MarshalError (Printf.sprintf "Argument missing: %s" name))
+      end
     in
 
     let rpcfn =
@@ -108,8 +125,9 @@ module GenServer () = struct
         Lwt.bind (get_named_args call) (fun args ->
         match f with
         | Function (t, f) -> begin
-            let n = match t.Param.name with | Some s -> s | None -> raise (MarshalError "Named parameters required for Lwt") in 
-            Lwt.bind (get_arg args n) (fun arg_rpc ->
+            let n = match t.Param.name with | Some s -> s | None -> raise (MarshalError "Named parameters required for Lwt") in
+            let is_opt = match t.Param.typedef.Rpc.Types.ty with | Rpc.Types.Option _ -> true | _ -> false in
+            Lwt.bind (get_arg args n is_opt) (fun arg_rpc ->
             let z = Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty arg_rpc in
             match z with
             | Result.Ok arg -> inner f (impl arg) call
