@@ -58,7 +58,14 @@ let rec typecheck : type a.a typ -> string -> t list = fun ty v ->
   | Struct { fields } ->
     let check boxedfield =
       let BoxedField f = boxedfield in
-      typecheck f.field (sprintf "%s['%s']" v f.fname) in
+      let member = (sprintf "%s['%s']" v f.fname) in
+      match f.field with
+      | Option ty ->
+        [ Line (sprintf "if '%s' in %s:" f.fname v)
+        ; Block (typecheck ty member)
+        ]
+      | _ -> typecheck f.field member
+    in
     List.concat (List.rev (List.map check (List.rev fields)))
   | Variant { variants } ->
     let check first boxed_tag =
