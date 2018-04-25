@@ -1,3 +1,7 @@
+4.0.0 (Apr 2018)
+* idl.ml: Change marshalling of named optional arguments to exclude them from the argument record
+* pythongen.ml: Fix type checking for optional record fields
+
 3.2.0 (Mar 2018)
 * idl.ml: make server check for completeness of the implementation
 * idl.mli: hide details of server impl
