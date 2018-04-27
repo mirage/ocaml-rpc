@@ -83,23 +83,23 @@ module Of_rpc = struct
       if [%e is_dict ptyp_attributes] || [%e is_string typ1]
       then
         function
-        | Rpc.Dict l -> List.map (fun (k,v) -> ([%e expr_of_typ typ1] (Rpc.String k),[%e expr_of_typ typ2] v)) l
+        | Rpc.Dict l -> Rpcmarshal.tailrec_map (fun (k,v) -> ([%e expr_of_typ typ1] (Rpc.String k),[%e expr_of_typ typ2] v)) l
         | y -> failwith (Printf.sprintf "Expecting Rpc.Dict, but found '%s'" (Rpc.to_string y))
       else
         function
-        | Rpc.Enum l -> List.map
+        | Rpc.Enum l -> Rpcmarshal.tailrec_map
           (function | Rpc.Enum [k;v] -> ([%e expr_of_typ typ1] k,[%e expr_of_typ typ2] v)
                     | y -> failwith (Printf.sprintf "Expecting Rpc.Enum (within an Enum), but found '%s'" (Rpc.to_string y))) l
         | y -> failwith (Printf.sprintf "Expecting Rpc.Enum, but found '%s'" (Rpc.to_string y)) ]
 
     | [%type: [%t? typ] list] -> [%expr
       function
-      | Rpc.Enum l -> List.map [%e expr_of_typ typ] l
+      | Rpc.Enum l -> Rpcmarshal.tailrec_map [%e expr_of_typ typ] l
       | y -> failwith (Printf.sprintf "Expecting Rpc.Enum, but found '%s'" (Rpc.to_string y)) ]
 
     | [%type: [%t? typ] array] -> [%expr
       function
-      | Rpc.Enum l -> List.map [%e expr_of_typ typ] l |> Array.of_list
+      | Rpc.Enum l -> Rpcmarshal.tailrec_map [%e expr_of_typ typ] l |> Array.of_list
       | y -> failwith (Printf.sprintf "Expecting Rpc.Enum, but found '%s'" (Rpc.to_string y)) ]
 
     | {ptyp_desc = Ptyp_tuple typs } ->
@@ -300,8 +300,8 @@ module Rpc_of = struct
       else fun l -> Rpc.Enum (List.map (fun (a,b) -> Rpc.Enum [[%e expr_of_typ typ] a; [%e expr_of_typ typ2] b]) l)]
 
     | [%type: [%t? typ] list] ->
-      [%expr fun l -> Rpc.Enum (List.map [%e expr_of_typ typ] l)]
-    | [%type: [%t? typ] array] -> [%expr fun l -> Rpc.Enum (List.map [%e expr_of_typ  typ] (Array.to_list l))]
+      [%expr fun l -> Rpc.Enum (Rpcmarshal.tailrec_map [%e expr_of_typ typ] l)]
+    | [%type: [%t? typ] array] -> [%expr fun l -> Rpc.Enum (Rpcmarshal.tailrec_map [%e expr_of_typ  typ] (Array.to_list l))]
     | {ptyp_desc = Ptyp_tuple typs } ->
       let args = List.mapi (fun i typ -> app (expr_of_typ  typ) [evar (argn i)]) typs in
       [%expr fun [%p ptuple (List.mapi (fun i _ -> pvar (argn i)) typs)] ->

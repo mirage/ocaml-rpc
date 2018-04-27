@@ -32,9 +32,9 @@ let rec rpc_to_json t =
   | String s -> `String s
   | DateTime d -> `String d
   | Null -> `Null
-  | Enum a -> `List (List.map rpc_to_json a)
+  | Enum a -> `List (Rpcmarshal.tailrec_map rpc_to_json a)
   | Dict a -> `Assoc (
-      List.map (fun (k,v) -> (k, rpc_to_json v)) a
+      Rpcmarshal.tailrec_map (fun (k,v) -> (k, rpc_to_json v)) a
     )
 
 exception JsonToRpcError of Y.json
@@ -49,9 +49,9 @@ let rec json_to_rpc t =
   | `String s -> (* TODO: check if it is a DateTime *) String s
   (* | DateTime d -> `String d *)
   | `Null -> Null
-  | `List a -> Enum (List.map json_to_rpc a)
+  | `List a -> Enum (Rpcmarshal.tailrec_map json_to_rpc a)
   | `Assoc a -> Dict (
-      List.map (fun (k,v) -> (k, json_to_rpc v)) a
+      Rpcmarshal.tailrec_map (fun (k,v) -> (k, json_to_rpc v)) a
     )
   | unsupported -> raise (JsonToRpcError unsupported)
 
