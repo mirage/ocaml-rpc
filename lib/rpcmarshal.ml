@@ -3,6 +3,8 @@ open Rpc.Types
 
 type err = [ `Msg of string ]
 
+let tailrec_map f l = List.rev_map f l |> List.rev
+
 let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result  = fun t v ->
   let open Rpc in
   let open Result in
@@ -32,8 +34,8 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result  = fun t v 
   | List (Tuple (Basic String, typ)) -> begin
       match v with
       | Dict xs -> begin
-          let keys = List.map fst xs in
-          let vs = List.map snd xs in
+          let keys = tailrec_map fst xs in
+          let vs = tailrec_map snd xs in
           list_helper typ vs >>= fun vs ->
           return (List.combine keys vs)
         end
@@ -45,8 +47,8 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result  = fun t v 
       | Dict xs -> begin
           match basic with
           | String ->
-            let keys = List.map fst xs in
-            let vs = List.map snd xs in
+            let keys = tailrec_map fst xs in
+            let vs = tailrec_map snd xs in
             list_helper typ vs >>= fun vs ->
             return (List.combine keys vs)
           | _ ->
@@ -130,14 +132,14 @@ let rec marshal : type a. a typ -> a -> Rpc.t = fun t v ->
   match t with
   | Basic t -> rpc_of_basic t v
   | DateTime -> rpc_of_dateTime v
-  | Array typ -> Enum (List.map (marshal typ) (Array.to_list v))
+  | Array typ -> Enum (tailrec_map (marshal typ) (Array.to_list v))
   | List (Tuple (Basic String, typ)) ->
-    Dict (List.map (fun (x,y) -> (x, marshal typ y)) v)
-  | List typ -> Enum (List.map (marshal typ) v)
+    Dict (tailrec_map (fun (x,y) -> (x, marshal typ y)) v)
+  | List typ -> Enum (tailrec_map (marshal typ) v)
   | Dict (String, typ) ->
-    Rpc.Dict (List.map (fun (k,v) -> (k, marshal typ v)) v)
+    Rpc.Dict (tailrec_map (fun (k,v) -> (k, marshal typ v)) v)
   | Dict (basic, typ) ->
-    Rpc.Enum (List.map (fun (k,v) -> Rpc.Enum [ rpc_of_basic basic k; marshal typ v ]) v)
+    Rpc.Enum (tailrec_map (fun (k,v) -> Rpc.Enum [ rpc_of_basic basic k; marshal typ v ]) v)
   | Unit -> rpc_of_unit v
   | Option ty ->
     Rpc.Enum (match v with | Some x -> [marshal ty x] | None -> [])
