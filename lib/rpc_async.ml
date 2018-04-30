@@ -40,35 +40,45 @@ module GenClient () = struct
     let rec inner : type b. (string * Rpc.t) list -> b fn -> b = fun cur ->
       function
       | Function (t, f) -> begin
-        let n = match t.Param.name with Some s -> s | None -> raise (MarshalError "Named parameters required for Async") in
-        fun v ->
-          match t.Param.typedef.Rpc.Types.ty, v with
-          | Rpc.Types.Option t1, None ->
-            inner cur f
-          | Rpc.Types.Option t1, Some v' ->
-            let marshalled = Rpcmarshal.marshal t1 v' in
-            inner ((n, marshalled) :: cur) f
-          | _, v ->
-            let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
-            inner ((n, marshalled) :: cur) f
+          let n = match t.Param.name with Some s -> s | None -> raise (MarshalError "Named parameters required for Async") in
+          fun v ->
+            match t.Param.typedef.Rpc.Types.ty, v with
+            | Rpc.Types.Option t1, None ->
+              inner cur f
+            | Rpc.Types.Option t1, Some v' ->
+              let marshalled = Rpcmarshal.marshal t1 v' in
+              inner ((n, marshalled) :: cur) f
+            | _, v ->
+              let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
+              inner ((n, marshalled) :: cur) f
         end
       | Returning (t, e) ->
         let call = Rpc.call name [(Rpc.Dict cur)] in
         let res = Deferred.bind (rpc call) (fun r ->
-          if r.Rpc.success
-          then match Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty r.Rpc.contents with Ok x -> Deferred.return (Ok x) | Error (`Msg x) -> raise (MarshalError x)
-          else match Rpcmarshal.unmarshal e.Idl.Error.def.Rpc.Types.ty r.Rpc.contents with Ok x -> Deferred.return (Error x) | Error (`Msg x) -> raise (MarshalError x)) in
+            if r.Rpc.success
+            then match Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty r.Rpc.contents with Ok x -> Deferred.return (Ok x) | Error (`Msg x) -> raise (MarshalError x)
+            else match Rpcmarshal.unmarshal e.Idl.Error.def.Rpc.Types.ty r.Rpc.contents with Ok x -> Deferred.return (Error x) | Error (`Msg x) -> raise (MarshalError x)) in
         {M.async=res}
     in inner [] ty
 end
 
 exception MarshalError of string
 exception UnknownMethod of string
+exception UnboundImplementation of string list
 
-type server_implementation = (string, async_rpcfn) Hashtbl.t
-let server hashtbl call =
-  let fn = try Hashtbl.find hashtbl call.Rpc.name with Not_found -> raise (UnknownMethod call.Rpc.name) in
-  fn call
+type server_implementation = (string, async_rpcfn option) Hashtbl.t
+let server hashtbl =
+  let impl = Hashtbl.create (Hashtbl.length hashtbl) in
+  let unbound_impls = Hashtbl.fold (fun key fn acc ->
+      match fn with
+      | None -> key::acc
+      | Some fn -> Hashtbl.add impl key fn; acc
+    ) hashtbl [] in
+  if unbound_impls <> [] then
+    raise (UnboundImplementation unbound_impls);
+  fun call ->
+    let fn = try Hashtbl.find impl call.Rpc.name with Not_found -> raise (UnknownMethod call.Rpc.name) in
+    fn call
 
 let combine hashtbls =
   let result = Hashtbl.create 16 in
@@ -85,7 +95,7 @@ module GenServer () = struct
 
   type ('a,'b) comp = ('a,'b) Result.result M.async
   type rpcfn = Rpc.call -> Rpc.response Deferred.t
-  type funcs = (string, rpcfn) Hashtbl.t
+  type funcs = (string, rpcfn option) Hashtbl.t
   type 'a res = 'a -> unit
 
   type _ fn =
@@ -97,7 +107,7 @@ module GenServer () = struct
 
   let empty : unit -> funcs = fun () -> Hashtbl.create 20
 
-  let declare : string -> string list -> 'a fn -> 'a res = fun name _ ty impl ->
+  let declare : string -> string list -> 'a fn -> 'a res = fun name _ ty ->
     let open Rresult.R in
     let get_named_args call =
       match call.params with
@@ -118,27 +128,29 @@ module GenServer () = struct
       end
     in
 
-    let rpcfn =
-      let rec inner : type a. a fn -> a -> call -> response Deferred.t = fun f impl call ->
-        let args = get_named_args call in
-        match f with
-        | Function (t, f) -> begin
-            let n = match t.Param.name with Some s -> s | None -> raise (MarshalError "Named parameters required for Async") in
-            let is_opt = match t.Param.typedef.Rpc.Types.ty with | Rpc.Types.Option _ -> true | _ -> false in
-            let arg_rpc = get_arg args n is_opt in
-            let z = Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty arg_rpc in
-            match z with
-            | Result.Ok arg -> inner f (impl arg) call
-            | Result.Error (`Msg m) -> raise (MarshalError m)
-          end
-        | Returning (t,e) -> begin
-            Deferred.bind impl.M.async (function
+    Hashtbl.add funcs name None;
+    fun impl ->
+      let rpcfn =
+        let rec inner : type a. a fn -> a -> call -> response Deferred.t = fun f impl call ->
+          let args = get_named_args call in
+          match f with
+          | Function (t, f) -> begin
+              let n = match t.Param.name with Some s -> s | None -> raise (MarshalError "Named parameters required for Async") in
+              let is_opt = match t.Param.typedef.Rpc.Types.ty with | Rpc.Types.Option _ -> true | _ -> false in
+              let arg_rpc = get_arg args n is_opt in
+              let z = Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty arg_rpc in
+              match z with
+              | Result.Ok arg -> inner f (impl arg) call
+              | Result.Error (`Msg m) -> raise (MarshalError m)
+            end
+          | Returning (t,e) -> begin
+              Deferred.bind impl.M.async (function
                   | Result.Ok x -> Deferred.return (success (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty x))
                   | Result.Error y -> Deferred.return (failure (Rpcmarshal.marshal e.Idl.Error.def.Rpc.Types.ty y)))
-          end
-      in inner ty impl
-    in
+            end
+        in inner ty impl
+      in
 
-    Hashtbl.add funcs name rpcfn
+      Hashtbl.replace funcs name (Some rpcfn)
 
 end
