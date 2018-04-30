@@ -1,6 +1,6 @@
 OASISFormat: 0.4
 Name:        rpclib
-Version:     3.2.0
+Version:     4.1.0
 Synopsis:    RPC library
 Authors:     Thomas Gazagnaire, Jon Ludlam
 License:     ISC
