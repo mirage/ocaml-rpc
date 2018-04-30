@@ -1,3 +1,8 @@
+4.1.0 (Apr 2018)
+* rpc_lwt: runtime check if all server as been bound to a function
+* rpc_async: runtime check if all server as been bound to a function
+* Avoid stack overflow due to List.map in Jsonrpc, Rpcmarshal, ppx
+
 4.0.0 (Apr 2018)
 * idl.ml: Change marshalling of named optional arguments to exclude them from the argument record
 * pythongen.ml: Fix type checking for optional record fields
