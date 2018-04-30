@@ -271,9 +271,6 @@ struct
     in inner ([],[]) ty
 end
 
-(* For the Server generation, the 'implement' function call _must_ be called
-   before any RPCs are described. This exception will be raised if the user
-   tries to do this. *)
 exception NoDescription
 
 type rpcfn = Rpc.call -> Rpc.response
@@ -328,17 +325,17 @@ module GenServer () = struct
       false
 
   let declare : string -> string list -> 'a fn -> 'a res = fun name _ ty ->
-    begin
-      (* Sanity check: ensure the description has been set before we declare
-         any RPCs *)
-      match !description with
-      | Some _ -> ()
-      | None -> raise NoDescription
-    end;
     let open Rresult.R in
-    let wire_name = get_wire_name !description name in
-    Hashtbl.add funcs wire_name None;
+    (* We do not know the wire name yet as the description may still be unset *)
+    Hashtbl.add funcs name None;
     fun impl ->
+      begin
+        (* Sanity check: ensure the description has been set before we declare
+           any RPCs *)
+        match !description with
+        | Some _ -> ()
+        | None -> raise NoDescription
+      end;
       let rpcfn =
         let has_named = has_named_args ty in
         let rec inner : type a. a fn -> a -> call -> response = fun f impl call ->
@@ -363,7 +360,10 @@ module GenServer () = struct
         in inner ty impl
       in
 
-      Hashtbl.replace funcs wire_name (Some rpcfn)
+      Hashtbl.remove funcs name;
+      (* The wire name might be different from the name *)
+      let wire_name = get_wire_name !description name in
+      Hashtbl.add funcs wire_name (Some rpcfn)
 end
 
 module GenServerExn () = struct
@@ -404,9 +404,16 @@ module GenServerExn () = struct
 
   let declare : string -> string list -> 'a fn -> 'a res = fun name _ ty ->
     let open Rresult.R in
-    let wire_name = get_wire_name !description name in
-    Hashtbl.add funcs wire_name None;
+    (* We do not know the wire name yet as the description may still be unset *)
+    Hashtbl.add funcs name None;
     fun impl ->
+      begin
+        (* Sanity check: ensure the description has been set before we declare
+           any RPCs *)
+        match !description with
+        | Some _ -> ()
+        | None -> raise NoDescription
+      end;
       let rpcfn =
         let has_named = has_named_args ty in
         let rec inner : type a. a fn -> a -> call -> response = fun f impl call ->
@@ -435,7 +442,10 @@ module GenServerExn () = struct
         in inner ty impl
       in
 
-      Hashtbl.replace funcs wire_name (Some rpcfn)
+      Hashtbl.remove funcs name;
+      (* The wire name might be different from the name *)
+      let wire_name = get_wire_name !description name in
+      Hashtbl.add funcs wire_name (Some rpcfn)
 
 end
 

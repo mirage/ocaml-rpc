@@ -128,8 +128,16 @@ module GenServer () = struct
       end
     in
 
+    (* We do not know the wire name yet as the description may still be unset *)
     Hashtbl.add funcs name None;
     fun impl ->
+      begin
+        (* Sanity check: ensure the description has been set before we declare
+           any RPCs *)
+        match !description with
+        | Some _ -> ()
+        | None -> raise NoDescription
+      end;
       let rpcfn =
         let rec inner : type a. a fn -> a -> call -> response Deferred.t = fun f impl call ->
           let args = get_named_args call in
@@ -151,6 +159,9 @@ module GenServer () = struct
         in inner ty impl
       in
 
-      Hashtbl.replace funcs name (Some rpcfn)
+      Hashtbl.remove funcs name;
+      (* The wire name might be different from the name *)
+      let wire_name = get_wire_name !description name in
+      Hashtbl.add funcs wire_name (Some rpcfn)
 
 end

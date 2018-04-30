@@ -168,6 +168,12 @@ end
 
 
 type rpcfn = Rpc.call -> Rpc.response
+
+(** For the Server generation, the 'implement' function call _must_ be called
+    before any RPCs are described. This exception will be raised if the user
+    tries to do this. *)
+exception NoDescription
+
 type server_implementation
 val server : server_implementation -> rpcfn
 val combine : server_implementation list -> server_implementation
