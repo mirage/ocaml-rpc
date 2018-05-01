@@ -49,6 +49,5 @@ module GenServer () :
       | Returning : ('a Idl.Param.t * 'b Idl.Error.t) -> ('a, 'b) M.t fn
     val returning : 'a Idl.Param.t -> 'b Idl.Error.t -> ('a, 'b) M.t fn
     val ( @-> ) : 'a Idl.Param.t -> 'b fn -> ('a -> 'b) fn
-    val empty : unit -> funcs
     val declare : string -> string list -> 'a fn -> 'a res
   end

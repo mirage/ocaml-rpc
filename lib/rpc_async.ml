@@ -37,30 +37,40 @@ module GenClient () = struct
 
   let declare name _ ty (rpc : rpcfn) =
     let open Result in
-    let rec inner : type b. (string * Rpc.t) list -> b fn -> b = fun cur ->
+    let rec inner : type b. ((string * Rpc.t) list * Rpc.t list) -> b fn -> b = fun (named,unnamed) ->
       function
       | Function (t, f) -> begin
-          let n = match t.Param.name with Some s -> s | None -> raise (MarshalError "Named parameters required for Async") in
           fun v ->
-            match t.Param.typedef.Rpc.Types.ty, v with
-            | Rpc.Types.Option t1, None ->
-              inner cur f
-            | Rpc.Types.Option t1, Some v' ->
-              let marshalled = Rpcmarshal.marshal t1 v' in
-              inner ((n, marshalled) :: cur) f
-            | _, v ->
+            match t.Param.name with
+            | Some n -> begin
+                match t.Param.typedef.Rpc.Types.ty, v with
+                | Rpc.Types.Option t1, None ->
+                  inner (named, unnamed) f
+                | Rpc.Types.Option t1, Some v' ->
+                  let marshalled = Rpcmarshal.marshal t1 v' in
+                  inner ((n, marshalled)::named,unnamed) f
+                | ty, v ->
+                  let marshalled = Rpcmarshal.marshal ty v in
+                  inner ((n, marshalled)::named,unnamed) f
+              end
+            | None ->
               let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
-              inner ((n, marshalled) :: cur) f
+              inner (named,(marshalled::unnamed)) f
         end
       | Returning (t, e) ->
         let wire_name = get_wire_name !description name in
-        let call = Rpc.call wire_name [(Rpc.Dict cur)] in
+        let args =
+          match named with
+          | [] -> List.rev unnamed
+          | _ -> (Rpc.Dict named) :: List.rev unnamed
+        in
+        let call = Rpc.call wire_name args in
         let res = Deferred.bind (rpc call) (fun r ->
             if r.Rpc.success
             then match Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty r.Rpc.contents with Ok x -> Deferred.return (Ok x) | Error (`Msg x) -> raise (MarshalError x)
             else match Rpcmarshal.unmarshal e.Idl.Error.def.Rpc.Types.ty r.Rpc.contents with Ok x -> Deferred.return (Error x) | Error (`Msg x) -> raise (MarshalError x)) in
         {M.async=res}
-    in inner [] ty
+    in inner ([],[]) ty
 end
 
 exception MarshalError of string
@@ -106,29 +116,18 @@ module GenServer () = struct
   let returning a b = Returning (a,b)
   let (@->) = fun t f -> Function (t, f)
 
-  let empty : unit -> funcs = fun () -> Hashtbl.create 20
+  let rec has_named_args : type a. a fn -> bool =
+    function
+    | Function (t, f) -> begin
+        match t.Param.name with
+        | Some n -> true
+        | None -> has_named_args f
+      end
+    | Returning (t, e) ->
+      false
 
   let declare : string -> string list -> 'a fn -> 'a res = fun name _ ty ->
     let open Rresult.R in
-    let get_named_args call =
-      match call.params with
-      | [Dict x] -> x
-      | _ -> raise (MarshalError "All arguments must be named currently")
-    in
-
-    let get_arg args name is_opt =
-      if is_opt
-      then begin
-        if List.mem_assoc name args
-        then Rpc.Enum [List.assoc name args]
-        else Rpc.Enum []
-      end else begin
-        if List.mem_assoc name args
-        then List.assoc name args
-        else raise (MarshalError (Printf.sprintf "Argument missing: %s" name))
-      end
-    in
-
     (* We do not know the wire name yet as the description may still be unset *)
     Hashtbl.add funcs name None;
     fun impl ->
@@ -140,16 +139,19 @@ module GenServer () = struct
         | None -> raise NoDescription
       end;
       let rpcfn =
+        let has_named = has_named_args ty in
         let rec inner : type a. a fn -> a -> call -> response Deferred.t = fun f impl call ->
-          let args = get_named_args call in
           match f with
           | Function (t, f) -> begin
-              let n = match t.Param.name with Some s -> s | None -> raise (MarshalError "Named parameters required for Async") in
               let is_opt = match t.Param.typedef.Rpc.Types.ty with | Rpc.Types.Option _ -> true | _ -> false in
-              let arg_rpc = get_arg args n is_opt in
+              let (arg_rpc, call') =
+                match get_arg call has_named t.Param.name is_opt with
+                | Result.Ok (x,y) -> (x,y)
+                | Result.Error (`Msg m) -> raise (MarshalError m)
+              in
               let z = Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty arg_rpc in
               match z with
-              | Result.Ok arg -> inner f (impl arg) call
+              | Result.Ok arg -> inner f (impl arg) call'
               | Result.Error (`Msg m) -> raise (MarshalError m)
             end
           | Returning (t,e) -> begin

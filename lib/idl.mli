@@ -54,6 +54,8 @@ end
 
 val get_wire_name : Interface.description option -> string -> string
 
+val get_arg : Rpc.call -> bool -> string option -> bool -> (Rpc.t * Rpc.call, [> `Msg of string]) result
+
 (** The RPC module type is the standard module signature that the various
     specialization modules must conform to. *)
 module type RPC = sig
