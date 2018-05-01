@@ -99,3 +99,16 @@
     (run ./variants.exe)
     ))))
 
+(executable
+ ((name suite)
+  (modules (suite client_server_test))
+  (libraries (rpclib rpclib-async rpclib-lwt alcotest alcotest-lwt))
+ ))
+
+(alias
+ ((name runtest)
+  (package rpc)
+  (deps (suite.exe))
+  (action (run ${<}))
+ ))
+
