@@ -53,7 +53,8 @@ module GenClient () = struct
               inner ((n, marshalled) :: cur) f
         end
       | Returning (t, e) ->
-        let call = Rpc.call name [(Rpc.Dict cur)] in
+        let wire_name = get_wire_name !description name in
+        let call = Rpc.call wire_name [(Rpc.Dict cur)] in
         let res = Lwt.bind (rpc call) (fun r ->
             if r.Rpc.success
             then match Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty r.Rpc.contents with Ok x -> Lwt.return (Ok x) | Error (`Msg x) -> Lwt.fail (MarshalError x)
