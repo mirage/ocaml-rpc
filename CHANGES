@@ -1,3 +1,9 @@
+4.2.0 (May 2018)
+* idl: support unnamed parameters in Lwt and Async GenClient & GenServer
+* Lwt, Async GenClient: use correct RPC call wire name
+* Make sure fns are added with correct name in GenServer
+* Add client<->server interop test for IDL
+
 4.1.0 (Apr 2018)
 * rpc_lwt: runtime check if all server as been bound to a function
 * rpc_async: runtime check if all server as been bound to a function
