@@ -1,46 +1,19 @@
-#
+.PHONY: build release install uninstall clean reindent
 
-SETUP = ocaml setup.ml
+build:
+	jbuilder build @install --dev
 
-build: setup.data
-	$(SETUP) -build $(BUILDFLAGS)
+release:
+	jbuilder build @install
 
-doc: setup.data build
-	$(SETUP) -doc $(DOCFLAGS)
+install:
+	jbuilder install
 
-all:
-	$(SETUP) -all $(ALLFLAGS)
-
-install: setup.data
-	$(SETUP) -install $(INSTALLFLAGS)
+uninstall:
+	jbuilder uninstall
 
 clean:
-	$(SETUP) -clean $(CLEANFLAGS)
-	make -C ppx_test clean
-	make -C tests clean
-	make -C example clean
-	rm -f setup.data setup.log setup.ml
+	jbuilder clean
 
-distclean:
-	$(SETUP) -distclean $(DISTCLEANFLAGS)
-
-setup.data:
-	$(SETUP) -configure $(CONFIGUREFLAGS)
-
-configure:
-	$(SETUP) -configure $(CONFIGUREFLAGS)
-
-.PHONY: build doc test all install uninstall reinstall clean distclean configure
-
-setup.data: setup.ml
-setup.ml: _oasis
-	oasis setup
-
-uninstall: setup.data
-	ocamlfind remove rpclib
-	ocamlfind remove ppx_deriving_rpc
-
-test:
-	make -C ppx_test
-	make -C tests
-
+reindent:
+	ocp-indent -i **/*.ml*

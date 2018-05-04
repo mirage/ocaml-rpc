@@ -8,34 +8,12 @@ tags: [
   "org:mirage"
   "org:xapi-project"
 ]
-build: [
-  [make]
-]
-install: [
-  [make "install"]
-]
-remove: [
-  ["ocamlfind" "remove" "rpclib"]
-  ["ocamlfind" "remove" "ppx_deriving_rpc"]
-]
-build-test: [
-    [make]
-    [make "test"]
-]
+build: [["jbuilder" "build" "-p" name "-j" jobs]]
 depends: [
-  "oasis" {build}
-  "cppo"  {build}
-  "async" {>= "v0.9.0" & < "v0.11.0"}
+  "jbuilder"  {build}
   "cmdliner"
-  "cow"
-  "lwt"
-  "ocamlfind"
-  "ppx_deriving"
   "rresult"
-  "type_conv" {>= "108.07.01"}
   "xmlm"
   "yojson"
-  "camlp4"
 ]
-depopts: [ "js_of_ocaml" ]
 available: [ ocaml-version >= "4.03.0" ]

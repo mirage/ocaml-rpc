@@ -1,0 +1,17 @@
+(executables
+ ((names (test tytest))
+  (libraries (ppx_deriving ppx_deriving_rpc rpclib rpclib.core rpclib.json lwt lwt.unix result rresult oUnit))
+  (preprocess (pps (ppx_deriving_rpc)))
+ ))
+
+(alias
+ ((name   runtest)
+  (deps   (test.exe))
+  (package ppx_deriving_rpc)
+  (action (run ${<}))))
+
+(alias
+ ((name   runtest)
+  (deps   (tytest.exe))
+  (package ppx_deriving_rpc)
+  (action (run ${<}))))

@@ -1,9 +1,3 @@
-#if OCAML_VERSION < (4, 03, 0)
-    #define lowercase String.lowercase
-#else
-    #define lowercase String.lowercase_ascii
-#endif
-
 (* Example RPC *)
 
 (* The following is an example of how to use the ocaml-rpc library to define an
@@ -214,7 +208,7 @@ let exnt_variant : exnt variant = Rpc.Types.{
     vversion = None;
     vdefault = Some (Errors "unknown error tag!");
     vconstructor = (fun s t ->
-        match lowercase s with
+        match String.lowercase_ascii s with
         | "errors" -> Rresult.R.map errors.treview (t.tget (Basic String))
         | s -> Rresult.R.error_msg (Printf.sprintf "Unknown tag '%s'" s))
   }
