@@ -1,3 +1,14 @@
+5.0.0 (May 2018)
+* camlp4: delete as it is moved in ocaml-rpc-legacy
+* port to jbuilder, and splut the library into
+  - ppx_deriving_rpc
+	- rpc (compatibility meta-package)
+	- rpclib-async
+	- rpclib-html
+	- rpclib-js
+	- rpclib-lwt
+	- rpclib
+
 4.2.0 (May 2018)
 * idl: support unnamed parameters in Lwt and Async GenClient & GenServer
 * Lwt, Async GenClient: use correct RPC call wire name
