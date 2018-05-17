@@ -383,7 +383,7 @@ let server_of_interface i =
       | x :: []      -> [dispatch_method x ""]
       | x :: y :: tl -> (dispatch_method x ",") :: intersperse_commas (y::tl)
     in
-    [Line ("_dispatch = {")] @
+    [Line ("self._dispatcher_dict = {")] @
     intersperse_commas methods @
     [Line ("}")]
   in
@@ -396,17 +396,17 @@ let server_of_interface i =
           Line {|"""impl is a proxy object whose methods contain the implementation"""|};
           Line "self._impl = impl";
         ];
-      ] @ (List.concat (List.map typecheck_method_wrapper i.Interface.methods)
-          ) @ [
+      ] @ (
+        List.concat (List.map typecheck_method_wrapper i.Interface.methods)
+      ) @
+      dispatch_dict i.Interface.methods
+      @ [
         Line "def _dispatch(self, method, params):";
         Block ([
             Line {|"""type check inputs, call implementation, type check outputs and return"""|};
             Line "args = params[0]";
-          ] @ (
-              dispatch_dict i.Interface.methods
-            ) @ [
-              Line "return success(_dispatch[method](args))"
-            ])
+            Line "return success(self._dispatcher_dict[method](args))"
+          ])
       ])
   ]
 
