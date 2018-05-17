@@ -191,6 +191,11 @@ let exn_var myarg =
     failwith (Printf.sprintf "Unable to handle non-variant exceptions (%s)" (Rpcmarshal.ocaml_of_t ty))
 
 
+let output_doc description =
+  [ Line "\"\"\"" ] @
+  (List.map (fun l -> Line l) description) @
+  [ Line "\"\"\"" ]
+
 
 let skeleton_method unimplemented i (BoxedFunction m) =
   let inputs = Method.(find_inputs m.ty) in
@@ -215,9 +220,9 @@ let skeleton_method unimplemented i (BoxedFunction m) =
 
   [
     Line (sprintf "def %s(self%s):" m.Method.name (String.concat "" (List.map (fun x -> ", " ^ x) (List.map (fun (Idl.Param.Boxed x) -> match x.Idl.Param.name with Some n -> n | None -> failwith (Printf.sprintf "Parameter names required for python generation (%s)" m.Method.name)) inputs))));
-    Block ([
-        Line (sprintf "\"\"\"%s\"\"\"" (String.concat " " i.Interface.details.Idl.Interface.description));
-      ] @ (
+    Block (
+        output_doc m.Method.description
+        @ (
           if unimplemented
           then [ Line (sprintf "raise Unimplemented(\"%s.%s\")" i.Interface.details.Idl.Interface.name m.Method.name) ]
           else ([
@@ -269,8 +274,8 @@ let rec skeleton_of_interface unimplemented suffix i =
   let open Printf in
   [
     Line (sprintf "class %s_%s:" i.Interface.details.Idl.Interface.name suffix);
-    Block ([
-        Line (sprintf "\"\"\"%s\"\"\"" (String.concat " " i.Interface.details.Idl.Interface.description));
+    Block (
+        output_doc i.Interface.details.Idl.Interface.description @ [
         Line "def __init__(self):";
         Block [
           Line "pass";
@@ -334,8 +339,8 @@ let server_of_interface i =
     | x :: xs -> f true x :: (List.map (f false) xs) in
   [
     Line (sprintf "class %s_server_dispatcher:" i.Interface.details.Idl.Interface.name);
-    Block ([
-        Line (sprintf "\"\"\"%s\"\"\"" (String.concat " " i.Interface.details.Idl.Interface.description));
+    Block (
+        output_doc i.Interface.details.Idl.Interface.description @ [
         Line "def __init__(self, impl):";
         Block [
           Line "\"\"\"impl is a proxy object whose methods contain the implementation\"\"\"";
@@ -375,9 +380,9 @@ let commandline_parse i (BoxedFunction m) =
           | _ -> true) inputs in
   [
     Line (sprintf "def _parse_%s(self):" m.Method.name);
-    Block ([
-        Line (sprintf "\"\"\"%s\"\"\"" (String.concat " " m.Method.description));
-      ] @ [
+    Block (
+        output_doc m.Method.description
+        @ [
         Line "# in --json mode we don't have any other arguments";
         Line "if ('--json' in sys.argv or '-j' in sys.argv):";
         Block [
