@@ -370,16 +370,23 @@ let server_of_interface i =
             Line "return results"
           ])
     ] in
-  let dispatch_method first (BoxedFunction m) =
-    [ Line (
-          sprintf {|%s method == "%s.%s":|} (if first then "if" else "else") 
-            i.Interface.details.Idl.Interface.name m.Method.name
-        );
-      Block [ Line (sprintf "return success(self.%s(args))" m.Method.name) ]
-    ] in
-  let first_is_special f xs = match xs with
-    | [] -> []
-    | x :: xs -> f true x :: (List.map (f false) xs) in
+  let dispatch_method (BoxedFunction m) comma =
+    Line (
+      sprintf {|  "%s.%s": self.%s%s|}
+        i.Interface.details.Idl.Interface.name m.Method.name m.Method.name comma
+    )
+  in
+  let dispatch_dict methods =
+    let rec intersperse_commas (list: Codegen.boxed_fn list) =
+      match list with
+      | []           -> []
+      | x :: []      -> [dispatch_method x ""]
+      | x :: y :: tl -> (dispatch_method x ",") :: intersperse_commas (y::tl)
+    in
+    [Line ("_dispatch = {")] @
+    intersperse_commas methods @
+    [Line ("}")]
+  in
   [
     Line (sprintf "class %s_server_dispatcher:" i.Interface.details.Idl.Interface.name);
     Block (
@@ -395,7 +402,11 @@ let server_of_interface i =
         Block ([
             Line {|"""type check inputs, call implementation, type check outputs and return"""|};
             Line "args = params[0]";
-          ] @ (List.concat (first_is_special dispatch_method i.Interface.methods)))
+          ] @ (
+              dispatch_dict i.Interface.methods
+            ) @ [
+              Line "return success(_dispatch[method](args))"
+            ])
       ])
   ]
 
