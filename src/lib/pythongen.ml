@@ -1,7 +1,6 @@
 (* Python generator *)
 open Codegen
 open Rpc.Types
-
 type t =
   | Block of t list
   | Line of string
@@ -154,9 +153,9 @@ let rec value_of : type a. a typ -> string =
       sprintf "{ %s }" (String.concat ", " (List.map member fields))
     | Variant { variants } -> "None"
     | Array t ->
-      sprintf "[ %s, %s ]" (value_of t) (value_of t)
+      sprintf "[ %s ]" (value_of t)
     | List t ->
-      sprintf "[ %s, %s ]" (value_of t) (value_of t)
+      sprintf "[ %s ]" (value_of t)
     | Dict (key, va) ->
       sprintf "{ %s: %s }" (value_of (Basic key)) (value_of va)
     | Unit -> "None"
@@ -169,11 +168,13 @@ let exn_var myarg =
   let open Printf in
   let inner : type a b. (a, b) tag -> t list = function tag ->
     let has_arg = match tag.tcontents with | Unit -> false | _ -> true in
+    [Line ""; Line ""] @
     if not has_arg
     then
       [
         Line (sprintf "class %s(Rpc_light_failure):" tag.tname);
         Block ([
+            Line "";
             Line "def __init__(self)";
             Block (
               [ Line (sprintf {|Rpc_light_failure.__init__(self, "%s", [])|} tag.tname) ])])]
@@ -181,6 +182,7 @@ let exn_var myarg =
       [
         Line (sprintf "class %s(Rpc_light_failure):" tag.tname);
         Block ([
+            Line "";
             Line (sprintf "def __init__(self, arg_0):");
             Block (
               [ Line (sprintf {|Rpc_light_failure.__init__(self, "%s", [ arg_0 ])|} tag.tname )
@@ -223,6 +225,7 @@ let skeleton_method unimplemented i (BoxedFunction m) =
   in
 
   [
+    Line "";
     Line (
       sprintf "def %s(self%s):" m.Method.name
         (String.concat "" (List.map (fun x -> ", " ^ x) 
@@ -263,13 +266,13 @@ let example_stub_user i (BoxedFunction m) =
     Block [
       Line "c = xapi.connect()";
       Line (Printf.sprintf "results = c.%s.%s({ %s })" i.Interface.details.Idl.Interface.name m.Method.name
-              (String.concat ", " (List.map (fun (Idl.Param.Boxed a) -> sprintf "%s: %s" (
-                   match a.Idl.Param.name with 
-                   | Some x -> x
-                   | None -> failwith (
-                       Printf.sprintf "Parameter names required for python generation (%s)" m.Method.name)
-                 )  
-                   (value_of a.Idl.Param.typedef.ty)) 
+              (String.concat ", " (List.map (fun (Idl.Param.Boxed a) -> 
+                   sprintf "%s: %s" (
+                     match a.Idl.Param.name with 
+                     | Some x -> x
+                     | None -> failwith (
+                         Printf.sprintf "Parameter names required for python generation (%s)" m.Method.name)
+                   ) (value_of a.Idl.Param.typedef.ty))
                    Method.(find_inputs m.ty))
               ));
       Line "print (repr(results))"
@@ -300,9 +303,12 @@ let example_skeleton_user i m =
 let rec skeleton_of_interface unimplemented suffix i =
   let open Printf in
   [
+    Line "";
+    Line "";
     Line (sprintf "class %s_%s:" i.Interface.details.Idl.Interface.name suffix);
     Block (
       output_doc i.Interface.details.Idl.Interface.description @ [
+        Line "";
         Line "def __init__(self):";
         Block [
           Line "pass";
@@ -347,6 +353,7 @@ let server_of_interface i =
            have single anonymous results only. *)
         typecheck arg.Idl.Param.typedef.ty "results" in
     [
+      Line "";
       Line (sprintf "def %s(self, args):" m.Method.name);
       Block ([
           Line {|"""type-check inputs, call implementation, type-check outputs and return"""|};
@@ -383,14 +390,17 @@ let server_of_interface i =
       | x :: []      -> [dispatch_method x ""]
       | x :: y :: tl -> (dispatch_method x ",") :: intersperse_commas (y::tl)
     in
-    [Line ("self._dispatcher_dict = {")] @
+    [Line ""; Line ("self._dispatcher_dict = {")] @
     intersperse_commas methods @
     [Line ("}")]
   in
   [
+    Line "";
+    Line "";
     Line (sprintf "class %s_server_dispatcher:" i.Interface.details.Idl.Interface.name);
     Block (
       output_doc i.Interface.details.Idl.Interface.description @ [
+        Line "";
         Line "def __init__(self, impl):";
         Block [
           Line {|"""impl is a proxy object whose methods contain the implementation"""|};
@@ -401,6 +411,7 @@ let server_of_interface i =
       ) @
       dispatch_dict i.Interface.methods
       @ [
+        Line "";
         Line "def _dispatch(self, method, params):";
         Block ([
             Line {|"""type check inputs, call implementation, type check outputs and return"""|};
@@ -413,9 +424,12 @@ let server_of_interface i =
 let test_impl_of_interfaces i =
   let open Printf in
   [
+    Line "";
+    Line "";
     Line (sprintf "class %s_server_test(%s_server_dispatcher):" i.Interfaces.name i.Interfaces.name);
     Block [
       Line {|"""Create a server which will respond to all calls, returning arbitrary values. This is intended as a marshal/unmarshal test."""|};
+      Line "";
       Line "def __init__(self):";
       Block [
         Line (
@@ -437,6 +451,7 @@ let commandline_parse i (BoxedFunction m) =
           | Unit -> false
           | _ -> true) inputs in
   [
+    Line "";
     Line (sprintf "def _parse_%s(self):" m.Method.name);
     Block (
       output_doc m.Method.description
@@ -479,6 +494,7 @@ let commandline_parse i (BoxedFunction m) =
 let commandline_run i (BoxedFunction m) =
   let open Printf in
   [
+    Line "";
     Line (sprintf "def %s(self):" m.Method.name);
     Block [
       Line "use_json = False";
@@ -507,9 +523,12 @@ let commandline_of_interface i =
   [
     Line "import argparse, traceback";
     Line "import xapi";
+    Line "";
+    Line "";
     Line (sprintf "class %s_commandline():" i.Interface.details.Idl.Interface.name);
     Block ([
         Line {|"""Parse command-line arguments and call an implementation."""|};
+        Line "";
         Line "def __init__(self, impl):";
         Block [
           Line "self.impl = impl";
@@ -538,13 +557,14 @@ let of_interfaces i =
       | x :: []      -> [dispatch_class x ""]
       | x :: y :: tl -> (dispatch_class x ",") :: intersperse_commas (y::tl)
     in
-    [Line ("self._dispatcher_dict = {")] @
+    [Line ""; Line ("self._dispatcher_dict = {")] @
     intersperse_commas methods @
     [Line ("}")]
   in
   [
     Line "from xapi import *";
     Line "import traceback";
+    Line "";
   ] (* @ (
         try exn_var i.Interfaces.exn_decls with e -> Printf.fprintf stderr "Error while handling %s" i.Interfaces.name; raise e
        ) *) @ (
@@ -552,9 +572,12 @@ let of_interfaces i =
                                  (server_of_interface i) @ (skeleton_of_interface i) @ (test_impl_of_interface i) @ (commandline_of_interface i)
                    ) [] i.Interfaces.interfaces
   ) @ [
+    Line "";
+    Line "";
     Line (sprintf "class %s_server_dispatcher:" i.Interfaces.name);
     Block ([
         Line {|"""Demux calls to individual interface server_dispatchers"""|};
+        Line "";
         Line (
           sprintf "def __init__(self%s):"
             (String.concat "" (List.map (fun x -> ", " ^ x ^ " = None") 
@@ -568,6 +591,7 @@ let of_interfaces i =
       ] @
         dispatch_dict i.Interfaces.interfaces
         @ [
+          Line "";
           Line "def _dispatch(self, method, params):";
           Block [
             Line "try:";
