@@ -269,8 +269,21 @@ let exn_var myarg =
 
 
 let output_doc description =
+  let process descr = 
+    descr
+    |> String.split_on_char '\n'
+    |> List.map (function l -> Line (String.trim l))
+  in
+  let descr_lines =
+    description
+    |> List.map process
+    |> List.concat
+    |> function
+    | Line "" :: tl -> tl
+    | lst -> lst
+  in
   [ Line {|"""|} ] @
-  (List.map (fun l -> Line (String.trim l)) description) @
+  descr_lines @
   [ Line {|"""|} ]
 
 
