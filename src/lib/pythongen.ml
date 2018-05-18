@@ -74,8 +74,7 @@ class ListAction(argparse.Action):
              and getattr(namespace, self.dest) is not None)):
             getattr(namespace, self.dest)[k] = v
         else:
-            setattr(namespace, self.dest, {k: v})
-|}
+            setattr(namespace, self.dest, {k: v})|}
 
 let rec lines_of_t t =
   let indent = String.make 4 ' ' in
@@ -83,7 +82,7 @@ let rec lines_of_t t =
   | Line x -> [ x ]
   | Block xs ->
     let all = List.concat (List.map lines_of_t xs) in
-    List.map (fun x -> indent ^ x) all
+    List.map (function "" -> "" | x -> indent ^ x) all
 
 let string_of_ts ts = String.concat "\n" (List.concat (List.map lines_of_t ts))
 
@@ -157,7 +156,7 @@ let rec typecheck : type a.a typ -> string -> t list = fun ty v ->
     in
     let all_tags = List.map (fun (BoxedTag t) -> t.tname) variants in
     let pylist = sprintf "[%s]" (
-        String.concat "," (List.map (fun s -> sprintf {|"%s"|} s) all_tags)
+        String.concat ", " (List.map (fun s -> sprintf {|"%s"|} s) all_tags)
       ) in
     [ Line (sprintf "if %s[0] not in %s:" v pylist);
       Block [ raise_type_error ] ] @ check_contents
@@ -222,14 +221,14 @@ let rec value_of : type a. a typ -> string =
       let member boxed_field =
         let BoxedField f = boxed_field in
         sprintf {|"%s": %s|} f.fname (value_of f.field) in
-      sprintf "{ %s }" (String.concat ", " (List.map member fields))
+      sprintf "{%s}" (String.concat ", " (List.map member fields))
     | Variant { variants } -> "None"
     | Array t ->
-      sprintf "[ %s ]" (value_of t)
+      sprintf "[%s]" (value_of t)
     | List t ->
-      sprintf "[ %s ]" (value_of t)
+      sprintf "[%s]" (value_of t)
     | Dict (key, va) ->
-      sprintf "{ %s: %s }" (value_of (Basic key)) (value_of va)
+      sprintf "{%s: %s}" (value_of (Basic key)) (value_of va)
     | Unit -> "None"
     | Option t -> "None"
     | Tuple (a, b) -> "[]"
@@ -271,7 +270,7 @@ let exn_var myarg =
 
 let output_doc description =
   [ Line {|"""|} ] @
-  (List.map (fun l -> Line l) description) @
+  (List.map (fun l -> Line (String.trim l)) description) @
   [ Line {|"""|} ]
 
 
@@ -300,11 +299,11 @@ let skeleton_method unimplemented i (BoxedFunction m) =
     Line "";
     Line (
       sprintf "def %s(self%s):" m.Method.name
-        (String.concat "" (List.map (fun x -> ", " ^ x) 
+        (String.concat "" (List.map (fun x -> ", " ^ x)
                              (List.map (fun (Idl.Param.Boxed x) ->
                                   match x.Idl.Param.name with
-                                  | Some n -> n 
-                                  | None -> failwith (Printf.sprintf "Parameter names required for python generation (%s)" m.Method.name)) 
+                                  | Some n -> n
+                                  | None -> failwith (Printf.sprintf "Parameter names required for python generation (%s)" m.Method.name))
                                  inputs)
                           )));
     Block (
@@ -338,9 +337,9 @@ let example_stub_user i (BoxedFunction m) =
     Block [
       Line "c = myclient.connect()";
       Line (Printf.sprintf "results = c.%s.%s({ %s })" i.Interface.details.Idl.Interface.name m.Method.name
-              (String.concat ", " (List.map (fun (Idl.Param.Boxed a) -> 
+              (String.concat ", " (List.map (fun (Idl.Param.Boxed a) ->
                    sprintf "%s: %s" (
-                     match a.Idl.Param.name with 
+                     match a.Idl.Param.name with
                      | Some x -> x
                      | None -> failwith (
                          Printf.sprintf "Parameter names required for python generation (%s)" m.Method.name)
@@ -407,7 +406,7 @@ let server_of_interface i =
         | Some x -> x
         | None -> failwith (
             Printf.sprintf "Parameter names requred for python generation (%s)"
-              m.Method.name) 
+              m.Method.name)
       in
       [ Line (sprintf {|if "%s" not in args:|} arg_name);
         Block [ Line (
@@ -434,8 +433,8 @@ let server_of_interface i =
         ] @ (
             List.concat (List.map extract_input inputs)
           ) @ [
-            Line (sprintf "results = self._impl.%s(%s)" m.Method.name 
-                    (String.concat ", " (List.map (fun (Idl.Param.Boxed x) -> 
+            Line (sprintf "results = self._impl.%s(%s)" m.Method.name
+                    (String.concat ", " (List.map (fun (Idl.Param.Boxed x) ->
                          match x.Idl.Param.name with
                          | Some n -> n
                          | None -> failwith "Parameter names required for python generation")
@@ -503,7 +502,7 @@ let test_impl_of_interfaces i =
       Block [
         Line (
           sprintf "%s_server_dispatcher.__init__(self%s)" i.Interfaces.name
-            (String.concat "" (List.map (fun i -> 
+            (String.concat "" (List.map (fun i ->
                  sprintf ", %s_server_dispatcher(%s_test())" i.Interface.details.Idl.Interface.name i.Interface.details.Idl.Interface.name
                ) i.Interfaces.interfaces)))
       ]
@@ -546,7 +545,7 @@ let commandline_parse i (BoxedFunction m) =
             match a.Idl.Param.typedef.ty with
             | Dict(_, _) ->
               Line (
-                sprintf "parser.add_argument('--%s', default = {}, nargs=2, action=ListAction, help='%s')"
+                sprintf "parser.add_argument('--%s', default={}, nargs=2, action=ListAction, help='%s')"
                   name (String.concat " " a.Idl.Param.description)
               )
             | _ ->
@@ -656,8 +655,8 @@ let of_interfaces ?(helpers=inline_defaults) i =
         Line "";
         Line (
           sprintf "def __init__(self%s):"
-            (String.concat "" (List.map (fun x -> ", " ^ x ^ " = None") 
-                                 (List.map (fun i -> i.Interface.details.Idl.Interface.name) 
+            (String.concat "" (List.map (fun x -> ", " ^ x ^ "=None")
+                                 (List.map (fun i -> i.Interface.details.Idl.Interface.name)
                                     i.Interfaces.interfaces))
             ));
         Block (
@@ -693,7 +692,7 @@ let of_interfaces ?(helpers=inline_defaults) i =
               Line {|logging.log("returning %s", repr(e.failure()))|};
               Line "return e.failure()"
             ];
-            Line "except:";
+            Line "except Exception:";
             Block [
               Line "# An undeclared (unexpected) failure is wrapped as InternalError";
               Line "return (InternalError(str(e)).failure())"
