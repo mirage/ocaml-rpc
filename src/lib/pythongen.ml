@@ -574,7 +574,7 @@ let commandline_run i (BoxedFunction m) =
         Line (sprintf "results = self.dispatcher.%s(request)" m.Method.name);
         Line "print json.dumps(results)";
       ];
-      Line "except Exception, e:";
+      Line "except Exception as e:";
       Block [
         Line "if use_json:";
         Block [Line "handle_exception(e)"];
