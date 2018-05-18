@@ -31,8 +31,18 @@ let rec string_of_t : type a.a typ -> string list =
   function
   | Basic b -> print (of_basic b)
   | DateTime -> print (of_basic String)
-  | Struct _ -> print ("struct  { ... }")
-  | Variant _ -> print ("variant { ... }")
+  | Struct { fields } ->
+    let member boxed_field =
+      let BoxedField f = boxed_field in
+      Printf.sprintf {|"%s": %s|} f.fname (String.concat "" @@ string_of_t f.field)
+    in
+    print (Printf.sprintf "struct { %s }" (String.concat ", " (List.map member fields)))
+  | Variant v ->
+    let member boxed_tag =
+      let BoxedTag t = boxed_tag in
+      Printf.sprintf "%s" t.tname
+    in
+    print (Printf.sprintf "variant { %s }" (String.concat ", " (List.map member v.variants)))
   | Array t -> string_of_t t @ (print " list")
   | List t -> string_of_t t @ (print " list")
   | Dict (key, v) -> print (Printf.sprintf "(%s * " (of_basic key)) @ (string_of_t v) @ (print ") list");
@@ -42,7 +52,7 @@ let rec string_of_t : type a.a typ -> string list =
   | Abstract a -> print "<abstract>"
 
 let rec ocaml_patt_of_t : type a. a typ -> string = fun ty ->
-    let of_basic : type b.b basic -> string = function
+  let of_basic : type b.b basic -> string = function
     | Int -> "int"
     | Int32 -> "int32"
     | Int64 -> "int64"
@@ -141,23 +151,23 @@ let of_variant_tags : 'a boxed_tag list -> string list = fun all ->
 
 let of_type_decl i_opt ((BoxedDef t) as t') =
   if List.mem t' default_types then [] else
-  let name = t.name in
-  let defn = String.concat "" (string_of_t t.ty) in
-  let description = String.concat " " t.description in
-  let header = [ Printf.sprintf "### %s" name ]
-  in
-  let example_tys = Rpc_genfake.genall 0 name t.ty in
-  let marshalled = List.map (fun example -> Rpcmarshal.marshal t.ty example) example_tys in
-  let example = "```json" :: (List.map (fun x -> Jsonrpc.to_string x |> Yojson.Basic.from_string |> Yojson.Basic.pretty_to_string) marshalled) @  ["```"] in
-  let definition = [
-    Printf.sprintf "type `%s` = %s" name defn;
-    description ]
-  in
-  let rest = match t.ty with
-  | Struct structure -> h4 "Members" @ of_struct_fields structure.fields
-  | Variant variant -> h4 "Constructors" @ of_variant_tags variant.variants
-  | _ -> [] in
-  header @ example @ definition @ rest
+    let name = t.name in
+    let defn = String.concat "" (string_of_t t.ty) in
+    let description = String.concat " " t.description in
+    let header = [ Printf.sprintf "### %s" name ]
+    in
+    let example_tys = Rpc_genfake.genall 0 name t.ty in
+    let marshalled = List.map (fun example -> Rpcmarshal.marshal t.ty example) example_tys in
+    let example = "```json" :: (List.map (fun x -> Jsonrpc.to_string x |> Yojson.Basic.from_string |> Yojson.Basic.pretty_to_string) marshalled) @  ["```"] in
+    let definition = [
+      Printf.sprintf "type `%s` = `%s`" name defn;
+      description ]
+    in
+    let rest = match t.ty with
+      | Struct structure -> h4 "Members" @ of_struct_fields structure.fields
+      | Variant variant -> h4 "Constructors" @ of_variant_tags variant.variants
+      | _ -> [] in
+    header @ example @ definition @ rest
 
 let json_of_method namespace is i (Codegen.BoxedFunction m) =
   let inputs = Codegen.Method.find_inputs (m.Codegen.Method.ty) in
@@ -266,9 +276,9 @@ let of_method namespace is i (Codegen.BoxedFunction m) =
   let description = String.concat " " m.Method.description in
   h2 (Printf.sprintf "Method: `%s`" name) @
   [ description ] @ [""] @ (tabs_of namespace is i (Codegen.BoxedFunction m)) @ [""] @
-    (of_args (
-        List.map (fun p -> (true,p)) Method.(find_inputs m.ty) @
-        [ (false, Method.(find_output m.ty)) ]))
+  (of_args (
+      List.map (fun p -> (true,p)) Method.(find_inputs m.ty) @
+      [ (false, Method.(find_output m.ty)) ]))
 
 let all_errors is i =
   let errors = List.map (function (BoxedFunction m) -> Codegen.Method.find_errors m.Codegen.Method.ty) i.Interface.methods in
