@@ -38,6 +38,11 @@ class Rpc_light_failure(Exception):
                 'ErrorDescription': [self.name, marshalled_args]}
 
 
+class Unimplemented(Rpc_light_failure):
+    def __init__(self, arg):
+        Rpc_light_failure.__init__(self, "Unimplemented", [arg])
+
+
 class InternalError(Rpc_light_failure):
     def __init__(self, error):
         Rpc_light_failure.__init__(self, "Internal_error", [error])
@@ -110,7 +115,7 @@ let rec typecheck : type a.a typ -> string -> t list = fun ty v ->
   in
   match ty with
   | Basic Int64 ->
-    [ Line (sprintf "if not isinstance(long, %s):" v);
+    [ Line (sprintf "if not isinstance(%s, long):" v);
       Block [ raise_type_error ] ]
   | Basic String ->
     [ Line (sprintf "if not isinstance(%s, str) and not isinstance(%s, unicode):" v v);
@@ -196,7 +201,7 @@ let rec typecheck : type a.a typ -> string -> t list = fun ty v ->
     [
       Line (sprintf "if isinstance(%s, tuple) and len(%s) == 2:" v v);
       Block (
-        [Line "l, r = v"] @
+        [Line (sprintf "l, r = %s" v)] @
         typecheck a (Printf.sprintf "l") @
         typecheck b (Printf.sprintf "r"))
     ]
@@ -404,7 +409,7 @@ let server_of_interface i =
             Printf.sprintf "Parameter names requred for python generation (%s)"
               m.Method.name) 
       in
-      [ Line (sprintf "if not %s in args:" arg_name);
+      [ Line (sprintf {|if not "%s" in args:|} arg_name);
         Block [ Line (
             sprintf "raise UnmarshalException('argument missing', '%s', '')" arg_name
           ) ];
@@ -455,7 +460,7 @@ let server_of_interface i =
       | x :: []      -> [dispatch_method x ""]
       | x :: y :: tl -> (dispatch_method x ",") :: intersperse_commas (y::tl)
     in
-    [Line ""; Line ("self._dispatcher_dict = {")] @
+    [Line ("self._dispatcher_dict = {")] @
     intersperse_commas methods @
     [Line ("}")]
   in
@@ -467,15 +472,14 @@ let server_of_interface i =
       output_doc i.Interface.details.Idl.Interface.description @ [
         Line "";
         Line "def __init__(self, impl):";
-        Block [
-          Line {|"""impl is a proxy object whose methods contain the implementation"""|};
-          Line "self._impl = impl";
-        ];
+        Block ([
+            Line {|"""impl is a proxy object whose methods contain the implementation"""|};
+            Line "self._impl = impl";
+          ]
+            @ dispatch_dict i.Interface.methods);
       ] @ (
         List.concat (List.map typecheck_method_wrapper i.Interface.methods)
-      ) @
-      dispatch_dict i.Interface.methods
-      @ [
+      ) @ [
         Line "";
         Line "def _dispatch(self, method, params):";
         Block ([
@@ -542,7 +546,7 @@ let commandline_parse i (BoxedFunction m) =
             match a.Idl.Param.typedef.ty with
             | Dict(_, _) ->
               Line (
-                sprintf "parser.add_argument('--%s', default = {}, nargs=2, action=xapi.ListAction, help='%s')"
+                sprintf "parser.add_argument('--%s', default = {}, nargs=2, action=ListAction, help='%s')"
                   name (String.concat " " a.Idl.Param.description)
               )
             | _ ->
@@ -573,7 +577,7 @@ let commandline_run i (BoxedFunction m) =
       Line "except Exception, e:";
       Block [
         Line "if use_json:";
-        Block [Line "xapi.handle_exception(e)"];
+        Block [Line "handle_exception(e)"];
         Line "else:";
         Block [
           Line "traceback.print_exc()";
@@ -620,13 +624,15 @@ let of_interfaces ?(helpers=inline_defaults) i =
       | x :: []      -> [dispatch_class x ""]
       | x :: y :: tl -> (dispatch_class x ",") :: intersperse_commas (y::tl)
     in
-    [Line ""; Line ("self._dispatcher_dict = {")] @
+    [Line ("self._dispatcher_dict = {")] @
     intersperse_commas methods @
     [Line ("}")]
   in
   [
     Line "import argparse";
     Line "import json";
+    Line "import logging";
+    Line "import sys";
     Line "import traceback";
     Line "";
   ] @
@@ -657,43 +663,42 @@ let of_interfaces ?(helpers=inline_defaults) i =
         Block (
           List.map (fun i -> Line (
               sprintf "self.%s = %s" i.Interface.details.Idl.Interface.name i.Interface.details.Idl.Interface.name
-            )) i.Interfaces.interfaces)
-      ] @
-        dispatch_dict i.Interfaces.interfaces
-        @ [
-          Line "";
-          Line "def _dispatch(self, method, params):";
-          Block [
-            Line "try:";
-            Block ([
-                Line {|log("method = %s params = %s" % (method, repr(params)))|};
-                (* str.split is never empty in python *)
-                Line "class_ = method.split('.')[0]";
-                Line "if class_ in self._dispatcher_dict:";
-                Block [
-                  Line (
-                    sprintf "return self._dispatcher_dict[class_](method, params)"
-                  )
-                ];
-                Line "raise UnknownMethod(method)"
-              ]
-              );
-            Line "except Exception as e:";
-            Block [
-              Line {|log("caught %s" % e)|};
-              Line "traceback.print_exc()";
-              Line "try:";
+            )) i.Interfaces.interfaces
+          @ dispatch_dict i.Interfaces.interfaces
+        );
+        Line "";
+        Line "def _dispatch(self, method, params):";
+        Block [
+          Line "try:";
+          Block ([
+              Line {|logging.log("method = %s params = %s", method, repr(params))|};
+              (* str.split is never empty in python *)
+              Line "class_ = method.split('.')[0]";
+              Line "if class_ in self._dispatcher_dict:";
               Block [
-                Line "# A declared (expected) failure will have a .failure() method";
-                Line {|log("returning %s" % (repr(e.failure())))|};
-                Line "return e.failure()"
+                Line (
+                  sprintf "return self._dispatcher_dict[class_](method, params)"
+                )
               ];
-              Line "except:";
-              Block [
-                Line "# An undeclared (unexpected) failure is wrapped as InternalError";
-                Line "return (InternalError(str(e)).failure())"
-              ]
+              Line "raise UnknownMethod(method)"
+            ]
+            );
+          Line "except Exception as e:";
+          Block [
+            Line {|logging.log("caught %s", e)|};
+            Line "traceback.print_exc()";
+            Line "try:";
+            Block [
+              Line "# A declared (expected) failure will have a .failure() method";
+              Line {|logging.log("returning %s", repr(e.failure()))|};
+              Line "return e.failure()"
+            ];
+            Line "except:";
+            Block [
+              Line "# An undeclared (unexpected) failure is wrapped as InternalError";
+              Line "return (InternalError(str(e)).failure())"
             ]
           ]
-        ])
+        ]
+      ])
   ] @ (test_impl_of_interfaces i) @ [ Line "" ]
