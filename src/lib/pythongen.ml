@@ -5,6 +5,73 @@ type t =
   | Block of t list
   | Line of string
 
+let inline_defaults =
+  {|
+def success(result):
+    return {"Status": "Success", "Value": result}
+
+
+def handle_exception(e, code=None, params=None):
+    raise e
+
+
+class MissingDependency(Exception):
+    def __init__(self, missing):
+        self.missing = missing
+
+    def __str__(self):
+        return "There is a missing dependency: %s not found" % self.missing
+
+
+class Rpc_light_failure(Exception):
+    def __init__(self, name, args):
+        self.name = name
+        self.args = args
+
+    def failure(self):
+        # rpc-light marshals a single result differently to a list of results
+        args = list(self.args)
+        marshalled_args = args
+        if len(args) == 1:
+            marshalled_args = args[0]
+        return {'Status': 'Failure',
+                'ErrorDescription': [self.name, marshalled_args]}
+
+
+class InternalError(Rpc_light_failure):
+    def __init__(self, error):
+        Rpc_light_failure.__init__(self, "Internal_error", [error])
+
+
+class UnmarshalException(InternalError):
+    def __init__(self, thing, ty, desc):
+        InternalError.__init__(
+            self,
+            "UnmarshalException thing=%s ty=%s desc=%s" % (thing, ty, desc))
+
+
+class TypeError(InternalError):
+    def __init__(self, expected, actual):
+        InternalError.__init__(
+            self, "TypeError expected=%s actual=%s" % (expected, actual))
+
+
+class UnknownMethod(InternalError):
+    def __init__(self, name):
+        InternalError.__init__(self, "Unknown method %s" % name)
+
+
+class ListAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        k = values[0]
+        v = values[1]
+        if ((hasattr(namespace, self.dest)
+             and getattr(namespace, self.dest) is not None)):
+            getattr(namespace, self.dest)[k] = v
+        else:
+            setattr(namespace, self.dest, {k: v})
+|}
+
 let rec lines_of_t t =
   let indent = String.make 4 ' ' in
   match t with
@@ -521,8 +588,6 @@ let commandline_run i (BoxedFunction m) =
 let commandline_of_interface i =
   let open Printf in
   [
-    Line "import argparse, traceback";
-    Line "import xapi";
     Line "";
     Line "";
     Line (sprintf "class %s_commandline():" i.Interface.details.Idl.Interface.name);
@@ -542,7 +607,7 @@ let commandline_of_interface i =
       )
   ]
 
-let of_interfaces i =
+let of_interfaces ?(helpers=inline_defaults) i =
   let open Printf in
   let dispatch_class i comma =
     Line (
@@ -562,14 +627,21 @@ let of_interfaces i =
     [Line ("}")]
   in
   [
-    Line "from xapi import *";
+    Line "import argparse";
+    Line "import json";
     Line "import traceback";
     Line "";
-  ] (* @ (
+  ] @
+  (helpers |> String.split_on_char '\n' |> List.map (fun line -> Line line))
+  (* @ (
         try exn_var i.Interfaces.exn_decls with e -> Printf.fprintf stderr "Error while handling %s" i.Interfaces.name; raise e
-       ) *) @ (
+       ) *)
+  @ (
     List.fold_left (fun acc i -> acc @
-                                 (server_of_interface i) @ (skeleton_of_interface i) @ (test_impl_of_interface i) @ (commandline_of_interface i)
+                                 (server_of_interface i) @
+                                 (skeleton_of_interface i) @
+                                 (test_impl_of_interface i) @
+                                 (commandline_of_interface i)
                    ) [] i.Interfaces.interfaces
   ) @ [
     Line "";
@@ -626,4 +698,4 @@ let of_interfaces i =
             ]
           ]
         ])
-  ] @ (test_impl_of_interfaces i)
+  ] @ (test_impl_of_interfaces i) @ [ Line "" ]
