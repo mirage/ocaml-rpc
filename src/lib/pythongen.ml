@@ -325,13 +325,13 @@ let example_stub_user i (BoxedFunction m) =
   let open Printf in
   [
     Line "";
-    Line "import xmlrpclib";
-    Line "import xapi";
-    Line "from storage import *";
+    Line "# import necessary libraries if needed";
+    Line "# we assume that your library providing the client is called myclient and it provides a connect method";
+    Line "import myclient";
     Line "";
     Line {|if __name__ == "__main__":|};
     Block [
-      Line "c = xapi.connect()";
+      Line "c = myclient.connect()";
       Line (Printf.sprintf "results = c.%s.%s({ %s })" i.Interface.details.Idl.Interface.name m.Method.name
               (String.concat ", " (List.map (fun (Idl.Param.Boxed a) -> 
                    sprintf "%s: %s" (
@@ -350,9 +350,7 @@ let example_skeleton_user i m =
   let open Printf in
   [
     Line "";
-    Line "import xmlrpclib";
-    Line "import xapi";
-    Line "from storage import *";
+    Line "# import additional libraries if needed";
     Line "";
     Line (
       sprintf "class %s_myimplementation(%s_skeleton):"
