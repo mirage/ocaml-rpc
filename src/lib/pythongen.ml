@@ -682,22 +682,18 @@ let of_interfaces ?(helpers=inline_defaults) i =
               Line "raise UnknownMethod(method)"
             ]
             );
+          Line "except Rpc_light_failure as e:";
+          Block [
+            Line {|logging.log("caught %s", e)|};
+            Line "traceback.print_exc()";
+            Line {|logging.log("returning %s", repr(e.failure()))|};
+            Line "return e.failure()"
+          ];
           Line "except Exception as e:";
           Block [
             Line {|logging.log("caught %s", e)|};
             Line "traceback.print_exc()";
-            Line "# pylint: disable=no-member";
-            Line "try:";
-            Block [
-              Line "# A declared (expected) failure will have a .failure() method";
-              Line {|logging.log("returning %s", repr(e.failure()))|};
-              Line "return e.failure()"
-            ];
-            Line "except Exception:";
-            Block [
-              Line "# An undeclared (unexpected) failure is wrapped as InternalError";
-              Line "return (InternalError(str(e)).failure())"
-            ]
+            Line "return (InternalError(str(e)).failure())"
           ]
         ]
       ])
