@@ -686,6 +686,7 @@ let of_interfaces ?(helpers=inline_defaults) i =
           Block [
             Line {|logging.log("caught %s", e)|};
             Line "traceback.print_exc()";
+            Line "# pylint: disable=no-member";
             Line "try:";
             Block [
               Line "# A declared (expected) failure will have a .failure() method";
