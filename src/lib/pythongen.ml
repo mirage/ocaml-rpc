@@ -409,7 +409,7 @@ let server_of_interface i =
             Printf.sprintf "Parameter names requred for python generation (%s)"
               m.Method.name) 
       in
-      [ Line (sprintf {|if not "%s" in args:|} arg_name);
+      [ Line (sprintf {|if "%s" not in args:|} arg_name);
         Block [ Line (
             sprintf "raise UnmarshalException('argument missing', '%s', '')" arg_name
           ) ];
