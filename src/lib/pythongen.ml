@@ -101,11 +101,11 @@ let rec typecheck : type a.a typ -> string -> t list = fun ty v ->
     Line (sprintf {|raise (TypeError("%s", repr(%s)))|} (Rpcmarshal.ocaml_of_t ty) v) in
   let handle_basic b =
     let python_of_basic : type a. a basic -> string = function
-      | Int64  -> "long"
+      | Int64  -> "(int, long)"
       | Int32  -> "int"
       | Int    -> "int"
-      | Char   -> "str"
-      | String -> "str"
+      | Char   -> "(str, unicode)"
+      | String -> "(str, unicode)"
       | Float  -> "float"
       | Bool   -> "bool"
     in
@@ -113,12 +113,8 @@ let rec typecheck : type a.a typ -> string -> t list = fun ty v ->
       Block [ raise_type_error ] ]
   in
   match ty with
-  | Basic Int64 ->
-    [ Line (sprintf "if not isinstance(%s, (int, long)):" v);
-      Block [ raise_type_error ] ]
-  | Basic String ->
-    [ Line (sprintf "if not isinstance(%s, (str, unicode)):" v);
-      Block [ raise_type_error ] ]
+  | Basic Int64 -> handle_basic Int64
+  | Basic String -> handle_basic String
   | Basic Int32 -> handle_basic Int32
   | Basic Int -> handle_basic Int
   | Basic Bool -> handle_basic Bool
