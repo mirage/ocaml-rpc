@@ -114,7 +114,7 @@ let rec typecheck : type a.a typ -> string -> t list = fun ty v ->
   in
   match ty with
   | Basic Int64 ->
-    [ Line (sprintf "if not isinstance(%s, long):" v);
+    [ Line (sprintf "if not isinstance(%s, (int, long)):" v);
       Block [ raise_type_error ] ]
   | Basic String ->
     [ Line (sprintf "if not isinstance(%s, str) and not isinstance(%s, unicode):" v v);
