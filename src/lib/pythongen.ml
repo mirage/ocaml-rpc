@@ -103,7 +103,7 @@ let rec typecheck : type a.a typ -> string -> t list = fun ty v ->
     let python_of_basic : type a. a basic -> string = function
       | Int64  -> "(int, long)"
       | Int32  -> "int"
-      | Int    -> "int"
+      | Int    -> "(int, long)"
       | Char   -> "(str, unicode)"
       | String -> "(str, unicode)"
       | Float  -> "float"
