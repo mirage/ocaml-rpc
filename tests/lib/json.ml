@@ -129,12 +129,12 @@ let v2_failure_bad_message = "{
     \"id\": 0
 }"
 
-let tests1 = [
+let tests_json = [
   "invalid_json", invalid_json, false;
   "valid_json", valid_json, true;
 ]
 
-let tests2 = [
+let tests_call = [
   "v1", v1, true;
   "v1_null_id", v1_null_id, false; (*stricter than the specs*)
   "v1_string_id", v1_string_id, true;
@@ -150,7 +150,7 @@ let tests2 = [
   "v2_bad_jsonrpc", v2_bad_jsonrpc, false;
 ]
 
-let tests3 = [
+let tests_response = [
   "v2_success", v2_success, true;
   "v2_failure", v2_failure, false;
   "v2_mixed", v2_mixed, false;
@@ -161,23 +161,20 @@ let tests3 = [
 ]
 
 let invoke parse_func (test_name, json, pass) =
-  try
-    let _ = parse_func json in
-    Printf.printf "Passed: test %s\n" test_name;
-    true;
-  with e ->
-    if pass then
-      (Printf.printf "Failed: test %s was not supposed to throw a parse failure\n" test_name;
-      false)
-    else
-      (Printf.printf "Passed: test %s threw %s\n" test_name (Printexc.to_string e);
-      true)
+  let run () = parse_func json |> ignore in
+  if pass then
+    Alcotest.(check unit) test_name () (run ())
+  else
+    try
+      run ();
+      Alcotest.failf "test %s did not fail" test_name
+    with e -> Printf.printf "test %s failed as expected: %s\n" test_name (Printexc.to_string e)
 
-let _ =
-  let results1 = tests1 |> List.map (fun x -> invoke Jsonrpc.of_string x) in
-  let results2 = tests2 |> List.map (fun x -> invoke Jsonrpc.call_of_string x) in
-  let results3 = tests3 |> List.map (fun x -> invoke Jsonrpc.response_of_string x) in
-  let failures = results1 @ results2 @ results3 |> List.filter (fun x -> not x) in
-  match failures with
-  | [] -> ()
-  | _ -> failwith (Printf.sprintf "Test failures: %d"  (List.length failures))
+let test tcs unmarshal () =
+  List.iter (invoke unmarshal) tcs
+
+let tests =
+  [ "Jsonrpc.of_string", `Quick, test tests_json Jsonrpc.of_string
+  ; "Jsonrpc.call_of_string", `Quick, test tests_call Jsonrpc.call_of_string
+  ; "Jsonrpc.response_of_string", `Quick, test tests_response Jsonrpc.response_of_string
+  ]

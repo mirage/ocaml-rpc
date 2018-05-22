@@ -1,4 +1,3 @@
-open OUnit
 
 let string_of_err = function | `Msg x -> x
 let rec canonicalise r =
@@ -10,24 +9,23 @@ let rec canonicalise r =
 let check_marshal_unmarshal : 'a * Rpc.t * 'a Rpc.Types.typ -> unit = fun (x,r,typ) ->
   let r' = Rpcmarshal.marshal typ x in
   let x' = Rpcmarshal.unmarshal typ r in
-  (match x' with
-  | Result.Error e -> Printf.printf "\nFound Error when expecting OK: %s\n%!" (string_of_err e)
-  | Result.Ok y -> Printf.printf "\nOK: (%s)\n%!" (Rpcmarshal.marshal typ y |> Rpc.to_string));
-  assert_equal (Result.Ok x) x';
-  if (canonicalise r) <> (canonicalise r') then begin
-    Printf.printf "\nmarshalled stuff is different: r=%s r'=%s\n%!" (Rpc.to_string r) (Rpc.to_string r')
-  end;
-  assert_equal (canonicalise r) (canonicalise r')
+  Alcotest.check (Testable.unmarshal_res typ)
+    "same after marshal->unmarshal"
+    (Result.Ok x) x';
+  Alcotest.check Testable.rpc
+    "marshalled stuff issame as specified rpc after canonicalisation"
+    (canonicalise r) (canonicalise r')
 
 let check_unmarshal_error : 'a Rpc.Types.typ -> Rpc.t -> unit = fun typ t ->
   match Rpcmarshal.unmarshal typ t with
-  | Result.Ok _ -> assert_equal false true
+  | Result.Ok _ -> Alcotest.fail "unmarshal error expected"
   | Result.Error e -> Printf.printf "%s\n" (string_of_err e)
 
 let check_unmarshal_ok : 'a -> 'a Rpc.Types.typ -> Rpc.t -> unit = fun x typ r ->
-  match Rpcmarshal.unmarshal typ r with
-  | Result.Ok x' -> assert_equal x x'
-  | Result.Error _ -> assert_equal false true
+  Alcotest.check (Testable.unmarshal_res typ)
+    "correctly unmarshalled"
+    (Result.Ok x)
+    (Rpcmarshal.unmarshal typ r)
 
 type test_int = int [@@deriving rpcty]
 let test_int () = check_marshal_unmarshal (1, Rpc.Int 1L, typ_of_test_int)
@@ -190,72 +188,67 @@ type test_defaults_var =
   [@@deriving rpcty] [@@default X1]
 
 let test_defaults_var () =
-  assert_equal (Result.Ok X1) (Rpcmarshal.unmarshal typ_of_test_defaults_var (Rpc.String "X3"))
+  Alcotest.check (Testable.unmarshal_res typ_of_test_defaults_var)
+    "Unknown enum correctly unmarshalled into default"
+    (Result.Ok X1) (Rpcmarshal.unmarshal typ_of_test_defaults_var (Rpc.String "X3"))
 
 let test_defaults_bad () =
   match Rpcmarshal.unmarshal typ_of_test_defaults_var (Rpc.Int 3L) with
-  | Ok _ -> assert_failure "Should have had an error"
+  | Ok _ -> Alcotest.fail "Should have had an error"
   | Error _ -> ()
 
-let suite =
-  "basic_tests" >:::
-  [
-    "int" >:: test_int;
-    "int_from_string" >:: test_int_from_string;
-    "bad_int" >:: test_bad_int;
-    "bad_int_string" >:: test_bad_int_string;
-    "int32" >:: test_int32;
-    "int32_from_string" >:: test_int32_from_string;
-    "bad_int32" >:: test_bad_int32;
-    "bad_int32_string" >:: test_bad_int32_string;
-    "int64" >:: test_int64;
-    "int64_from_string" >:: test_int64_from_string;
-    "bad_int64" >:: test_bad_int64;
-    "bad_int64_string" >:: test_bad_int64_string;
-    "unit" >:: test_unit;
-    "bad_unit" >:: test_bad_unit;
-    "string" >:: test_string;
-    "bad_string" >:: test_bad_string;
-    "float" >:: test_float;
-    "float_from_string" >:: test_float_from_string;
-    "bad_float" >:: test_bad_float;
-    "bad_float_string" >:: test_bad_float_string;
-    "bool" >:: test_bool;
-    "bad_bool" >:: test_bad_bool;
-    "char" >:: test_char;
-    "bad_char" >:: test_bad_char;
-    "int list" >:: test_int_list;
-    "int array" >:: test_int_array;
-    "tuple2" >:: test_tuple2;
-    (*    "tuple3" >:: test_tuple3;*)
-    "option" >:: test_option;
-    "option (none)" >:: test_option_none;
-    "bad_option" >:: test_bad_option;
-    "constr" >:: test_constr;
-    "variant" >:: test_variant;
-    "variant1" >:: test_variant1;
-    "variant2" >:: test_variant2;
-    "variant_case" >:: test_variant_case;
-    "variant_name" >:: test_variant_name;
-    "variant_name2" >:: test_variant_name2;
-    "bad_variant_case" >:: test_bad_variant_case;
-    "record" >:: test_record;
-    "record_case" >:: test_record_case;
-    "bad_record" >:: test_bad_record;
-    "record_opt1" >:: test_record_opt1;
-    "record_opt2" >:: test_record_opt2;
-    "record_opt3" >:: test_record_opt3;
-    "record_opt4" >:: test_record_opt4;
-    "record_attrs" >:: test_record_attrs;
-    "poly" >:: test_poly;
-    "fakegen" >:: fakegen;
-    "defaults" >:: test_defaults;
-    "defaults_var" >:: test_defaults_var;
-    "defaults_bad" >:: test_defaults_bad;
-    "dict" >:: test_dict_key;
+let tests =
+  [ "int", `Quick, test_int
+  ; "int_from_string", `Quick, test_int_from_string
+  ; "bad_int", `Quick, test_bad_int
+  ; "bad_int_string", `Quick, test_bad_int_string
+  ; "int32", `Quick, test_int32
+  ; "int32_from_string", `Quick, test_int32_from_string
+  ; "bad_int32", `Quick, test_bad_int32
+  ; "bad_int32_string", `Quick, test_bad_int32_string
+  ; "int64", `Quick, test_int64
+  ; "int64_from_string", `Quick, test_int64_from_string
+  ; "bad_int64", `Quick, test_bad_int64
+  ; "bad_int64_string", `Quick, test_bad_int64_string
+  ; "unit", `Quick, test_unit
+  ; "bad_unit", `Quick, test_bad_unit
+  ; "string", `Quick, test_string
+  ; "bad_string", `Quick, test_bad_string
+  ; "float", `Quick, test_float
+  ; "float_from_string", `Quick, test_float_from_string
+  ; "bad_float", `Quick, test_bad_float
+  ; "bad_float_string", `Quick, test_bad_float_string
+  ; "bool", `Quick, test_bool
+  ; "bad_bool", `Quick, test_bad_bool
+  ; "char", `Quick, test_char
+  ; "bad_char", `Quick, test_bad_char
+  ; "int list", `Quick, test_int_list
+  ; "int array", `Quick, test_int_array
+  ; "tuple2", `Quick, test_tuple2
+    (*    "tuple3", `Quick, test_tuple3;*)
+  ; "option", `Quick, test_option
+  ; "option (none)", `Quick, test_option_none
+  ; "bad_option", `Quick, test_bad_option
+  ; "constr", `Quick, test_constr
+  ; "variant", `Quick, test_variant
+  ; "variant1", `Quick, test_variant1
+  ; "variant2", `Quick, test_variant2
+  ; "variant_case", `Quick, test_variant_case
+  ; "variant_name", `Quick, test_variant_name
+  ; "variant_name2", `Quick, test_variant_name2
+  ; "bad_variant_case", `Quick, test_bad_variant_case
+  ; "record", `Quick, test_record
+  ; "record_case", `Quick, test_record_case
+  ; "bad_record", `Quick, test_bad_record
+  ; "record_opt1", `Quick, test_record_opt1
+  ; "record_opt2", `Quick, test_record_opt2
+  ; "record_opt3", `Quick, test_record_opt3
+  ; "record_opt4", `Quick, test_record_opt4
+  ; "record_attrs", `Quick, test_record_attrs
+  ; "poly", `Quick, test_poly
+  ; "fakegen", `Quick, fakegen
+  ; "defaults", `Quick, test_defaults
+  ; "defaults_var", `Quick, test_defaults_var
+  ; "defaults_bad", `Quick, test_defaults_bad
+  ; "dict", `Quick, test_dict_key
   ]
-
-let _ =
-  Random.self_init ();
-  let results = run_test_tt_main suite in
-  if List.exists (function | RSuccess _ -> false | _ -> true) results then exit 1

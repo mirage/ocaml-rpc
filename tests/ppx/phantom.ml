@@ -19,7 +19,7 @@ end
 type x = [`foo] Q.t [@@deriving rpc]
 type y = [`bar] Q.t [@@deriving rpc]
 
-let _ =
+let run () =
   let p : [`p] P.t = P.of_string "foo" in
   let q : [`q] P.t = P.of_string "foo" in
   let x : x = P.of_string "foo" in
@@ -40,3 +40,5 @@ let _ =
   Printf.printf "x=%s\n" (Xmlrpc.to_string x_rpc);
   Printf.printf "y=%s\n" (Xmlrpc.to_string y_rpc)
 
+let tests =
+  [ "test", `Quick, run ]
