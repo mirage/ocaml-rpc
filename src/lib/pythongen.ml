@@ -70,8 +70,8 @@ class ListAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         k = values[0]
         v = values[1]
-        if ((hasattr(namespace, self.dest)
-             and getattr(namespace, self.dest) is not None)):
+        if ((hasattr(namespace, self.dest) and
+                getattr(namespace, self.dest) is not None)):
             getattr(namespace, self.dest)[k] = v
         else:
             setattr(namespace, self.dest, {k: v})|}
@@ -457,7 +457,7 @@ let server_of_interface i =
     ] in
   let dispatch_method (BoxedFunction m) comma =
     Line (
-      sprintf {|  "%s.%s": self.%s%s|}
+      sprintf {|    "%s.%s": self.%s%s|}
         i.Interface.details.Idl.Interface.name m.Method.name m.Method.name comma
     )
   in
@@ -621,7 +621,7 @@ let of_interfaces ?(helpers=inline_defaults) i =
   let open Printf in
   let dispatch_class i comma =
     Line (
-      sprintf {|  "%s": self.%s._dispatch%s|}
+      sprintf {|    "%s": self.%s._dispatch%s|}
         i.Interface.details.Idl.Interface.name i.Interface.details.Idl.Interface.name comma
     )
   in
