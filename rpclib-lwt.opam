@@ -8,8 +8,12 @@ tags: [
   "org:mirage"
   "org:xapi-project"
 ]
+build-test: [
+    ["jbuilder" "runtest" "-p" name]
+]
 build: [["jbuilder" "build" "-p" name "-j" jobs]]
 depends: [
+  "alcotest" {test}
   "jbuilder" {build}
   "rpclib"
   "lwt"

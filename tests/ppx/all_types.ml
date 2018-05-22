@@ -35,7 +35,13 @@ type 'a x = {
   progress: int array;
 } [@@deriving rpc]
 
-let _ =
+module Testable = struct
+  let x = Testable.from_rpc_of_t (rpc_of_x M.rpc_of_m)
+  let call = Testable.from_to_string Rpc.string_of_call
+  let response = Testable.from_to_string Rpc.string_of_response
+end
+
+let run () =
   let x = {
     foo= Foo 3;
     bar= "ha          ha";
@@ -70,8 +76,8 @@ let _ =
   let x_xml = x_of_rpc (Xmlrpc.of_string ~callback rpc_xml) in
   let x_json = x_of_rpc (Jsonrpc.of_string rpc_json) in
 
-  Printf.printf "\n==Sanity check 1==\nx=x_xml: %b\nx=x_json: %b\n" (x = x_xml) (x = x_json);
-  assert (x = x_xml && x = x_json);
+  Alcotest.(check Testable.x) "Sanity check x=x_xml" x x_xml;
+  Alcotest.(check Testable.x) "Sanity check x=x_json" x x_json;
 
   (* Testing calls and responses *)
 
@@ -102,14 +108,17 @@ let _ =
   let f1 = x_of_rpc failure.Rpc.contents in
   let f2 = x_of_rpc f_xml.Rpc.contents in
 
-  Printf.printf "\n==Sanity check 2==\nc1=c2: %b\ns1=s2: %b\nf1=f2: %b\n"
-    (c1 = c2) (s1 = s2) (f1 = f2);
-  assert (c1 = c2 && s1 = s2 && f1 = f2);
+  Alcotest.(check Testable.x) "Sanity check c1=c2" c1 c2;
+  Alcotest.(check Testable.x) "Sanity check s1=s2" s1 s2;
+  Alcotest.(check Testable.x) "Sanity check f1=f2" f1 f2;
 
   let c_json = Jsonrpc.call_of_string c_json_str in
   let s_json = Jsonrpc.response_of_string s_json_str in
   let f_json = Jsonrpc.response_of_string f_json_str in
 
-  Printf.printf "\n==Sanity check 3==\ncall=c_json': %b\nsuccess=s_json': %b\nfailure=f_json': %b\n"
-    (call = c_json) (success = s_json) (failure = f_json);
-  assert (call = c_json && success = s_json && failure = f_json)
+  Alcotest.(check Testable.call) "Sanity check call=c_json" call c_json;
+  Alcotest.(check Testable.response) "Sanity check success=s_json" success s_json;
+  Alcotest.(check Testable.response) "Sanity check failure=f_json" failure f_json
+
+let tests =
+  [ "test", `Quick, run ]

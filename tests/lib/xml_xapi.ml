@@ -121,7 +121,7 @@ let sm =
 
 let empty = "<value></value>"
 
-let _ =
+let run () =
   Printf.printf "Parsing SM XML ... %!";
   let _ = Xmlrpc.response_of_string sm in
 
@@ -138,3 +138,7 @@ let _ =
   let _ = Xmlrpc.call_of_string array_call in
 
   Printf.printf "OK\n%!"
+
+let tests =
+  [ "Xapi XML tests", `Quick, run
+  ]
