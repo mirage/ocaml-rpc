@@ -16,10 +16,8 @@ depends: [
     "rpclib"
     "rpclib-async"
     "rpclib-lwt"
-    "rpclib-html"
     "ppx_deriving_rpc"
     "async" {>= "v0.9.0" & <= "v0.11.0"}
-    "cow"
     "lwt"
     "alcotest" {test}
     "alcotest-lwt" {test}
