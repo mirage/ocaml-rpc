@@ -1,3 +1,13 @@
+5.1.0 (May 2018)
+- Lint generated Python code in unit test
+- Reorganize tests & convert to alcotest
+- markdowngen: show content of structs and variants in the documentation
+- drop support for ocaml 4.03.0
+- pythongen: generate pythonic code that passes linting
+- pythongen: introduce an optional helpers field to inject custom versions of helpers
+- pythongen: use a dictionary lookup for the dispatchers
+- pythongen: display method description for methods
+
 5.0.0 (May 2018)
 * camlp4: delete as it is moved in ocaml-rpc-legacy
 * port to jbuilder, and splut the library into
