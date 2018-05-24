@@ -31,18 +31,8 @@ let rec string_of_t : type a.a typ -> string list =
   function
   | Basic b -> print (of_basic b)
   | DateTime -> print (of_basic String)
-  | Struct { fields } ->
-    let member boxed_field =
-      let BoxedField f = boxed_field in
-      Printf.sprintf {|"%s": %s|} f.fname (String.concat "" @@ string_of_t f.field)
-    in
-    print (Printf.sprintf "struct { %s }" (String.concat ", " (List.map member fields)))
-  | Variant v ->
-    let member boxed_tag =
-      let BoxedTag t = boxed_tag in
-      Printf.sprintf "%s" t.tname
-    in
-    print (Printf.sprintf "variant { %s }" (String.concat ", " (List.map member v.variants)))
+  | Struct { sname; _ } -> print (sname)
+  | Variant { vname; _ } -> print (vname)
   | Array t -> string_of_t t @ (print " list")
   | List t -> string_of_t t @ (print " list")
   | Dict (key, v) -> print (Printf.sprintf "(%s * " (of_basic key)) @ (string_of_t v) @ (print ") list");
@@ -50,6 +40,11 @@ let rec string_of_t : type a.a typ -> string list =
   | Option x -> string_of_t x @ (print " option")
   | Tuple (a, b) -> string_of_t a @ (print " * ") @ (string_of_t b)
   | Abstract a -> print "<abstract>"
+
+let definition_of_t : type a.a typ -> string list = function
+  | Struct _ -> ["struct { ... }"]
+  | Variant _ -> ["variant { ... }"]
+  | ty -> string_of_t ty
 
 let rec ocaml_patt_of_t : type a. a typ -> string = fun ty ->
   let of_basic : type b.b basic -> string = function
@@ -152,16 +147,17 @@ let of_variant_tags : 'a boxed_tag list -> string list = fun all ->
 let of_type_decl i_opt ((BoxedDef t) as t') =
   if List.mem t' default_types then [] else
     let name = t.name in
-    let defn = String.concat "" (string_of_t t.ty) in
     let description = String.concat " " t.description in
     let header = [ Printf.sprintf "### %s" name ]
     in
     let example_tys = Rpc_genfake.genall 0 name t.ty in
     let marshalled = List.map (fun example -> Rpcmarshal.marshal t.ty example) example_tys in
     let example = "```json" :: (List.map (fun x -> Jsonrpc.to_string x |> Yojson.Basic.from_string |> Yojson.Basic.pretty_to_string) marshalled) @  ["```"] in
-    let definition = [
-      Printf.sprintf "type `%s` = `%s`" name defn;
-      description ]
+    let definition =
+      let defn = String.concat "" (definition_of_t t.ty) in
+      [ Printf.sprintf "type `%s` = `%s`" name defn
+      ; description
+      ]
     in
     let rest = match t.ty with
       | Struct structure -> h4 "Members" @ of_struct_fields structure.fields
@@ -280,13 +276,56 @@ let of_method namespace is i (Codegen.BoxedFunction m) =
       List.map (fun p -> (true,p)) Method.(find_inputs m.ty) @
       [ (false, Method.(find_output m.ty)) ]))
 
-let all_errors is i =
+let all_errors i =
   let errors = List.map (function (BoxedFunction m) -> Codegen.Method.find_errors m.Codegen.Method.ty) i.Interface.methods in
   let rec uniq acc errors =
     match errors with
     | e::es -> if List.mem e acc then uniq acc es else uniq (e::acc) es
     | [] -> List.rev acc
   in uniq [] errors
+
+(** We need to box the types to be able see if they are equal in [expand_types] *)
+type boxed_type = BoxedType : 'a typ -> boxed_type
+
+(** We also document the nested types that contain useful documentation *)
+let expand_types is =
+  (* These are the types that are helpful to document in the markdown *)
+  let doc = function
+    | Struct { sname; _ } as ty -> Some { name = sname; description = []; ty }
+    | Variant { vname; _ } as ty -> Some { name = vname; description = []; ty }
+    | _ -> None
+  in
+  let rec expand : type a. a typ -> boxed_def list = fun ty ->
+    let defs = match ty with
+      | Array ty -> expand ty
+      | List ty -> expand ty
+      | Dict (_, ty) -> expand ty
+      | Option ty -> expand ty
+      | Tuple (ty1, ty2) -> (expand ty1) @ (expand ty2)
+      | Struct { fields; _ } -> List.map (function BoxedField field -> expand field.field) fields |> List.flatten
+      | Variant { variants; _ } -> List.map (function BoxedTag tag -> expand tag.tcontents) variants |> List.flatten
+      | _ -> []
+    in
+    match doc ty with
+    | Some def -> defs @ [BoxedDef def]
+    | None -> defs
+  in
+  let same (BoxedDef def) (BoxedDef def') =
+    def'.name = def.name || (BoxedType def'.ty) = (BoxedType def.ty)
+  in
+  (* The expanded types will be grouped together before the parameter they were
+     expanded from, with later ones referencing earlier ones. The ones
+     already documented earlier won't be repeated. *)
+  List.fold_left
+    (fun documented_defs (BoxedDef { ty; _ } as def) ->
+       let expanded =
+         expand ty |> List.filter (fun d -> not (same d def))
+       in
+       let not_documented d = not (List.exists (same d) documented_defs) in
+       documented_defs @ (List.filter not_documented (expanded @ [def]))
+    )
+    []
+    is.Interfaces.type_decls
 
 
 let of_interface is i =
@@ -302,9 +341,9 @@ let of_interfaces x =
   h1 name @
   [ description ] @
   h2 "Type definitions" @
-  List.concat (List.map (of_type_decl None) x.Interfaces.type_decls) @
+  List.concat (List.map (of_type_decl None) (expand_types x)) @
   List.concat (List.map (of_interface x) x.Interfaces.interfaces) @
   h2 "Errors" @
-  List.concat (List.map (of_type_decl None) (List.flatten (List.map (all_errors x) x.Interfaces.interfaces)))
+  List.concat (List.map (of_type_decl None) (List.flatten (List.map all_errors x.Interfaces.interfaces)))
 
 let to_string x = String.concat "\n" (of_interfaces x)
