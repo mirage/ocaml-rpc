@@ -1,4 +1,11 @@
 (library
+ ((name internals)
+  (public_name rpclib.internals)
+  (modules (internals))
+  (wrapped false)
+ ))
+
+(library
  ((name rpclib_core)
   (public_name rpclib.core)
   (modules (rpc idl rpcmarshal pythongen codegen rpc_genfake))
@@ -11,7 +18,8 @@
  ((name xml)
   (public_name rpclib.xml)
   (modules (xmlrpc))
-  (libraries (rpclib.core 
+  (libraries (internals
+              rpclib.core
               xmlm))
   (wrapped false)
  ))

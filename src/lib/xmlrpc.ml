@@ -25,9 +25,8 @@ let debug (fmt: ('a, unit, string, unit) format4) : 'a =
 (* marshalling/unmarshalling code *)
 
 (* The XML-RPC is not very clear about what characters can be in a string value ... *)
-let encode s =
-  let n = String.length s in
-  let aux = function
+let encode =
+  let translate = function
     | '>'    -> Some "&gt;"
     | '<'    -> Some "&lt;"
     | '&'    -> Some "&amp;"
@@ -35,29 +34,7 @@ let encode s =
     | c when (c >= '\x20' && c <= '\xff') || c = '\x09' || c = '\x0a' || c = '\x0d'
       -> None
     | _      -> Some "" in
-  let need_encoding =
-    let b = ref false in
-    let i = ref 0 in
-    while not !b && !i < n do
-      b := aux s.[ !i ] <> None;
-      incr i;
-    done;
-    !b in
-  if need_encoding then begin
-    let buf = Buffer.create 0 in
-    let m = ref 0 in
-    for i = 0 to n-1 do
-      match aux s.[i] with
-      | None   -> ()
-      | Some n ->
-        Buffer.add_substring buf s !m (i - !m);
-        Buffer.add_string buf n;
-        m := i + 1
-    done;
-    Buffer.add_substring buf s !m (n - !m);
-    Buffer.contents buf
-  end else
-    s
+  Internals.encode translate
 
 let rec add_value f = function
   | Null ->

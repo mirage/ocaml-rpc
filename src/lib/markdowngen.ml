@@ -2,20 +2,21 @@ open Rpc.Types
 open Idl
 open Codegen
 
-let pretty_xml str =
-  let ob = Buffer.create (2 * String.length str) in
-  let i = Xmlm.make_input (`String (0,str)) in
-  let o = Xmlm.make_output  ~nl:true ~indent:(Some 2) (`Buffer ob) in
-  let rec pull i o depth =
-    Xmlm.output o (Xmlm.peek i);
-    match Xmlm.input i with
-    | `El_start _ -> pull i o (depth + 1)
-    | `El_end -> if depth = 1 then () else pull i o (depth - 1)
-    | `Data _ -> pull i o depth
-    | `Dtd _ -> pull i o depth
+let get_description desc =
+  let escape =
+    let translate = function
+      (* Escape special XML (and HTML) chars that might become tags *)
+      | '<' -> Some "&lt;"
+      | '>' -> Some "&gt;"
+      | '&' -> Some "&amp;"
+      (* Escape some special markdown chars - these are not part of ocamldoc markup language *)
+      | '*' | '_' | '[' | ']' | '(' | ')' | '#' | '!' as c ->
+        Some ("\\" ^ (String.make 1 c))
+      | _ -> None
+    in
+    Internals.encode translate
   in
-  pull i o 0;
-  Buffer.contents ob
+  String.concat " " desc |> escape
 
 let rec string_of_t : type a.a typ -> string list =
   let of_basic : type b.b basic -> string = function
@@ -125,7 +126,7 @@ let of_args args =
       let name = match arg.Param.name with Some s -> s | None -> "unnamed" in
       let direction = if is_in then "in" else "out" in
       let ty = arg.Param.typedef.name in
-      let description = String.concat " " arg.Param.description in
+      let description = get_description arg.Param.description in
       [name; direction; ty; description]
   in
   table ["Name"; "Direction"; "Type"; "Description"] (List.filter (fun l -> List.length l > 0) (List.map row_of_arg args))
@@ -133,21 +134,20 @@ let of_args args =
 let of_struct_fields : 'a boxed_field list -> string list = fun all ->
   let of_row (BoxedField f) =
     let ty = string_of_t f.field in
-    [f.fname; String.concat "" ty; String.concat " " f.fdescription]
+    [f.fname; String.concat "" ty; get_description f.fdescription]
   in
   table ["Name"; "Type"; "Description"] (List.map of_row all)
 
 let of_variant_tags : 'a boxed_tag list -> string list = fun all ->
   let of_row (BoxedTag t) =
     let ty = string_of_t t.tcontents in
-    [t.tname; String.concat "" ty; String.concat " " t.tdescription]
+    [t.tname; String.concat "" ty; get_description t.tdescription]
   in
   table ["Name"; "Type"; "Description"] (List.map of_row all)
 
 let of_type_decl i_opt ((BoxedDef t) as t') =
   if List.mem t' default_types then [] else
     let name = t.name in
-    let description = String.concat " " t.description in
     let header = [ Printf.sprintf "### %s" name ]
     in
     let example_tys = Rpc_genfake.genall 0 name t.ty in
@@ -155,6 +155,7 @@ let of_type_decl i_opt ((BoxedDef t) as t') =
     let example = "```json" :: (List.map (fun x -> Jsonrpc.to_string x |> Yojson.Basic.from_string |> Yojson.Basic.pretty_to_string) marshalled) @  ["```"] in
     let definition =
       let defn = String.concat "" (definition_of_t t.ty) in
+      let description = get_description t.description in
       [ Printf.sprintf "type `%s` = `%s`" name defn
       ; description
       ]
@@ -269,7 +270,7 @@ let tabs_of namespace is i m =
 
 let of_method namespace is i (Codegen.BoxedFunction m) =
   let name = m.Method.name in
-  let description = String.concat " " m.Method.description in
+  let description = get_description m.Method.description in
   h2 (Printf.sprintf "Method: `%s`" name) @
   [ description ] @ [""] @ (tabs_of namespace is i (Codegen.BoxedFunction m)) @ [""] @
   (of_args (
@@ -331,13 +332,13 @@ let expand_types is =
 let of_interface is i =
   let name = i.Interface.details.Idl.Interface.name in
   let namespace = i.Interface.details.Idl.Interface.namespace in
-  let description = String.concat " " i.Interface.details.Idl.Interface.description in
+  let description = get_description i.Interface.details.Idl.Interface.description in
   h2 (Printf.sprintf "Interface: `%s`" name) @ [ description ] @ List.concat (List.map (of_method namespace is i) i.Interface.methods)
 
 
 let of_interfaces x =
   let name = x.Interfaces.name in
-  let description = String.concat " " x.Interfaces.description in
+  let description = get_description x.Interfaces.description in
   h1 name @
   [ description ] @
   h2 "Type definitions" @
