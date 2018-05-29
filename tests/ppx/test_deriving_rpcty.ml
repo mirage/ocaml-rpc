@@ -117,11 +117,12 @@ let test_variant_name2 () =
 type test_record = {
   fiEld1 : int;
   fiEld2 : string;
+  fiEld3 : bool;
 } [@@deriving rpcty]
 let test_record () =
-  check_marshal_unmarshal ({fiEld1=7; fiEld2="banana"}, Rpc.Dict ["fiEld1",Rpc.Int 7L; "fiEld2",Rpc.String "banana"], typ_of_test_record)
+  check_marshal_unmarshal ({fiEld1=7; fiEld2="banana"; fiEld3=false}, Rpc.Dict ["fiEld1",Rpc.Int 7L; "fiEld2",Rpc.String "banana"; "fiEld3",Rpc.Bool false], typ_of_test_record)
 let test_record_case () =
-  check_unmarshal_ok {fiEld1=7; fiEld2="banana"} typ_of_test_record (Rpc.Dict ["field1",Rpc.Int 7L; "FIELD2",Rpc.String "banana"])
+  check_unmarshal_ok {fiEld1=7; fiEld2="banana"; fiEld3=false} typ_of_test_record (Rpc.Dict ["field1",Rpc.Int 7L; "FIELD2",Rpc.String "banana"; "Field3",Rpc.Bool false])
 let test_bad_record () =
   check_unmarshal_error typ_of_test_record (Rpc.Dict ["field1",Rpc.Int 7L;])
 
@@ -143,6 +144,12 @@ type test_record_attrs = {
 } [@@deriving rpcty]
 let test_record_attrs () =
   check_marshal_unmarshal ({field5=6}, Rpc.Dict ["foo", Rpc.Int 6L], typ_of_test_record_attrs)
+
+type test_record_one_field = {
+  field : bool
+} [@@deriving rpcty]
+let test_record_one_field () =
+  check_marshal_unmarshal ({field=true}, Rpc.Dict ["field", Rpc.Bool true], typ_of_test_record_one_field)
 
 type key = string [@@deriving rpcty]
 type test_dict_key = (key * int) list [@@deriving rpcty]
@@ -245,6 +252,7 @@ let tests =
   ; "record_opt3", `Quick, test_record_opt3
   ; "record_opt4", `Quick, test_record_opt4
   ; "record_attrs", `Quick, test_record_attrs
+  ; "record_one_field", `Quick, test_record_one_field
   ; "poly", `Quick, test_poly
   ; "fakegen", `Quick, fakegen
   ; "defaults", `Quick, test_defaults

@@ -124,12 +124,13 @@ module Typ_of = struct
         [ Vb.mk (pvar typ_of_lid) (polymorphize (expr_of_typ manifest))]
       | Ptype_record labels, _ ->
         let fields =
+          let one_field = match labels with [_] -> true | _ -> false in
           labels |> List.map (fun { pld_name = { txt = fname }; pld_type; pld_attributes } ->
               let rpc_name = attr_key fname pld_attributes in
               let default = attr_default pld_attributes in
               let field_name = String.concat "_" [name; fname] in
               let fget = [%expr fun _r -> [%e Exp.field (evar "_r") (mknoloc (Lident fname)) ] ] in
-              let fset = [%expr fun v s -> [%e record [fname, [%expr v]] ~over:([%expr s])]] in
+              let fset = [%expr fun v s -> [%e record [fname, [%expr v]] ?over:(if one_field then None else Some ([%expr s]))]] in
               (fname,
                rpc_name,
                field_name,
