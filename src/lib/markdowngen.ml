@@ -285,9 +285,6 @@ let all_errors i =
     | [] -> List.rev acc
   in uniq [] errors
 
-(** We need to box the types to be able see if they are equal in [expand_types] *)
-type boxed_type = BoxedType : 'a typ -> boxed_type
-
 (** We also document the nested types that contain useful documentation *)
 let expand_types is =
   (* These are the types that are helpful to document in the markdown *)
@@ -296,7 +293,8 @@ let expand_types is =
     | Variant { vname; _ } as ty -> Some { name = vname; description = []; ty }
     | _ -> None
   in
-  let rec expand : type a. a typ -> boxed_def list = fun ty ->
+  let rec expand : type a. bool -> a typ -> boxed_def list = fun documented ty ->
+    let expand ty = expand false ty in
     let defs = match ty with
       | Array ty -> expand ty
       | List ty -> expand ty
@@ -307,20 +305,19 @@ let expand_types is =
       | Variant { variants; _ } -> List.map (function BoxedTag tag -> expand tag.tcontents) variants |> List.flatten
       | _ -> []
     in
-    match doc ty with
-    | Some def -> defs @ [BoxedDef def]
-    | None -> defs
+    match documented, doc ty with
+    | false, Some def -> defs @ [BoxedDef def]
+    | _ -> defs
   in
-  let same (BoxedDef def) (BoxedDef def') =
-    def'.name = def.name || (BoxedType def'.ty) = (BoxedType def.ty)
-  in
+  let same (BoxedDef def) (BoxedDef def') = def'.name = def.name in
   (* The expanded types will be grouped together before the parameter they were
      expanded from, with later ones referencing earlier ones. The ones
      already documented earlier won't be repeated. *)
   List.fold_left
     (fun documented_defs (BoxedDef { ty; _ } as def) ->
        let expanded =
-         expand ty |> List.filter (fun d -> not (same d def))
+         (* Each function parameter we expand is already documented *)
+         expand true ty |> List.filter (fun d -> not (same d def))
        in
        let not_documented d = not (List.exists (same d) documented_defs) in
        documented_defs @ (List.filter not_documented (expanded @ [def]))
