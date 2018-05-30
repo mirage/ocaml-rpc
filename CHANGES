@@ -1,8 +1,10 @@
-5.3.0 (May 2018) -- rpclib only
-* rpcty ppx: Avoid warning 23: "with clause is useless"
-* markdowngen:
-  - document params with same types but different defs
-  - escape special HTML and markdown chars
+5.3.0 (May 2018)
+* ppx_deriving_rpc:
+  - rpcty ppx: Avoid warning 23: "with clause is useless"
+* rpclib:
+  - markdowngen:
+    - document params with same types but different defs
+    - escape special HTML and markdown chars
 
 5.2.0 (May 2018) -- rpclib only
 - markdowngen: document nested variants and structs
