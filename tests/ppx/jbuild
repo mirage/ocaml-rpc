@@ -1,5 +1,6 @@
 (executable
  ((name suite)
+  (flags (:standard -warn-error +a))
   (libraries (
      alcotest
      ppx_deriving
