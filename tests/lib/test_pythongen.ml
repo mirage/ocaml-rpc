@@ -10,6 +10,14 @@ module Interface(R : Idl.RPC) = struct
       ["Add two numbers"]
       (int_p_named_1 @-> int_p_named_2 @-> returning int_p_result Idl.DefaultError.err)
 
+  let bool_p_named_1 = Idl.Param.mk ~name:"bool1" ~description:["first bool param"] Rpc.Types.bool
+  let bool_p_named_2 = Idl.Param.mk ~name:"bool2" ~description:["second bool param"] Rpc.Types.bool
+  let bool_p_result = Idl.Param.mk ~description:["bool result"] Rpc.Types.bool
+
+  let _land = R.declare "land"
+      ["Logical and"]
+      (bool_p_named_1 @-> bool_p_named_2 @-> returning bool_p_result Idl.DefaultError.err)
+
   let implementation = implement
       { Idl.Interface.name = "Calc"; namespace = Some "Calc"; description = ["interface"]; version = (1,0,0) }
 end
@@ -33,7 +41,7 @@ let run_linters file =
   run "pylint should exit with 0" ("pylint --errors-only " ^ file);
   run "pycodestyle should exit with 0" ("pycodestyle --ignore=E501 " ^ file)
 
-let file = "bindings.py"
+let file = "python/bindings.py"
 
 let lint_bindings () =
   gen_python file;
@@ -49,10 +57,15 @@ let test_commandline () =
     close_in inp;
     l |> String.trim
   in
-  let n = run "python calc.py 4 5" in
+  let n = run "python python/Calc.add 4 5" in
   Alcotest.(check string) "Calc.add with parameters passed on the command line" "9" n;
-  let n = run ~input:{|{"int1":3,"int2":2}|} "python calc.py --json" in
-  Alcotest.(check string) "Calc.add with parameters passed to stdin as JSON" "5" n
+  let n = run ~input:{|{"int1":3,"int2":2}|} "python python/Calc.add --json" in
+  Alcotest.(check string) "Calc.add with parameters passed to stdin as JSON" "5" n;
+
+  let b = run "python python/Calc.land false true" in
+  Alcotest.(check string) "Calc.land with parameters passed on the command line" "false" b;
+  let b = run ~input:{|{"bool1":true,"bool2":true}|} "python python/Calc.land --json" in
+  Alcotest.(check string) "Calc.land with parameters passed to stdin as JSON" "true" b
 
 let tests =
   [ "Check generated test interface bindings with pylint & pycodestyle", `Slow, lint_bindings
