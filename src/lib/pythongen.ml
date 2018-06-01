@@ -565,7 +565,7 @@ let commandline_parse i (BoxedFunction m) =
                   (match a.Idl.Param.typedef.ty with
                    | Basic Int -> ", type=long" | Basic Int64 -> ", type=long"
                    | Basic Int32 -> ", type=int"
-                   | Basic Bool -> ", type=bool"
+                   | Basic Bool -> ", type=lambda x: json.loads(x.lower())"
                    | Basic Float -> ", type=float"
                    | _ -> "")
               )
