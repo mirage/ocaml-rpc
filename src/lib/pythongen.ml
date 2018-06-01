@@ -300,8 +300,7 @@ let skeleton_method unimplemented i (BoxedFunction m) =
     let value = value_of a.Idl.Param.typedef.ty in
     match a.Idl.Param.typedef.ty, a.Idl.Param.name with
     | Unit, _ -> []
-    | _, Some n -> [ Line (sprintf {|result["%s"] = %s|} n value) ]
-    | _, _ -> [Line (sprintf "result = %s" value)]
+    | _, _ -> [Line (sprintf "return %s" value)]
   in
 
   [
@@ -324,13 +323,7 @@ let skeleton_method unimplemented i (BoxedFunction m) =
             sprintf {|raise Unimplemented("%s.%s")|}
               i.Interface.details.Idl.Interface.name m.Method.name
           ) ]
-        else ([
-            Line "result = {}";
-          ] @ (
-              output_py output
-            ) @ [
-              Line "return result"
-            ])
+        else (output_py output)
       ))
   ]
 
@@ -559,8 +552,15 @@ let commandline_parse i (BoxedFunction m) =
               )
             | _ ->
               Line (
-                sprintf "parser.add_argument('%s', action='store', help='%s')"
-                  name (String.concat " " a.Idl.Param.description)
+                sprintf "parser.add_argument('%s', action='store', help='%s'%s)"
+                  name
+                  (String.concat " " a.Idl.Param.description)
+                  (match a.Idl.Param.typedef.ty with
+                   | Basic Int -> ", type=long" | Basic Int64 -> ", type=long"
+                   | Basic Int32 -> ", type=int"
+                   | Basic Bool -> ", type=lambda x: json.loads(x.lower())"
+                   | Basic Float -> ", type=float"
+                   | _ -> "")
               )
           ) inputs
       ) @ [
