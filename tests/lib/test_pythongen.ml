@@ -41,33 +41,42 @@ let run_linters file =
   run "pylint should exit with 0" ("pylint --errors-only " ^ file);
   run "pycodestyle should exit with 0" ("pycodestyle --ignore=E501 " ^ file)
 
-let file = "python/bindings.py"
-
 let lint_bindings () =
+  let file = "python/bindings.py" in
   gen_python file;
   run_linters file
 
+let run ?input cmd =
+  let inp, out = Unix.open_process cmd in
+  begin match input with Some input -> output_string out input | None -> () end;
+  close_out out;
+  let l = input_line inp in
+  close_in inp;
+  l |> String.trim
+
 let test_commandline () =
-  gen_python file;
-  let run ?input cmd =
-    let inp, out = Unix.open_process cmd in
-    begin match input with Some input -> output_string out input | None -> () end;
-    close_out out;
-    let l = input_line inp in
-    close_in inp;
-    l |> String.trim
-  in
-  let n = run "python python/Calc.add 4 5" in
+  gen_python "python/calc_impl/bindings.py";
+  let run ?input cmd = run ?input ("python python/calc_impl/" ^ cmd) in
+  let n = run "Calc.add 4 5" in
   Alcotest.(check string) "Calc.add with parameters passed on the command line" "9" n;
-  let n = run ~input:{|{"int1":3,"int2":2}|} "python python/Calc.add --json" in
+  let n = run ~input:{|{"int1":3,"int2":2}|} "Calc.add --json" in
   Alcotest.(check string) "Calc.add with parameters passed to stdin as JSON" "5" n;
 
-  let b = run "python python/Calc.land false true" in
+  let b = run "Calc.land false true" in
   Alcotest.(check string) "Calc.land with parameters passed on the command line" "false" b;
-  let b = run ~input:{|{"bool1":true,"bool2":true}|} "python python/Calc.land --json" in
+  let b = run ~input:{|{"bool1":true,"bool2":true}|} "Calc.land --json" in
   Alcotest.(check string) "Calc.land with parameters passed to stdin as JSON" "true" b
+
+let check_test_class () =
+  gen_python "python/calc_test/bindings.py";
+  let run ?input cmd = run ?input ("python python/calc_test/" ^ cmd) in
+  run "Calc.add 4 5" |> ignore;
+  run ~input:{|{"int1":3,"int2":2}|} "Calc.add --json" |> ignore;
+  run "Calc.land false true" |> ignore;
+  run ~input:{|{"bool1":true,"bool2":true}|} "Calc.land --json" |> ignore
 
 let tests =
   [ "Check generated test interface bindings with pylint & pycodestyle", `Slow, lint_bindings
   ; "Check generated commandline bindings", `Slow, test_commandline
+  ; "Check generated test class with commandline bindings", `Slow, check_test_class
   ]
