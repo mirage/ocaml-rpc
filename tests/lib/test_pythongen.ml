@@ -18,6 +18,12 @@ module Interface(R : Idl.RPC) = struct
       ["Logical and"]
       (bool_p_named_1 @-> bool_p_named_2 @-> returning bool_p_result Idl.DefaultError.err)
 
+  let unit_p = Idl.Param.mk Rpc.Types.unit
+
+  let noop = R.declare "noop"
+      ["Do nothing"]
+      (bool_p_named_1 @-> returning unit_p Idl.DefaultError.err)
+
   let implementation = implement
       { Idl.Interface.name = "Calc"; namespace = Some "Calc"; description = ["interface"]; version = (1,0,0) }
 end
@@ -65,7 +71,12 @@ let test_commandline () =
   let b = run "Calc.land false true" in
   Alcotest.(check string) "Calc.land with parameters passed on the command line" "false" b;
   let b = run ~input:{|{"bool1":true,"bool2":true}|} "Calc.land --json" in
-  Alcotest.(check string) "Calc.land with parameters passed to stdin as JSON" "true" b
+  Alcotest.(check string) "Calc.land with parameters passed to stdin as JSON" "true" b;
+
+  let b = run "Calc.noop false" in
+  Alcotest.(check string) "Calc.noop with parameters passed on the command line" "null" b;
+  let b = run ~input:{|{"bool1":true}|} "Calc.noop --json" in
+  Alcotest.(check string) "Calc.noop with parameters passed to stdin as JSON" "null" b
 
 let check_test_class () =
   gen_python "python/calc_test/bindings.py";
@@ -73,7 +84,9 @@ let check_test_class () =
   run "Calc.add 4 5" |> ignore;
   run ~input:{|{"int1":3,"int2":2}|} "Calc.add --json" |> ignore;
   run "Calc.land false true" |> ignore;
-  run ~input:{|{"bool1":true,"bool2":true}|} "Calc.land --json" |> ignore
+  run ~input:{|{"bool1":true,"bool2":true}|} "Calc.land --json" |> ignore;
+  run "Calc.noop false" |> ignore;
+  run ~input:{|{"bool1":true}|} "Calc.noop --json" |> ignore
 
 let tests =
   [ "Check generated test interface bindings with pylint & pycodestyle", `Slow, lint_bindings

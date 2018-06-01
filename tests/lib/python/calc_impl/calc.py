@@ -25,6 +25,10 @@ class CalcImplementation(object):
         """Logical and"""
         return bool1 and bool2
 
+    def noop(self, bool1):
+        """Do nothing"""
+        pass
+
 
 def _call_calc_command():
     """Parse the arguments and call the required command"""
@@ -34,6 +38,8 @@ def _call_calc_command():
         cmd.add()
     elif base == "Calc.land":
         cmd.land()
+    elif base == "Calc.noop":
+        cmd.noop()
     else:
         raise bindings.Unimplemented(base)
 

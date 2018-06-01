@@ -17,6 +17,8 @@ def _call_calc_command():
         cmd.add()
     elif base == "Calc.land":
         cmd.land()
+    elif base == "Calc.noop":
+        cmd.noop()
     else:
         raise bindings.Unimplemented(base)
 
