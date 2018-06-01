@@ -29,15 +29,32 @@ let gen_python file =
   close_out oc
 
 let run_linters file =
-  Alcotest.(check int) "pylint should exit with 0"
-    0 (Sys.command ("pylint --errors-only " ^ file));
-  Alcotest.(check int) "pycodestyle should exit with 0"
-    0 (Sys.command ("pycodestyle --ignore=E501 " ^ file))
+  let run msg cmd = Alcotest.(check int) msg 0 (Sys.command cmd) in
+  run "pylint should exit with 0" ("pylint --errors-only " ^ file);
+  run "pycodestyle should exit with 0" ("pycodestyle --ignore=E501 " ^ file)
 
-let run () =
-  let file = "bindings.py" in
+let file = "bindings.py"
+
+let lint_bindings () =
   gen_python file;
   run_linters file
 
+let test_commandline () =
+  gen_python file;
+  let run ?input cmd =
+    let inp, out = Unix.open_process cmd in
+    begin match input with Some input -> output_string out input | None -> () end;
+    close_out out;
+    let l = input_line inp in
+    close_in inp;
+    l |> String.trim
+  in
+  let n = run "python calc.py 4 5" in
+  Alcotest.(check string) "Calc.add with parameters passed on the command line" "9" n;
+  let n = run ~input:{|{"int1":3,"int2":2}|} "python calc.py --json" in
+  Alcotest.(check string) "Calc.add with parameters passed to stdin as JSON" "5" n
+
 let tests =
-  [ "Check generated test interface bindings with pylint & pycodestyle", `Slow, run ]
+  [ "Check generated test interface bindings with pylint & pycodestyle", `Slow, lint_bindings
+  ; "Check generated commandline bindings", `Slow, test_commandline
+  ]

@@ -7,7 +7,7 @@
 (alias
  ((name runtest)
   (package rpclib)
-  (deps (suite.exe))
+  (deps (suite.exe (files_recursively_in .)))
   (action (run ${<}))
  ))
 
