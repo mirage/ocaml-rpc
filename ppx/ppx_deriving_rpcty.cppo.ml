@@ -130,7 +130,7 @@ module Typ_of = struct
               let default = attr_default pld_attributes in
               let field_name = String.concat "_" [name; fname] in
               let fget = [%expr fun _r -> [%e Exp.field (evar "_r") (mknoloc (Lident fname)) ] ] in
-              let fset = [%expr fun v s -> [%e record [fname, [%expr v]] ?over:(if one_field then None else Some ([%expr s]))]] in
+              let fset = [%expr fun v _s -> [%e record [fname, [%expr v]] ?over:(if one_field then None else Some ([%expr _s]))]] in
               (fname,
                rpc_name,
                field_name,

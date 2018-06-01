@@ -145,9 +145,11 @@ type test_record_attrs = {
 let test_record_attrs () =
   check_marshal_unmarshal ({field5=6}, Rpc.Dict ["foo", Rpc.Int 6L], typ_of_test_record_attrs)
 
+[@@@warning "+27"]
 type test_record_one_field = {
   field : bool
 } [@@deriving rpcty]
+[@@@warning "-27"]
 let test_record_one_field () =
   check_marshal_unmarshal ({field=true}, Rpc.Dict ["field", Rpc.Bool true], typ_of_test_record_one_field)
 
