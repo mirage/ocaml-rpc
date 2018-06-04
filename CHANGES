@@ -1,3 +1,12 @@
+5.4.0 (June 2018)
+* ppx_deriving_rpc:
+  - rpcty ppx: Fix warning 27 in generated field setter
+* rpclib:
+  - pythongen:
+    - Fix Python argparse CLI
+    - Fix generated <interface>_test class to pass typechecking
+    - Add tests using CLI
+
 5.3.0 (May 2018)
 * ppx_deriving_rpc:
   - rpcty ppx: Avoid warning 23: "with clause is useless"
