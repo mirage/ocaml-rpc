@@ -2,6 +2,19 @@
 module Interface(R : Idl.RPC) = struct
   open R
 
+  type exns =
+    | Error1 of string (** error 1 *)
+    | Error2 of (int * bool) (** error 2 *)
+  [@@deriving rpcty]
+
+  exception Calc_error of exns
+
+  let errors = Idl.Error.{
+      def = exns;
+      raiser = (fun e -> Calc_error e);
+      matcher = (function Calc_error e -> Some e | _ -> None)
+    }
+
   let int_p_named_1 = Idl.Param.mk ~name:"int1" ~description:["first int param"] Rpc.Types.int
   let int_p_named_2 = Idl.Param.mk ~name:"int2" ~description:["second int param"] Rpc.Types.int
   let int_p_result = Idl.Param.mk ~name:"int" ~description:["int result"] Rpc.Types.int
@@ -16,13 +29,13 @@ module Interface(R : Idl.RPC) = struct
 
   let _land = R.declare "land"
       ["Logical and"]
-      (bool_p_named_1 @-> bool_p_named_2 @-> returning bool_p_result Idl.DefaultError.err)
+      (bool_p_named_1 @-> bool_p_named_2 @-> returning bool_p_result errors)
 
   let unit_p = Idl.Param.mk Rpc.Types.unit
 
   let noop = R.declare "noop"
       ["Do nothing"]
-      (bool_p_named_1 @-> returning unit_p Idl.DefaultError.err)
+      (bool_p_named_1 @-> returning unit_p errors)
 
   let implementation = implement
       { Idl.Interface.name = "Calc"; namespace = Some "Calc"; description = ["interface"]; version = (1,0,0) }
@@ -43,7 +56,10 @@ let gen_python file =
   close_out oc
 
 let run_linters file =
-  let run msg cmd = Alcotest.(check int) msg 0 (Sys.command cmd) in
+  let run msg cmd =
+    print_endline cmd;
+    Alcotest.(check int) msg 0 (Sys.command cmd)
+  in
   run "pylint should exit with 0" ("pylint --errors-only " ^ file);
   run "pycodestyle should exit with 0" ("pycodestyle --ignore=E501 " ^ file)
 
@@ -53,6 +69,7 @@ let lint_bindings () =
   run_linters file
 
 let run ?input cmd =
+  print_endline cmd;
   let inp, out = Unix.open_process cmd in
   begin match input with Some input -> output_string out input | None -> () end;
   close_out out;
