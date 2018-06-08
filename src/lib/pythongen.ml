@@ -194,12 +194,12 @@ let rec typecheck : type a.a typ -> string -> t list = fun ty v ->
     ]
   | Tuple (a, b) ->
     [
-      Line (sprintf "if isinstance(%s, tuple) and len(%s) == 2:" v v);
-      Block (
-        [Line (sprintf "l, r = %s" v)] @
-        typecheck a (Printf.sprintf "l") @
-        typecheck b (Printf.sprintf "r"))
-    ]
+      Line (sprintf "if not (isinstance(%s, tuple) and len(%s) == 2):" v v);
+      Block [ raise_type_error ];
+      Line (sprintf "l, r = %s" v)
+    ] @
+    typecheck a (Printf.sprintf "l") @
+    typecheck b (Printf.sprintf "r")
   | Abstract _ ->
     failwith "Abstract types cannot be typechecked by pythongen"
 
