@@ -1,3 +1,9 @@
+5.5.0 (June 2018) -- rpclib only
+- pythongen:
+  - Correctly call superclass init in exceptions
+  - Generate classes for errors in interface
+  - Fix tuple typechecking
+
 5.4.0 (June 2018)
 * ppx_deriving_rpc:
   - rpcty ppx: Fix warning 27 in generated field setter
