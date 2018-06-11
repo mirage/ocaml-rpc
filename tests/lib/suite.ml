@@ -6,5 +6,4 @@ let () =
     ; "Json", Json.tests
     ; "Xml_xapi", Xml_xapi.tests
     ; "Encoding", Encoding.tests
-    ; "Test_pythongen", Test_pythongen.tests
     ]

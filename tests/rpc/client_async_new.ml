@@ -115,9 +115,13 @@ let main () =
   Client.rpc2 rpc (Some "Optional") (Foo ["hello";"there"]) >>= fun _ ->
   Client.rpc3 rpc 999999999999999999L >>= fun i ->
   Printf.printf "%Ld\n" i;
-  exit 0;
   return ()
 
-let _ =
+let run () =
+  let open Async in
   ignore (main ());
-  Core.never_returns (Async.Scheduler.go ())
+  Thread_safe.block_on_async_exn
+    (fun () -> main () |> Rpc_async.M.deferred >>= fun _ -> return ())
+
+let tests =
+  [ "basic Async client-server test", `Quick, run ]

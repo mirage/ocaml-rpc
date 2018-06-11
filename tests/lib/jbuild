@@ -2,13 +2,12 @@
 (executable
  ((name suite)
   (libraries (rpclib.core rpclib.json rpclib.xml alcotest test_common))
-  (preprocess (pps (ppx_deriving_rpc)))
  ))
 
 (alias
  ((name runtest)
   (package rpclib)
-  (deps (suite.exe (files_recursively_in .)))
+  (deps (suite.exe))
   (action (run ${<}))
  ))
 
