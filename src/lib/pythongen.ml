@@ -36,30 +36,30 @@ class Rpc_light_failure(Exception):
 
 class Unimplemented(Rpc_light_failure):
     def __init__(self, arg):
-        Rpc_light_failure.__init__(self, "Unimplemented", [arg])
+        super(Unimplemented, self).__init__(self, "Unimplemented", [arg])
 
 
 class InternalError(Rpc_light_failure):
     def __init__(self, error):
-        Rpc_light_failure.__init__(self, "Internal_error", [error])
+        super(InternalError, self).__init__(self, "Internal_error", [error])
 
 
 class UnmarshalException(InternalError):
     def __init__(self, thing, ty, desc):
-        InternalError.__init__(
+        super(UnmarshalException, self).__init__(
             self,
             "UnmarshalException thing=%s ty=%s desc=%s" % (thing, ty, desc))
 
 
 class TypeError(InternalError):
     def __init__(self, expected, actual):
-        InternalError.__init__(
+        super(TypeError, self).__init__(
             self, "TypeError expected=%s actual=%s" % (expected, actual))
 
 
 class UnknownMethod(InternalError):
     def __init__(self, name):
-        InternalError.__init__(self, "Unknown method %s" % name)
+        super(UnknownMethod, self).__init__(self, "Unknown method %s" % name)
 
 
 class ListAction(argparse.Action):
@@ -246,7 +246,7 @@ let exn_var myarg =
               Line "";
               Line "def __init__(self)";
               Block (
-                [ Line (sprintf {|Rpc_light_failure.__init__(self, "%s", [])|} tag.tname) ])])]
+                [ Line (sprintf {|super(%s, self).__init__(self, "%s", [])|} tag.tname tag.tname) ])])]
       else
         [
           Line (sprintf "class %s(Rpc_light_failure):" tag.tname);
@@ -254,7 +254,7 @@ let exn_var myarg =
               Line "";
               Line (sprintf "def __init__(self, arg_0):");
               Block (
-                [ Line (sprintf {|Rpc_light_failure.__init__(self, "%s", [arg_0])|} tag.tname )
+                [ Line (sprintf {|super(%s, self).__init__(self, "%s", [arg_0])|} tag.tname tag.tname )
                 ] @ (typecheck tag.tcontents "arg_0")
                 @ [ Line "self.arg_0 = arg_0" ])])
         ]
