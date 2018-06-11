@@ -147,4 +147,10 @@ let main () =
   Printf.printf "%Ld,%s\n" i s;
   return ()
 
-let _ = Lwt_main.run ((main ()).lwt)
+let run _switch () =
+  let open Lwt.Infix in
+  main () |> Rpc_lwt.M.lwt >>= fun _ ->
+  Lwt.return_unit
+
+let tests =
+  [ Alcotest_lwt.test_case "basic Lwt client-server test" `Quick run ]

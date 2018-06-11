@@ -25,6 +25,7 @@ module Interface :
     }
     val prepend_arg : t -> 'a Idl.Param.t -> t
     val all_types : t -> Rpc.Types.boxed_def list
+    val all_errors : t -> Rpc.Types.boxed_def list
   end
 module Interfaces :
   sig
@@ -33,6 +34,7 @@ module Interfaces :
       title : string;
       description : string list;
       type_decls : Rpc.Types.boxed_def list;
+      error_decls : Rpc.Types.boxed_def list;
       interfaces : Interface.t list;
     }
     val empty : string -> string -> string list -> t

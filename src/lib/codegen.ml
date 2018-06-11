@@ -46,15 +46,20 @@ module Interface = struct
          BoxedFunction Method.({ name = m.name; description = m.description; ty = prepend m.ty}))
          interface.methods}
 
+  let setify l =
+    List.fold_left (fun set x -> if List.mem x set then set else x::set) [] l |> List.rev
+
   let rec all_types : t -> boxed_def list = fun i ->
     let all_inputs = List.map (function BoxedFunction f -> Method.(find_inputs f.ty)) i.methods in
     let all_outputs = List.map (function BoxedFunction f -> Method.(find_output f.ty)) i.methods in
     let all = List.concat (all_inputs @ [all_outputs]) in
     let types = List.map (fun (Idl.Param.Boxed p) -> BoxedDef p.Idl.Param.typedef) all in
-    let rec setify = function
-      | [] -> []
-      | (x::xs) -> if List.mem x xs then setify xs else x::(setify xs)
-    in setify types
+    setify types
+
+  let all_errors i =
+    i.methods
+    |> List.map (function BoxedFunction f -> Method.(find_errors f.ty))
+    |> setify
 end
 
 
@@ -64,22 +69,25 @@ module Interfaces = struct
     title : string;
     description : string list;
     type_decls : boxed_def list;
+    error_decls : boxed_def list;
     interfaces : Interface.t list;
   }
 
   let empty name title description =
-    { name; title; description; type_decls=[]; interfaces=[] }
+    { name; title; description; type_decls=[]; error_decls=[]; interfaces=[] }
 
   let add_interface i is =
+    let not_in defs (BoxedDef def) =
+      not (List.exists (fun (BoxedDef def') -> def'.name = def.name) defs)
+    in
     let typedefs = Interface.all_types i in
-    let new_typedefs = List.filter
-        (fun def -> not
-            (List.exists
-               (fun (BoxedDef def') ->
-                  match def with
-                  | BoxedDef d -> def'.name = d.name) is.type_decls)) typedefs in
-
-    { is with type_decls = new_typedefs @ is.type_decls; interfaces = i :: is.interfaces }
+    let new_typedefs = List.filter (not_in is.type_decls) typedefs in
+    let new_errors = List.filter (not_in is.error_decls) (Interface.all_errors i) in
+    { is with
+      type_decls = new_typedefs @ is.type_decls
+    ; error_decls = new_errors @ is.error_decls
+    ; interfaces = i :: is.interfaces
+    }
 
   let create ~name ~title ~description ~interfaces =
     let i = empty name title description in

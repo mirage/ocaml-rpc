@@ -12,15 +12,11 @@ def success(result):
 
 
 def handle_exception(e, code=None, params=None):
+    """
+    Defines the behavior of the generated CLI code when arguments are passed as
+    JSON and the dispatched function fails with an exception.
+    """
     raise e
-
-
-class MissingDependency(Exception):
-    def __init__(self, missing):
-        self.missing = missing
-
-    def __str__(self):
-        return "There is a missing dependency: %s not found" % self.missing
 
 
 class Rpc_light_failure(Exception):
@@ -40,30 +36,30 @@ class Rpc_light_failure(Exception):
 
 class Unimplemented(Rpc_light_failure):
     def __init__(self, arg):
-        Rpc_light_failure.__init__(self, "Unimplemented", [arg])
+        super(Unimplemented, self).__init__(self, "Unimplemented", [arg])
 
 
 class InternalError(Rpc_light_failure):
     def __init__(self, error):
-        Rpc_light_failure.__init__(self, "Internal_error", [error])
+        super(InternalError, self).__init__(self, "Internal_error", [error])
 
 
 class UnmarshalException(InternalError):
     def __init__(self, thing, ty, desc):
-        InternalError.__init__(
+        super(UnmarshalException, self).__init__(
             self,
             "UnmarshalException thing=%s ty=%s desc=%s" % (thing, ty, desc))
 
 
 class TypeError(InternalError):
     def __init__(self, expected, actual):
-        InternalError.__init__(
+        super(TypeError, self).__init__(
             self, "TypeError expected=%s actual=%s" % (expected, actual))
 
 
 class UnknownMethod(InternalError):
     def __init__(self, name):
-        InternalError.__init__(self, "Unknown method %s" % name)
+        super(UnknownMethod, self).__init__(self, "Unknown method %s" % name)
 
 
 class ListAction(argparse.Action):
@@ -75,6 +71,8 @@ class ListAction(argparse.Action):
             getattr(namespace, self.dest)[k] = v
         else:
             setattr(namespace, self.dest, {k: v})|}
+
+let reserved_exns = ["Rpc_light_failure"; "Unimplemented"; "InternalError"; "UnmarshalException"; "TypeError"; "UnknownMethod"]
 
 let rec lines_of_t t =
   let indent = String.make 4 ' ' in
@@ -194,12 +192,12 @@ let rec typecheck : type a.a typ -> string -> t list = fun ty v ->
     ]
   | Tuple (a, b) ->
     [
-      Line (sprintf "if isinstance(%s, tuple) and len(%s) == 2:" v v);
-      Block (
-        [Line (sprintf "l, r = %s" v)] @
-        typecheck a (Printf.sprintf "l") @
-        typecheck b (Printf.sprintf "r"))
-    ]
+      Line (sprintf "if not (isinstance(%s, tuple) and len(%s) == 2):" v v);
+      Block [ raise_type_error ];
+      Line (sprintf "l, r = %s" v)
+    ] @
+    typecheck a (Printf.sprintf "l") @
+    typecheck b (Printf.sprintf "r")
   | Abstract _ ->
     failwith "Abstract types cannot be typechecked by pythongen"
 
@@ -235,27 +233,32 @@ let exn_var myarg =
   let open Printf in
   let inner : type a b. (a, b) tag -> t list = function tag ->
     let has_arg = match tag.tcontents with | Unit -> false | _ -> true in
-    [Line ""; Line ""] @
-    if not has_arg
-    then
-      [
-        Line (sprintf "class %s(Rpc_light_failure):" tag.tname);
-        Block ([
-            Line "";
-            Line "def __init__(self)";
-            Block (
-              [ Line (sprintf {|Rpc_light_failure.__init__(self, "%s", [])|} tag.tname) ])])]
-    else
-      [
-        Line (sprintf "class %s(Rpc_light_failure):" tag.tname);
-        Block ([
-            Line "";
-            Line (sprintf "def __init__(self, arg_0):");
-            Block (
-              [ Line (sprintf {|Rpc_light_failure.__init__(self, "%s", [ arg_0 ])|} tag.tname )
-              ] @ (typecheck tag.tcontents "arg_0")
-              @ [ Line "self.arg_0 = arg_0" ])])
-      ]
+    (* Avoid generating a duplicate version of an existing exception defined in
+       the helpers *)
+    if List.mem tag.tname reserved_exns then []
+    else begin
+      [Line ""; Line ""] @
+      if not has_arg
+      then
+        [
+          Line (sprintf "class %s(Rpc_light_failure):" tag.tname);
+          Block ([
+              Line "";
+              Line "def __init__(self)";
+              Block (
+                [ Line (sprintf {|super(%s, self).__init__(self, "%s", [])|} tag.tname tag.tname) ])])]
+      else
+        [
+          Line (sprintf "class %s(Rpc_light_failure):" tag.tname);
+          Block ([
+              Line "";
+              Line (sprintf "def __init__(self, arg_0):");
+              Block (
+                [ Line (sprintf {|super(%s, self).__init__(self, "%s", [arg_0])|} tag.tname tag.tname )
+                ] @ (typecheck tag.tcontents "arg_0")
+                @ [ Line "self.arg_0 = arg_0" ])])
+        ]
+    end
   in
   match myarg with
   | BoxedDef { ty = Variant { variants } } ->
@@ -645,10 +648,12 @@ let of_interfaces ?(helpers=inline_defaults) i =
     Line "";
   ] @
   (helpers |> String.split_on_char '\n' |> List.map (fun line -> Line line))
-  (* @ (
-        try exn_var i.Interfaces.exn_decls with e -> Printf.fprintf stderr "Error while handling %s" i.Interfaces.name; raise e
-       ) *)
   @ (
+        try
+          List.map exn_var i.Interfaces.error_decls |> List.flatten
+        with e ->
+          Printf.fprintf stderr "Error while generating exceptions of %s" i.Interfaces.name; raise e
+  ) @ (
     List.fold_left (fun acc i -> acc @
                                  (server_of_interface i) @
                                  (skeleton_of_interface i) @
