@@ -46,9 +46,8 @@ module Interface = struct
          BoxedFunction Method.({ name = m.name; description = m.description; ty = prepend m.ty}))
          interface.methods}
 
-  let rec setify = function
-    | [] -> []
-    | (x::xs) -> if List.mem x xs then setify xs else x::(setify xs)
+  let setify l =
+    List.fold_left (fun set x -> if List.mem x set then set else x::set) [] l |> List.rev
 
   let rec all_types : t -> boxed_def list = fun i ->
     let all_inputs = List.map (function BoxedFunction f -> Method.(find_inputs f.ty)) i.methods in
