@@ -60,7 +60,7 @@ let run_linters file =
     print_endline cmd;
     Alcotest.(check int) msg 0 (Sys.command cmd)
   in
-  run "pylint should exit with 0" ("pylint --errors-only " ^ file);
+  run "pylint should exit with 0" ("pylint --disable=line-too-long,too-few-public-methods,unused-argument,no-self-use,invalid-name,broad-except,protected-access,redefined-builtin " ^ file);
   run "pycodestyle should exit with 0" ("pycodestyle --ignore=E501 " ^ file)
 
 let lint_bindings () =

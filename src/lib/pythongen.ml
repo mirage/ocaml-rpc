@@ -8,23 +8,33 @@ type t =
 let inline_defaults =
   {|
 def success(result):
+    """
+    Called from each server dispatcher to return a successful response in case
+    no exceptions were thrown.
+    """
     return {"Status": "Success", "Value": result}
 
 
-def handle_exception(e, code=None, params=None):
+def handle_exception(exn):
     """
     Defines the behavior of the generated CLI code when arguments are passed as
     JSON and the dispatched function fails with an exception.
     """
-    raise e
+    raise exn
 
 
 class Rpc_light_failure(Exception):
+    """Each error variant defined in the interface is a subclass of this exception."""
+
     def __init__(self, name, args):
+        super(Rpc_light_failure, self).__init__(
+            "Rpc_light_failure: {} ({})".format(name, args))
         self.name = name
         self.args = args
 
     def failure(self):
+        """Returned from the top-level server dispatcher to indicate a failed RPC call."""
+
         # rpc-light marshals a single result differently to a list of results
         args = list(self.args)
         marshalled_args = args
@@ -35,16 +45,23 @@ class Rpc_light_failure(Exception):
 
 
 class Unimplemented(Rpc_light_failure):
+    """The called RPC method is not implemented."""
     def __init__(self, arg):
         super(Unimplemented, self).__init__(self, "Unimplemented", [arg])
 
 
 class InternalError(Rpc_light_failure):
+    """
+    Indicates either an error in the generated bindings to dispatch the RPC
+    call, or an unknown exception raised by the implementation that is not
+    declared in the interface.
+    """
     def __init__(self, error):
         super(InternalError, self).__init__(self, "Internal_error", [error])
 
 
 class UnmarshalException(InternalError):
+    """The input does not have the expected structure."""
     def __init__(self, thing, ty, desc):
         super(UnmarshalException, self).__init__(
             self,
@@ -52,25 +69,31 @@ class UnmarshalException(InternalError):
 
 
 class TypeError(InternalError):
+    """The type of an argument differs from the one defined in the interface."""
     def __init__(self, expected, actual):
         super(TypeError, self).__init__(
             self, "TypeError expected=%s actual=%s" % (expected, actual))
 
 
 class UnknownMethod(InternalError):
+    """The called method is not defined in the interface."""
     def __init__(self, name):
         super(UnknownMethod, self).__init__(self, "Unknown method %s" % name)
 
 
 class ListAction(argparse.Action):
+    """
+    Custom argparse action for specifying dictionaries on the command line.
+    The syntax is <prog> --dict_name key1 value1 --dict_name key2 value2 ...
+    """
     def __call__(self, parser, namespace, values, option_string=None):
-        k = values[0]
-        v = values[1]
-        if ((hasattr(namespace, self.dest) and
-                getattr(namespace, self.dest) is not None)):
-            getattr(namespace, self.dest)[k] = v
+        key = values[0]
+        value = values[1]
+        if (hasattr(namespace, self.dest) and
+                getattr(namespace, self.dest) is not None):
+            getattr(namespace, self.dest)[key] = value
         else:
-            setattr(namespace, self.dest, {k: v})|}
+            setattr(namespace, self.dest, {key: value})|}
 
 let reserved_exns = ["Rpc_light_failure"; "Unimplemented"; "InternalError"; "UnmarshalException"; "TypeError"; "UnknownMethod"]
 
@@ -84,6 +107,25 @@ let rec lines_of_t t =
 
 let string_of_ts ts = String.concat "\n" (List.concat (List.map lines_of_t ts))
 
+let output_doc description =
+  let process descr =
+    descr
+    |> String.split_on_char '\n'
+    |> List.map (function l -> Line (String.trim l))
+  in
+  let descr_lines =
+    description
+    |> List.map process
+    |> List.concat
+    |> function
+    | Line "" :: tl -> tl
+    | lst -> lst
+  in
+  [ Line {|"""|} ] @
+  descr_lines @
+  [ Line {|"""|} ]
+
+
 (* generate a fresh id *)
 let fresh_id =
   let counter = ref 5 in
@@ -96,7 +138,7 @@ let fresh_id =
 let rec typecheck : type a.a typ -> string -> t list = fun ty v ->
   let open Printf in
   let raise_type_error =
-    Line (sprintf {|raise (TypeError("%s", repr(%s)))|} (Rpcmarshal.ocaml_of_t ty) v) in
+    Line (sprintf {|raise TypeError("%s", repr(%s))|} (Rpcmarshal.ocaml_of_t ty) v) in
   let handle_basic b =
     let python_of_basic : type a. a basic -> string = function
       | Int64  -> "(int, long)"
@@ -194,10 +236,10 @@ let rec typecheck : type a.a typ -> string -> t list = fun ty v ->
     [
       Line (sprintf "if not (isinstance(%s, tuple) and len(%s) == 2):" v v);
       Block [ raise_type_error ];
-      Line (sprintf "l, r = %s" v)
+      Line (sprintf "left, right = %s" v)
     ] @
-    typecheck a (Printf.sprintf "l") @
-    typecheck b (Printf.sprintf "r")
+    typecheck a (Printf.sprintf "left") @
+    typecheck b (Printf.sprintf "right")
   | Abstract _ ->
     failwith "Abstract types cannot be typechecked by pythongen"
 
@@ -237,27 +279,27 @@ let exn_var myarg =
        the helpers *)
     if List.mem tag.tname reserved_exns then []
     else begin
-      [Line ""; Line ""] @
-      if not has_arg
-      then
-        [
-          Line (sprintf "class %s(Rpc_light_failure):" tag.tname);
-          Block ([
-              Line "";
-              Line "def __init__(self)";
+      [
+        Line "";
+        Line "";
+        Line (sprintf "class %s(Rpc_light_failure):" tag.tname);
+        Block (
+          output_doc tag.tdescription @
+          [ Line "" ] @
+          if not has_arg then
+            [ Line "def __init__(self)";
               Block (
-                [ Line (sprintf {|super(%s, self).__init__(self, "%s", [])|} tag.tname tag.tname) ])])]
-      else
-        [
-          Line (sprintf "class %s(Rpc_light_failure):" tag.tname);
-          Block ([
-              Line "";
-              Line (sprintf "def __init__(self, arg_0):");
+                [ Line (sprintf {|super(%s, self).__init__(self, "%s", [])|} tag.tname tag.tname) ])
+            ]
+          else
+            [ Line (sprintf "def __init__(self, arg_0):");
               Block (
                 [ Line (sprintf {|super(%s, self).__init__(self, "%s", [arg_0])|} tag.tname tag.tname )
                 ] @ (typecheck tag.tcontents "arg_0")
-                @ [ Line "self.arg_0 = arg_0" ])])
-        ]
+                @ [ Line "self.arg_0 = arg_0" ])
+            ]
+        )
+      ]
     end
   in
   match myarg with
@@ -265,25 +307,6 @@ let exn_var myarg =
     List.concat (List.map (fun (BoxedTag t) -> inner t) variants)
   | BoxedDef { ty } ->
     failwith (Printf.sprintf "Unable to handle non-variant exceptions (%s)" (Rpcmarshal.ocaml_of_t ty))
-
-
-let output_doc description =
-  let process descr = 
-    descr
-    |> String.split_on_char '\n'
-    |> List.map (function l -> Line (String.trim l))
-  in
-  let descr_lines =
-    description
-    |> List.map process
-    |> List.concat
-    |> function
-    | Line "" :: tl -> tl
-    | lst -> lst
-  in
-  [ Line {|"""|} ] @
-  descr_lines @
-  [ Line {|"""|} ]
 
 
 let skeleton_method unimplemented i (BoxedFunction m) =
@@ -379,7 +402,7 @@ let rec skeleton_of_interface unimplemented suffix i =
   [
     Line "";
     Line "";
-    Line (sprintf "class %s_%s:" i.Interface.details.Idl.Interface.name suffix);
+    Line (sprintf "class %s_%s(object):" i.Interface.details.Idl.Interface.name suffix);
     Block (
       output_doc i.Interface.details.Idl.Interface.description @ [
         Line "";
@@ -433,7 +456,7 @@ let server_of_interface i =
           Line {|"""type-check inputs, call implementation, type-check outputs and return"""|};
           Line "if not isinstance(args, dict):";
           Block [
-            Line "raise (UnmarshalException('arguments', 'dict', repr(args)))"
+            Line "raise UnmarshalException('arguments', 'dict', repr(args))"
           ]
         ] @ (
             List.concat (List.map extract_input inputs)
@@ -471,7 +494,7 @@ let server_of_interface i =
   [
     Line "";
     Line "";
-    Line (sprintf "class %s_server_dispatcher:" i.Interface.details.Idl.Interface.name);
+    Line (sprintf "class %s_server_dispatcher(object):" i.Interface.details.Idl.Interface.name);
     Block (
       output_doc i.Interface.details.Idl.Interface.description @ [
         Line "";
@@ -576,7 +599,8 @@ let commandline_run i (BoxedFunction m) =
   [
     Line "";
     Line (sprintf "def %s(self):" m.Method.name);
-    Block [
+    Block
+    (output_doc m.Method.description @ [
       Line "use_json = False";
       Line "try:";
       Block [
@@ -585,17 +609,17 @@ let commandline_run i (BoxedFunction m) =
         Line (sprintf "results = self.dispatcher.%s(request)" m.Method.name);
         Line "print json.dumps(results)";
       ];
-      Line "except Exception as e:";
+      Line "except Exception as exn:";
       Block [
         Line "if use_json:";
-        Block [Line "handle_exception(e)"];
+        Block [Line "handle_exception(exn)"];
         Line "else:";
         Block [
           Line "traceback.print_exc()";
-          Line "raise e"
+          Line "raise exn"
         ];
       ]
-    ]
+    ])
   ]
 
 let commandline_of_interface i =
@@ -603,7 +627,7 @@ let commandline_of_interface i =
   [
     Line "";
     Line "";
-    Line (sprintf "class %s_commandline():" i.Interface.details.Idl.Interface.name);
+    Line (sprintf "class %s_commandline(object):" i.Interface.details.Idl.Interface.name);
     Block ([
         Line {|"""Parse command-line arguments and call an implementation."""|};
         Line "";
@@ -640,6 +664,8 @@ let of_interfaces ?(helpers=inline_defaults) i =
     [Line ("}")]
   in
   [
+    Line (sprintf {|"""Bindings generated for interface %s by rpclib"""|} i.Interfaces.name);
+    Line "";
     Line "import argparse";
     Line "import json";
     Line "import logging";
@@ -663,7 +689,7 @@ let of_interfaces ?(helpers=inline_defaults) i =
   ) @ [
     Line "";
     Line "";
-    Line (sprintf "class %s_server_dispatcher:" i.Interfaces.name);
+    Line (sprintf "class %s_server_dispatcher(object):" i.Interfaces.name);
     Block ([
         Line {|"""Demux calls to individual interface server_dispatchers"""|};
         Line "";
@@ -696,18 +722,18 @@ let of_interfaces ?(helpers=inline_defaults) i =
               Line "raise UnknownMethod(method)"
             ]
             );
-          Line "except Rpc_light_failure as e:";
+          Line "except Rpc_light_failure as rpc_exn:";
           Block [
-            Line {|logging.log("caught %s", e)|};
+            Line {|logging.log("caught %s", rpc_exn)|};
             Line "traceback.print_exc()";
-            Line {|logging.log("returning %s", repr(e.failure()))|};
-            Line "return e.failure()"
+            Line {|logging.log("returning %s", repr(rpc_exn.failure()))|};
+            Line "return rpc_exn.failure()"
           ];
-          Line "except Exception as e:";
+          Line "except Exception as exn:";
           Block [
-            Line {|logging.log("caught %s", e)|};
+            Line {|logging.log("caught %s", exn)|};
             Line "traceback.print_exc()";
-            Line "return (InternalError(str(e)).failure())"
+            Line "return InternalError(str(exn)).failure()"
           ]
         ]
       ])
