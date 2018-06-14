@@ -22,8 +22,6 @@ module GenClient () = struct
 
   let implement x = description := Some x
 
-  exception MarshalError of string
-
   type ('a,'b) comp = ('a,'b) Result.result M.lwt
   type rpcfn = Rpc.call -> Rpc.response Lwt.t
   type 'a res = rpcfn -> 'a
@@ -73,7 +71,6 @@ module GenClient () = struct
     in inner ([],[]) ty
 end
 
-exception MarshalError of string
 exception UnknownMethod of string
 exception UnboundImplementation of string list
 

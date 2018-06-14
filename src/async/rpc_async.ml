@@ -22,11 +22,8 @@ module GenClient () = struct
 
   let implement x = description := Some x
 
-  exception MarshalError of string
-
   type ('a,'b) comp = ('a,'b) Result.result M.async
-  type rpcfn = Rpc.call -> Rpc.response Deferred.t
-  type 'a res = rpcfn -> 'a
+  type 'a res = async_rpcfn -> 'a
 
   type _ fn =
     | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
@@ -35,7 +32,7 @@ module GenClient () = struct
   let returning a err = Returning (a, err)
   let (@->) = fun t f -> Function (t, f)
 
-  let declare name _ ty (rpc : rpcfn) =
+  let declare name _ ty (rpc : async_rpcfn) =
     let open Result in
     let rec inner : type b. ((string * Rpc.t) list * Rpc.t list) -> b fn -> b = fun (named,unnamed) ->
       function
@@ -73,7 +70,6 @@ module GenClient () = struct
     in inner ([],[]) ty
 end
 
-exception MarshalError of string
 exception UnknownMethod of string
 exception UnboundImplementation of string list
 
