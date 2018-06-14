@@ -12,42 +12,23 @@ module M :
     val lwt : 'a lwt -> 'a Lwt.t
   end
 
+(** Client generator similar to {!Idl.GenClient} that uses [Lwt]. *)
 module GenClient () :
   sig
-    type implementation = unit
-    val implement : Idl.Interface.description -> implementation
-    exception MarshalError of string
-    type ('a,'b) comp = ('a,'b) Result.result M.lwt
-    type rpcfn = Rpc.call -> Rpc.response Lwt.t
-    type 'a res = rpcfn -> 'a
-    type _ fn =
-        Function : 'a Idl.Param.t * 'b fn -> ('a -> 'b) fn
-      | Returning : ('a Idl.Param.t * 'b Idl.Error.t) -> ('a, 'b) M.t fn
-    val returning : 'a Idl.Param.t -> 'b Idl.Error.t -> ('a, 'b) M.t fn
-    val ( @-> ) : 'a Idl.Param.t -> 'b fn -> ('a -> 'b) fn
-    val declare : string -> string list -> 'a fn -> rpcfn -> 'a
+    include Idl.RPC
+      with type implementation = unit
+       and type 'a res = lwt_rpcfn -> 'a
+       and type ('a,'b) comp = ('a,'b) Result.result M.lwt
   end
-
-exception MarshalError of string
-exception UnknownMethod of string
-exception UnboundImplementation of string list
 
 type server_implementation
 val server : server_implementation -> lwt_rpcfn
 val combine : server_implementation list -> server_implementation
 
-module GenServer () :
-  sig
-    type implementation = server_implementation
-    val implement : Idl.Interface.description -> implementation
-    type ('a,'b) comp = ('a,'b) Result.result M.lwt
-    type rpcfn = Rpc.call -> Rpc.response Lwt.t
-    type funcs = (string, rpcfn option) Hashtbl.t
-    type 'a res = 'a -> unit
-    type _ fn =
-        Function : 'a Idl.Param.t * 'b fn -> ('a -> 'b) fn
-      | Returning : ('a Idl.Param.t * 'b Idl.Error.t) -> ('a, 'b) M.t fn
-    val returning : 'a Idl.Param.t -> 'b Idl.Error.t -> ('a, 'b) M.t fn
-    val ( @-> ) : 'a Idl.Param.t -> 'b fn -> ('a -> 'b) fn
-    val declare : string -> string list -> 'a fn -> 'a res
-  end
+(** Server generator similar to {!Idl.GenServer} that uses [Lwt]. *)
+module GenServer () : sig
+  include Idl.RPC
+    with type implementation = server_implementation
+     and type 'a res = 'a -> unit
+     and type ('a,'b) comp = ('a,'b) Result.result M.lwt
+end
