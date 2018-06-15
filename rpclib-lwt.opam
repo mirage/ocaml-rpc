@@ -15,6 +15,6 @@ build: [["jbuilder" "build" "-p" name "-j" jobs]]
 depends: [
   "alcotest" {test}
   "jbuilder" {build}
-  "rpclib"
-  "lwt"
+  "rpclib" {>= "5.0.0"}
+  "lwt" {>= "3.0.0"}
 ]

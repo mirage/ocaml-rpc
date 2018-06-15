@@ -11,7 +11,7 @@ tags: [
 build: [["jbuilder" "build" "-p" name "-j" jobs]]
 depends: [
   "jbuilder" {build}
-  "rpclib"
+  "rpclib" {>= "5.0.0"}
   "js_of_ocaml"
   "js_of_ocaml-ppx"
   "lwt"
