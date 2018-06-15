@@ -7,7 +7,7 @@ script: bash -ex .travis-docker.sh
 env:
     global:
         - DISTRO=debian-unstable
-        - PINS="rpclib:. rpclib-js:. rpclib-html:. rpclib-lwt:. rpclib-async:. ppx_deriving_rpc:."
+        - PINS="rpclib.master:. rpclib-js.master:. rpclib-html.master:. rpclib-lwt.master:. rpclib-async.master:. ppx_deriving_rpc.master:."
         - PACKAGE=rpc
     matrix:
         - OCAML_VERSION=4.06.0 PRE_INSTALL_HOOK="sudo apt-get update -y; sudo apt-get install -y pylint pycodestyle"
