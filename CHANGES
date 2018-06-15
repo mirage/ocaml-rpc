@@ -1,3 +1,11 @@
+5.6.0 (June 2018) --
+* rpclib, rpclib-async, rpclib-ppx:
+  - Remove duplication in .mlis, expose MarshalError, add docs
+* README
+  - Document IDL generator
+* rpclib:
+  - pythongen test: make pylint checks stricter
+
 5.5.0 (June 2018) -- rpclib only
 - pythongen:
   - Correctly call superclass init in exceptions
