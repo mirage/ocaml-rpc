@@ -4,14 +4,14 @@
 
 let test_call_core () =
   let server =
-    let module Server = Test_common.Test_interface.Interface(Idl.GenServerExn ()) in
+    let module Server = Test_common.Test_interface.Interface(Idl.Legacy.GenServerExn ()) in
     Server.add (fun a b -> a + b);
     Server.sub (fun a b -> a - b);
     Server.mul (fun a b -> a * b);
     Server.div (fun a b -> a / b);
-    Idl.server Server.implementation
+    Idl.Legacy.server Server.implementation
   in
-  let module Client = Test_common.Test_interface.Interface(Idl.GenClientExnRpc(struct let rpc = server end)) in
+  let module Client = Test_common.Test_interface.Interface(Idl.Legacy.GenClientExnRpc(struct let rpc = server end)) in
   Alcotest.(check int) "add" 4 (Client.add 1 3);
   Alcotest.(check int) "sub" 2 (Client.sub 3 1);
   Alcotest.(check int) "mul" 6 (Client.mul 2 3);
