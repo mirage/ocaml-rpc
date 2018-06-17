@@ -1,27 +1,26 @@
 module AsyncM : Idl.RPCMONAD
 
+type client_implementation
+type server_implementation
+
 (** Client generator similar to {!Idl.GenClient} that uses [Async]. *)
 module GenClient () :
-  sig
-    open AsyncM
-    include Idl.RPC
-      with type implementation = unit
-       and type 'a res = rpcfn -> 'a
-       and type ('a,'b) comp = ('a,'b) t
-  end
-
-module ServerImpl : sig
+sig
   open AsyncM
-  type server_implementation = (string, rpcfn option) Hashtbl.t
-  val server : server_implementation -> rpcfn
-  val combine : server_implementation list -> server_implementation
+  include Idl.RPC
+    with type implementation = client_implementation
+     and type 'a res = rpcfn -> 'a
+     and type ('a,'b) comp = ('a,'b) t
 end
+
+val server : server_implementation -> AsyncM.rpcfn
+val combine : server_implementation list -> server_implementation
 
 (** Server generator similar to {!Idl.GenServer} that uses [Async]. *)
 module GenServer () : sig
   open AsyncM
   include Idl.RPC
-    with type implementation = (string, rpcfn option) Hashtbl.t
+    with type implementation = server_implementation
      and type 'a res = 'a -> unit
      and type ('a,'b) comp = ('a,'b) t
 end

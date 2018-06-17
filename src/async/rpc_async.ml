@@ -12,6 +12,5 @@ module AsyncM: Idl.RPCMONAD = struct
   let fail exn = raise exn
 end
 
-module GenClient = Idl.MakeGenClient(AsyncM)
-module ServerImpl = Idl.MakeServerImpl(AsyncM)
-module GenServer = Idl.MakeGenServer(AsyncM)
+module AsyncIdl = Idl.Make(AsyncM)
+include AsyncIdl
