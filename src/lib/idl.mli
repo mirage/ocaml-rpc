@@ -121,77 +121,78 @@ module type RPCMONAD = sig
   val fail: exn -> 'a m
 end
 
-module type CLIENTF = functor (M: RPCMONAD) -> functor () -> sig
-  include RPC
-    with type implementation = unit
-     and type 'a res = M.rpcfn -> 'a
-     and type ('a,'b) comp = ('a,'b) M.t
-end
-
-module type SERVERF = functor (M: RPCMONAD) -> functor () -> sig
-  include RPC
-    with type implementation = (string, M.rpcfn option) Hashtbl.t
-     and type 'a res = 'a -> unit
-     and type ('a,'b) comp = ('a,'b) M.t
-end
-
-module MakeGenClient : CLIENTF
-module MakeGenServer : SERVERF
 
 (** For the Server generation, the 'implement' function call _must_ be called
     before any RPCs are described. This exception will be raised if the user
     tries to do this. *)
 exception NoDescription
 
-module MakeServerImpl(M: RPCMONAD): sig
-  type server_implementation = (string, M.rpcfn option) Hashtbl.t
+module Make(M: RPCMONAD): sig
+
+  type client_implementation
+  type server_implementation
+
+  (** This module generates Client modules from RPC declarations.
+
+      The [implementation] of the module as a whole is unused. However, the
+      namespace comes from the interface description, and hence calling
+      [implement] is important.
+
+      The result of declaring a function of type 'a (where for example 'a might
+      be [(int -> string -> (bool, err) result)]), is a function that takes an rpc
+      function, which might send the RPC across the network, and returns a
+      function of type 'a, in this case [(int -> string -> (bool, err) result)].
+
+      Our functions return a [Result.result] type, which contains
+      the result of the Rpc, which might be an error message indicating
+      a problem happening on the remote end. *)
+  module GenClient (): sig
+    include RPC
+      with type implementation = client_implementation
+       and type 'a res = M.rpcfn -> 'a
+       and type ('a,'b) comp = ('a,'b) M.t
+  end
+
+  (** This module generates a server that dispatches RPC calls to their
+      implementations.
+
+      Given an {!Rpc.call}, it calls the implementation of that RPC method and performs
+      the marshalling and unmarshalling. It is up to the user of this library to
+      connect this rpc function to a real server that responds to client requests.
+
+      The implementations of each RPC method should be specified by passing it to
+      the corresponding function in the generated module.
+
+      Then the server itself can be obtained by passing the [implementation]
+      to {!server}. *)
+  module GenServer (): sig
+    include RPC
+      with type implementation = server_implementation
+       and type 'a res = 'a -> unit
+       and type ('a,'b) comp = ('a,'b) M.t
+  end
+
   val server : server_implementation -> M.rpcfn
   val combine : server_implementation list -> server_implementation
 end
 
 module IdM: RPCMONAD
-
-(** This module generates Client modules from RPC declarations.
-
-    The [implementation] of the module as a whole is unused. However, the
-    namespace comes from the interface description, and hence calling
-    [implement] is important.
-
-    The result of declaring a function of type 'a (where for example 'a might
-    be [(int -> string -> (bool, err) result)]), is a function that takes an rpc
-    function, which might send the RPC across the network, and returns a
-    function of type 'a, in this case [(int -> string -> (bool, err) result)].
-
-    Our functions return a [Result.result] type, which contains
-    the result of the Rpc, which might be an error message indicating
-    a problem happening on the remote end. *)
 module GenClient () : sig
   open IdM
   include RPC
-    with type implementation = unit
-     and type 'a res = rpcfn -> 'a
+    with type implementation = Make(IdM).client_implementation
+     and type 'a res = IdM.rpcfn -> 'a
      and type ('a,'b) comp = ('a,'b) t
 end
-
-(** This module generates a server that dispatches RPC calls to their
-    implementations.
-
-    Given an {!Rpc.call}, it calls the implementation of that RPC method and performs
-    the marshalling and unmarshalling. It is up to the user of this library to
-    connect this rpc function to a real server that responds to client requests.
-
-    The implementations of each RPC method should be specified by passing it to
-    the corresponding function in the generated module.
-
-    Then the server itself can be obtained by passing the [implementation]
-    to {!server}. *)
 module GenServer () : sig
   open IdM
   include RPC
-    with type implementation = (string, rpcfn option) Hashtbl.t
+    with type implementation = Make(IdM).server_implementation
      and type 'a res = 'a -> unit
      and type ('a,'b) comp = ('a,'b) t
 end
+val server : Make(IdM).server_implementation -> IdM.rpcfn
+val combine : Make(IdM).server_implementation list -> Make(IdM).server_implementation
 
 module Legacy : sig
   type rpcfn = Rpc.call -> Rpc.response
