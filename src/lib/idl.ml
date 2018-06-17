@@ -244,6 +244,7 @@ module Make (M: RPCMONAD) = struct
              any RPCs *)
           match !description with
           | Some _ -> ()
+          (* TODO: use binds and M.fail in this case as well? *)
           | None -> raise NoDescription
         end;
         let rpcfn =
@@ -255,6 +256,7 @@ module Make (M: RPCMONAD) = struct
                 let (arg_rpc, call') =
                   match get_arg call has_named t.Param.name is_opt with
                   | Result.Ok (x,y) -> (x,y)
+                  (* TODO: use binds and M.fail here, don't raise randomly *)
                   | Result.Error (`Msg m) -> raise (MarshalError m)
                 in
                 let z = Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty arg_rpc in
