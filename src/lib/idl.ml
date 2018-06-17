@@ -124,6 +124,20 @@ module Make (M: RPCMONAD) = struct
   type client_implementation = unit
   type server_implementation = (string, M.rpcfn option) Hashtbl.t
 
+  module ImplM: sig
+    val return : 'a -> ('a, 'b) M.t
+    val return_err : 'b -> ('a, 'b) M.t
+    val checked_bind : ('a, 'b) M.t -> ('a -> ('c, 'd) M.t) -> ('b -> ('c, 'd) M.t) -> ('c, 'd) M.t
+    val bind : ('a, 'b) M.t -> ('a -> ('c, 'b) M.t) -> ('c, 'b) M.t
+    val ( >>= ) : ('a, 'b) M.t -> ('a -> ('c, 'b) M.t) -> ('c, 'b) M.t
+  end = struct
+    let return x = M.box (M.return (Result.Ok x))
+    let return_err e = M.box (M.return (Result.Error e))
+    let checked_bind x f f1 = M.box (M.bind (M.unbox x) (function | Result.Ok x -> M.unbox (f x) | Result.Error x -> M.unbox (f1 x)))
+    let bind x f = checked_bind x f return_err
+    let (>>=) x f = bind x f
+  end
+
   module GenClient () =
   struct
     type implementation = client_implementation
@@ -270,7 +284,7 @@ module IdM: RPCMONAD = struct
   type ('a, 'b) t = ('a, 'b) Result.result box
 
   type rpcfn = Rpc.call -> Rpc.response m
-  
+
   let box x = { box=x }
   let unbox { box } = box
   let bind x f = f x
@@ -283,6 +297,44 @@ module GenClient = IdIdl.GenClient
 let server = IdIdl.server
 let combine = IdIdl.combine
 module GenServer = IdIdl.GenServer
+
+
+(* A default error variant as an example. In real code, this is more easily expressed by using the PPX:
+
+      type default_error = InternalError of string [@@deriving rpcty]
+*)
+module DefaultError = struct
+  type t = InternalError of string
+  exception InternalErrorExn of string
+
+  let internalerror : (string, t) Rpc.Types.tag = Rpc.Types.{
+      tname="InternalError";
+      tdescription=["Internal Error"];
+      tversion=Some (1,0,0);
+      tcontents=Basic String;
+      tpreview = (function (InternalError s) -> Some s);
+      treview = (fun s -> InternalError s)
+    }
+
+  (* And then we can create the 'variant' type *)
+  let t : t Rpc.Types.variant = Rpc.Types.{
+      vname    = "t";
+      variants = [ BoxedTag internalerror ];
+      vversion = Some (1,0,0);
+      vdefault = Some (InternalError "Unknown error tag!");
+      vconstructor = (fun s t ->
+          match s with
+          | "InternalError" -> Rresult.R.map (fun s -> internalerror.treview s) (t.tget (Basic String))
+          | s -> Rresult.R.error_msg (Printf.sprintf "Unknown tag '%s'" s))}
+
+  let def = Rpc.Types.{ name="default_error"; description=["Errors declared as part of the interface"]; ty=Variant t }
+
+  let err = Error.{
+      def = def;
+      raiser = (function | InternalError s -> raise (InternalErrorExn s));
+      matcher = function | InternalErrorExn s -> Some (InternalError s) | _ -> None
+    }
+end
 
 module Legacy = struct
   type rpcfn = Rpc.call -> Rpc.response
@@ -492,44 +544,5 @@ module Legacy = struct
         let wire_name = get_wire_name !description name in
         Hashtbl.add funcs wire_name (Some rpcfn)
 
-  end
-
-
-  (* A default error variant as an example. In real code, this is more easily expressed by using the PPX:
-
-        type default_error = InternalError of string [@@deriving rpcty]
-     z*)
-
-  module DefaultError = struct
-    type t = InternalError of string
-    exception InternalErrorExn of string
-
-    let internalerror : (string, t) Rpc.Types.tag = Rpc.Types.{
-        tname="InternalError";
-        tdescription=["Internal Error"];
-        tversion=Some (1,0,0);
-        tcontents=Basic String;
-        tpreview = (function (InternalError s) -> Some s);
-        treview = (fun s -> InternalError s)
-      }
-
-    (* And then we can create the 'variant' type *)
-    let t : t Rpc.Types.variant = Rpc.Types.{
-        vname    = "t";
-        variants = [ BoxedTag internalerror ];
-        vversion = Some (1,0,0);
-        vdefault = Some (InternalError "Unknown error tag!");
-        vconstructor = (fun s t ->
-            match s with
-            | "InternalError" -> Rresult.R.map (fun s -> internalerror.treview s) (t.tget (Basic String))
-            | s -> Rresult.R.error_msg (Printf.sprintf "Unknown tag '%s'" s))}
-
-    let def = Rpc.Types.{ name="default_error"; description=["Errors declared as part of the interface"]; ty=Variant t }
-
-    let err = Error.{
-        def = def;
-        raiser = (function | InternalError s -> raise (InternalErrorExn s));
-        matcher = function | InternalErrorExn s -> Some (InternalError s) | _ -> None
-      }
   end
 end

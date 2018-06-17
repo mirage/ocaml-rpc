@@ -132,6 +132,14 @@ module Make(M: RPCMONAD): sig
   type client_implementation
   type server_implementation
 
+  module ImplM: sig
+    val return : 'a -> ('a, 'b) M.t
+    val return_err : 'b -> ('a, 'b) M.t
+    val checked_bind : ('a, 'b) M.t -> ('a -> ('c, 'd) M.t) -> ('b -> ('c, 'd) M.t) -> ('c, 'd) M.t
+    val bind : ('a, 'b) M.t -> ('a -> ('c, 'b) M.t) -> ('c, 'b) M.t
+    val ( >>= ) : ('a, 'b) M.t -> ('a -> ('c, 'b) M.t) -> ('c, 'b) M.t
+  end
+
   (** This module generates Client modules from RPC declarations.
 
       The [implementation] of the module as a whole is unused. However, the
@@ -194,6 +202,18 @@ end
 val server : Make(IdM).server_implementation -> IdM.rpcfn
 val combine : Make(IdM).server_implementation list -> Make(IdM).server_implementation
 
+
+module DefaultError : sig
+  type t = InternalError of string
+  exception InternalErrorExn of string
+
+  val internalerror : (string, t) Rpc.Types.tag
+  val t : t Rpc.Types.variant
+  val def : t Rpc.Types.def
+  val err : t Error.t
+end
+
+
 module Legacy : sig
   type rpcfn = Rpc.call -> Rpc.response
 
@@ -234,15 +254,5 @@ module Legacy : sig
       with type implementation = server_implementation
        and type 'a res = 'a -> unit
        and type ('a,'b) comp = 'a
-  end
-
-  module DefaultError : sig
-    type t = InternalError of string
-    exception InternalErrorExn of string
-
-    val internalerror : (string, t) Rpc.Types.tag
-    val t : t Rpc.Types.variant
-    val def : t Rpc.Types.def
-    val err : t Error.t
   end
 end
