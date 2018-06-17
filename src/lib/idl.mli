@@ -102,7 +102,54 @@ module type RPC = sig
   val declare : string -> string list -> 'a fn -> 'a res
 end
 
-type rpcfn = Rpc.call -> Rpc.response
+(** The [RPCMONAD] signature describes the minimal set of types and functions 
+    needed for the [!GenClient] and [!GenServer] functor to generate clients
+    and servers. These allow to provide different syncronous and asynctronous
+    engines for the client and server implementations
+*)
+module type RPCMONAD = sig
+  type 'a m
+  type 'a box = { box: 'a m }
+  type ('a, 'b) t = ('a, 'b) Result.result box
+
+  type rpcfn = Rpc.call -> Rpc.response m
+
+  val box: 'a m -> 'a box
+  val unbox: 'a box -> 'a m
+  val bind:  'a m -> ('a -> 'b m) -> 'b m
+  val return: 'a -> 'a m
+  val fail: exn -> 'a m
+end
+
+module type CLIENTF = functor (M: RPCMONAD) -> functor () -> sig
+  include RPC
+    with type implementation = unit
+     and type 'a res = M.rpcfn -> 'a
+     and type ('a,'b) comp = ('a,'b) M.t
+end
+
+module type SERVERF = functor (M: RPCMONAD) -> functor () -> sig
+  include RPC
+    with type implementation = (string, M.rpcfn option) Hashtbl.t
+     and type 'a res = 'a -> unit
+     and type ('a,'b) comp = ('a,'b) M.t
+end
+
+module MakeGenClient : CLIENTF
+module MakeGenServer : SERVERF
+
+(** For the Server generation, the 'implement' function call _must_ be called
+    before any RPCs are described. This exception will be raised if the user
+    tries to do this. *)
+exception NoDescription
+
+module MakeServerImpl(M: RPCMONAD): sig
+  type server_implementation = (string, M.rpcfn option) Hashtbl.t
+  val server : server_implementation -> M.rpcfn
+  val combine : server_implementation list -> server_implementation
+end
+
+module TrivialMonad: RPCMONAD
 
 (** This module generates Client modules from RPC declarations.
 
@@ -115,51 +162,16 @@ type rpcfn = Rpc.call -> Rpc.response
     function, which might send the RPC across the network, and returns a
     function of type 'a, in this case [(int -> string -> (bool, err) result)].
 
-    Our functions return a Result.result type, which contains
+    Our functions return a [Result.result] type, which contains
     the result of the Rpc, which might be an error message indicating
     a problem happening on the remote end. *)
 module GenClient () : sig
+  open TrivialMonad
   include RPC
     with type implementation = unit
      and type 'a res = rpcfn -> 'a
-     and type ('a,'b) comp = ('a,'b) Result.result
+     and type ('a,'b) comp = ('a,'b) t
 end
-
-(** This module generates exception-raising Client modules from RPC
-    declarations. See the {!GenClient} module for a description of
-    the common entries. *)
-module GenClientExn () : sig
-  include RPC
-    with type implementation = unit
-     and type 'a res = rpcfn -> 'a
-     (* Our functions never return the error parameter, hence the following
-        type declaration drops the `b parameter. Instead, the exception declared
-        in the Error.t passed in the `returning` function below will be raised.  *)
-     and type ('a,'b) comp = 'a
-end
-
-module type RPCfunc = sig
-  val rpc : Rpc.call -> Rpc.response
-end
-
-(** This module is like {!GenClientExn}, but it allows the user to specify the
-    [rpc] function once when generating the client. *)
-module GenClientExnRpc (R : RPCfunc) : sig
-  include RPC
-    with type implementation = unit
-     and type 'a res = 'a
-     and type ('a,'b) comp = 'a
-end
-
-
-(** For the Server generation, the 'implement' function call _must_ be called
-    before any RPCs are described. This exception will be raised if the user
-    tries to do this. *)
-exception NoDescription
-
-type server_implementation
-val server : server_implementation -> rpcfn
-val combine : server_implementation list -> server_implementation
 
 (** This module generates a server that dispatches RPC calls to their
     implementations.
@@ -174,28 +186,62 @@ val combine : server_implementation list -> server_implementation
     Then the server itself can be obtained by passing the [implementation]
     to {!server}. *)
 module GenServer () : sig
+  open TrivialMonad
   include RPC
-    with type implementation = server_implementation
+    with type implementation = (string, rpcfn option) Hashtbl.t
      and type 'a res = 'a -> unit
-     and type ('a,'b) comp = ('a,'b) Result.result
+     and type ('a,'b) comp = ('a,'b) t
 end
 
+module Legacy : sig
+  type rpcfn = Rpc.call -> Rpc.response
 
-(** Generates a server, like {!GenServer}, but for an implementation that
-    raises exceptions instead of returning a [result]. *)
-module GenServerExn () : sig
-  include RPC
-    with type implementation = server_implementation
-     and type 'a res = 'a -> unit
-     and type ('a,'b) comp = 'a
-end
+  (** This module generates exception-raising Client modules from RPC
+      declarations. See the {!GenClient} module for a description of
+      the common entries. *)
+  module GenClientExn () : sig
+    include RPC
+      with type implementation = unit
+       and type 'a res = rpcfn -> 'a
+       (* Our functions never return the error parameter, hence the following
+          type declaration drops the `b parameter. Instead, the exception declared
+          in the Error.t passed in the `returning` function below will be raised.  *)
+       and type ('a,'b) comp = 'a
+  end
 
-module DefaultError : sig
-  type t = InternalError of string
-  exception InternalErrorExn of string
+  module type RPCfunc = sig
+    val rpc : Rpc.call -> Rpc.response
+  end
 
-  val internalerror : (string, t) Rpc.Types.tag
-  val t : t Rpc.Types.variant
-  val def : t Rpc.Types.def
-  val err : t Error.t
+  (** This module is like {!GenClientExn}, but it allows the user to specify the
+      [rpc] function once when generating the client. *)
+  module GenClientExnRpc (R : RPCfunc) : sig
+    include RPC
+      with type implementation = unit
+       and type 'a res = 'a
+       and type ('a,'b) comp = 'a
+  end
+
+  type server_implementation
+  val server : server_implementation -> rpcfn
+  val combine : server_implementation list -> server_implementation
+
+  (** Generates a server, like {!GenServer}, but for an implementation that
+      raises exceptions instead of returning a [result]. *)
+  module GenServerExn () : sig
+    include RPC
+      with type implementation = server_implementation
+       and type 'a res = 'a -> unit
+       and type ('a,'b) comp = 'a
+  end
+
+  module DefaultError : sig
+    type t = InternalError of string
+    exception InternalErrorExn of string
+
+    val internalerror : (string, t) Rpc.Types.tag
+    val t : t Rpc.Types.variant
+    val def : t Rpc.Types.def
+    val err : t Error.t
+  end
 end
