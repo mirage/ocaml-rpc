@@ -13,4 +13,9 @@ module LwtM: Idl.RPCMONAD = struct
 end
 
 module LwtIdl = Idl.Make(LwtM)
+module M = struct
+  include LwtIdl.ImplM
+  (* TODO: can we avoid Obj.magic here? *)
+  let lwt x : 'a Lwt.t = Obj.magic (LwtM.unbox x)
+end
 include LwtIdl

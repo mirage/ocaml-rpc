@@ -1,5 +1,14 @@
 module LwtM : Idl.RPCMONAD
 
+module M : sig
+  val return : 'a -> ('a, 'b) LwtM.t
+  val return_err : 'b -> ('a, 'b) LwtM.t
+  val checked_bind : ('a, 'b) LwtM.t -> ('a -> ('c, 'd) LwtM.t) -> ('b -> ('c, 'd) LwtM.t) -> ('c, 'd) LwtM.t
+  val bind : ('a, 'b) LwtM.t -> ('a -> ('c, 'b) LwtM.t) -> ('c, 'b) LwtM.t
+  val ( >>= ) : ('a, 'b) LwtM.t -> ('a -> ('c, 'b) LwtM.t) -> ('c, 'b) LwtM.t
+  val lwt : 'a LwtM.box -> 'a Lwt.t
+end
+
 type client_implementation
 type server_implementation
 
