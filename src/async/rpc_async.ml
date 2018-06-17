@@ -13,4 +13,9 @@ module AsyncM: Idl.RPCMONAD = struct
 end
 
 module AsyncIdl = Idl.Make(AsyncM)
+module M = struct
+  include AsyncIdl.ImplM
+  (* TODO: can we avoid Obj.magic here? *)
+  let deferred x : 'a Async.Deferred.t = Obj.magic (AsyncM.unbox x)
+end
 include AsyncIdl

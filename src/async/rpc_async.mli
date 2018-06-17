@@ -1,5 +1,14 @@
 module AsyncM : Idl.RPCMONAD
 
+module M : sig
+  val return : 'a -> ('a, 'b) AsyncM.t
+  val return_err : 'b -> ('a, 'b) AsyncM.t
+  val checked_bind : ('a, 'b) AsyncM.t -> ('a -> ('c, 'd) AsyncM.t) -> ('b -> ('c, 'd) AsyncM.t) -> ('c, 'd) AsyncM.t
+  val bind : ('a, 'b) AsyncM.t -> ('a -> ('c, 'b) AsyncM.t) -> ('c, 'b) AsyncM.t
+  val ( >>= ) : ('a, 'b) AsyncM.t -> ('a -> ('c, 'b) AsyncM.t) -> ('c, 'b) AsyncM.t
+  val deferred : 'a AsyncM.box -> 'a Async.Deferred.t
+end
+
 type client_implementation
 type server_implementation
 
