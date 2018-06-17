@@ -99,7 +99,7 @@ module ImplM = struct
     Printf.printf "%Ld\n" i;
     return (Int64.add i 1L)
 
-  let rpc4 : AbstractMod.t -> (string, Idl.DefaultError.t) Rpc_lwt.M.t = fun abs ->
+  let rpc4 : AbstractMod.t -> (string, Idl.DefaultError.t) Rpc_lwt.LwtM.t = fun abs ->
     return (Printf.sprintf "Abs: %s\n" (AbstractMod.string_of abs))
 end
 
@@ -125,7 +125,7 @@ let main () =
   Server.rpc4 ImplM.rpc4;
 
   let funcs = Server.implementation in
-  let rpc = rpc (Rpc_lwt.server funcs) in
+  let rpc r = rpc (Rpc_lwt.server funcs |> Obj.magic) r |> Obj.magic in
 
   Client.rpc1 rpc "test argument" 2 >>= fun result ->
   Printf.printf "result.result='%s', metadata=[%s]\n"

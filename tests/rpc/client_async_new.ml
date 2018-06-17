@@ -96,7 +96,7 @@ let main () =
 
   let funcs = Server.implementation in
 
-  let rpc = rpc (Rpc_async.server funcs) in
+  let rpc r = rpc (Rpc_async.server funcs |> Obj.magic) r |> Obj.magic in
 
   Client.rpc1 rpc "test argument" 2 >>= fun result ->
   Printf.printf "result.result='%s', metadata=[%s]\n"
