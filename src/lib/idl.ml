@@ -283,7 +283,7 @@ module MakeGenServer (M: RPCMONAD) () = struct
       Hashtbl.add funcs wire_name (Some rpcfn)
 end
 
-module TrivialMonad: RPCMONAD = struct
+module IdM: RPCMONAD = struct
   type 'a m = 'a
   type 'a box = { box: 'a m }
   type ('a, 'b) t = ('a, 'b) Result.result box
@@ -297,9 +297,9 @@ module TrivialMonad: RPCMONAD = struct
   let fail exn = raise exn
 end
 
-module GenClient = MakeGenClient(TrivialMonad)
-module ServerImpl = MakeServerImpl(TrivialMonad)
-module GenServer = MakeGenServer(TrivialMonad)
+module GenClient = MakeGenClient(IdM)
+module ServerImpl = MakeServerImpl(IdM)
+module GenServer = MakeGenServer(IdM)
 
 module Legacy = struct
   type rpcfn = Rpc.call -> Rpc.response

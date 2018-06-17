@@ -149,7 +149,7 @@ module MakeServerImpl(M: RPCMONAD): sig
   val combine : server_implementation list -> server_implementation
 end
 
-module TrivialMonad: RPCMONAD
+module IdM: RPCMONAD
 
 (** This module generates Client modules from RPC declarations.
 
@@ -166,7 +166,7 @@ module TrivialMonad: RPCMONAD
     the result of the Rpc, which might be an error message indicating
     a problem happening on the remote end. *)
 module GenClient () : sig
-  open TrivialMonad
+  open IdM
   include RPC
     with type implementation = unit
      and type 'a res = rpcfn -> 'a
@@ -186,7 +186,7 @@ end
     Then the server itself can be obtained by passing the [implementation]
     to {!server}. *)
 module GenServer () : sig
-  open TrivialMonad
+  open IdM
   include RPC
     with type implementation = (string, rpcfn option) Hashtbl.t
      and type 'a res = 'a -> unit
