@@ -12,6 +12,5 @@ module LwtM: Idl.RPCMONAD = struct
   let fail exn = Lwt.fail exn
 end
 
-module GenClient = Idl.MakeGenClient(LwtM)
-module ServerImpl = Idl.MakeServerImpl(LwtM)
-module GenServer = Idl.MakeGenServer(LwtM)
+module LwtIdl = Idl.Make(LwtM)
+include LwtIdl
