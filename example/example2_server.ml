@@ -1,7 +1,13 @@
-open Idl
 open Example2_idl
 
-module MyIdl = Idl.Make(Idl.IdM)
+module IdM = struct
+  type 'a t = 'a
+  let return x = x
+  let bind x f = f x
+  let fail e = raise e
+end
+
+module MyIdl = Idl.Make(IdM)
 module Server=API(MyIdl.GenServer ())
 
 (* Implementations of the methods *)
@@ -15,10 +21,10 @@ let query () =
     features = ["defaults";"upgradability"];
     instance_id = string_of_int (Random.int 1000)
   } in
-  MyIdl.ImplM.return result
+  MyIdl.ErrM.return result
 
 let diagnostics () =
-  MyIdl.ImplM.return "This should be the diagnostics of the server"
+  MyIdl.ErrM.return "This should be the diagnostics of the server"
 
 let test i s1 s2 =
   Printf.printf "%Ld %s %s\n%!" i s1 s2;
@@ -82,9 +88,9 @@ let start_server () =
   Server.diagnostics diagnostics;
   Server.test test;
 
-  let rpc_fn = server Server.implementation in
+  let rpc_fn = MyIdl.server Server.implementation in
 
   let process x =
-    Jsonrpc.string_of_response (Obj.magic (rpc_fn (Jsonrpc.call_of_string (Bytes.unsafe_to_string x)))) in
+    rpc_fn (Jsonrpc.call_of_string (Bytes.unsafe_to_string x)) |> MyIdl.T.run |> Jsonrpc.string_of_response in
 
   serve_requests process sockpath

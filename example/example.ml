@@ -55,7 +55,14 @@ module MyAPI(R : Idl.RPC) = struct
 
 end
 
-module MyIdl = Idl.Make(Idl.IdM)
+module IdM = struct
+  type 'a t = 'a
+  let return x = x
+  let bind x f = f x
+  let fail e = raise e
+end
+
+module MyIdl = Idl.Make(IdM)
 (* By passing in different modules to the `MyAPI` functor above, we can
    generate Client and Server modules *)
 module Client=MyAPI(MyIdl.GenClient ())
@@ -73,15 +80,15 @@ let _ =
      the use of `ok` here. *)
   Server.api1 (fun i s ->
       Printf.printf "Received '%d' and '%s': returning '%b'\n" i s true;
-      ImplM.return true);
+      ErrM.return true);
 
   Server.api2 (fun s ->
       Printf.printf "Received '%s': returning '%d'\n%!" s 56;
-      ImplM.return 56);
+      ErrM.return 56);
 
   (* The Server module has a 'server' function that can be used to service RPC
      requests by passing the funcs value created above. *)
-  let rpc_fn : Idl.IdM.rpcfn = server Server.implementation in
+  let rpc_fn = server Server.implementation in
 
   (* To see a little more clearly what's going on, we will wrap this rpc
      function in something to print out the marshalled call and response. *)
@@ -93,7 +100,7 @@ let _ =
        and force replacing 'a m with the actual used type. *)
     let response = rpc_fn rpc in
     Printf.printf "Marshalled RPC type: '%s'\n"
-      (Rpc.string_of_response (Obj.magic response));
+      (response |> T.run |> Rpc.string_of_response);
     response
   in
 
@@ -110,10 +117,10 @@ let _ =
      As it happens, we can pass the server rpc function directly to the client
      module as a short-circuit of the above process.
   *)
-  Client.api1 rpc 7 "hello" |> Obj.magic >>= fun b -> Printf.printf "Result: %b\n" b;
-  Client.api2 rpc "foo" |> Obj.magic >>= fun i -> Printf.printf "Result: %d\n" i;
-
-  Result.Ok ()
+  let open ErrM in
+  Client.api1 rpc 7 "hello" >>= fun b -> Printf.printf "Result: %b\n" b;
+  Client.api2 rpc "foo" >>= fun i -> Printf.printf "Result: %d\n" i;
+  return (Result.Ok ())
 
 
 (* The above was using the built-in convenience types. More complex types can
@@ -271,11 +278,12 @@ let _ =
   (* As before, we define an implementation of the method, and associate it
      with the server impls *)
   let impl vm' paused =
+    let open MyIdl.ErrM in
     Printf.printf "name=%s description=%s paused=%b\n"
       vm'.name_label vm'.name_description paused;
     if paused
-    then MyIdl.ImplM.return_err (Errors "Paused start is unimplemented")
-    else MyIdl.ImplM.return ()
+    then return_err (Errors "Paused start is unimplemented")
+    else return ()
   in
   VMServer.start impl;
 
@@ -290,7 +298,7 @@ let _ =
 
   (* Again we create a wrapper RPC function that dumps the marshalled data to
      stdout for clarity *)
-  let rpcfn = Idl.server VMServer.implementation in
+  let rpcfn = MyIdl.server VMServer.implementation in
   let rpcfnexn = Idl.Legacy.server VMServerExn.implementation in
 
   let rpc rpc =
@@ -298,7 +306,7 @@ let _ =
       (Rpc.string_of_call rpc);
     let response = rpcfn rpc in
     Printf.printf "Marshalled RPC type:\n'%s'\n"
-      (Rpc.string_of_response (Obj.magic response));
+      (response |> MyIdl.T.run |> Rpc.string_of_response);
     let response = rpcfnexn rpc in
     Printf.printf "Marshalled RPC type from exception producing impl (should be the same):\n'%s'\n"
       (Rpc.string_of_response response);
@@ -310,7 +318,9 @@ let _ =
   let test () =
     let open Result in
     let vm = { name_label="test"; name_description="description" } in
-    begin match VMClient.start (fun c -> Idl.IdM.return (rpc c)) vm true |> Obj.magic with
+    let open MyIdl in
+    let open ErrM in
+    begin match VMClient.start (fun c -> T.return (rpc c)) vm true |> T.unbox |> T.run with
       | Ok () -> Printf.printf "Unexpected OK\n%!"
       | Error (Errors e) -> Printf.printf "Caught an (expected) error: %s\n%!" e
     end;
