@@ -61,7 +61,7 @@ module type RPC = sig
 end
 
 module type RPCMONAD = sig
-  type 'a m
+  type _ m
   type 'a box = { box: 'a m }
   type ('a, 'b) t = ('a, 'b) Result.result box
 
@@ -72,6 +72,7 @@ module type RPCMONAD = sig
   val bind:  'a m -> ('a -> 'b m) -> 'b m
   val return: 'a -> 'a m
   val fail: exn -> 'a m
+  val run: 'a m -> 'a
 end
 
 let debug_rpc call =
@@ -281,7 +282,7 @@ module Make (M: RPCMONAD) = struct
 end
 
 module IdM: RPCMONAD = struct
-  type 'a m = 'a
+  type _ m = | In: 'a -> 'a m
   type 'a box = { box: 'a m }
   type ('a, 'b) t = ('a, 'b) Result.result box
 
@@ -289,9 +290,10 @@ module IdM: RPCMONAD = struct
 
   let box x = { box=x }
   let unbox { box } = box
-  let bind x f = f x
-  let return x = x
+  let bind x f = let In x' = x in f x'
+  let return x = In x
   let fail exn = raise exn
+  let run (In a) = a
 end
 
 module IdIdl = Make(IdM)
@@ -385,7 +387,7 @@ module Legacy = struct
             | _ -> (Rpc.Dict named) :: List.rev unnamed
           in
           let call = Rpc.call wire_name args in
-          let r = Obj.magic (rpc call) in
+          let r = rpc call in
           if r.Rpc.success
           then match Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty r.Rpc.contents with Ok x -> x | Error (`Msg x) -> raise (MarshalError x)
           else match Rpcmarshal.unmarshal e.Error.def.Rpc.Types.ty r.Rpc.contents with Ok x -> raise (e.Error.raiser x) | Error (`Msg x) -> raise (MarshalError x)

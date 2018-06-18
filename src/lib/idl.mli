@@ -119,6 +119,7 @@ module type RPCMONAD = sig
   val bind:  'a m -> ('a -> 'b m) -> 'b m
   val return: 'a -> 'a m
   val fail: exn -> 'a m
+  val run: 'a m -> 'a
 end
 
 
