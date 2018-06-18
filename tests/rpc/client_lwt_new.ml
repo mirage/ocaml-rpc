@@ -68,7 +68,7 @@ module API(R:Idl.RPC) = struct
 end
 
 module ImplM = struct
-  open Rpc_lwt.M
+  open Rpc_lwt.ErrM
 
   let rpc1 arg1 x =
     if x=5
@@ -99,12 +99,13 @@ module ImplM = struct
     Printf.printf "%Ld\n" i;
     return (Int64.add i 1L)
 
-  let rpc4 : AbstractMod.t -> (string, Idl.DefaultError.t) Rpc_lwt.LwtM.t = fun abs ->
+  let rpc4 = fun abs ->
     return (Printf.sprintf "Abs: %s\n" (AbstractMod.string_of abs))
 end
 
 let rpc rpc_fn call =
-  let open Lwt in
+  let open Rpc_lwt in
+  let (>>=) = T.bind in
   let call_string = Jsonrpc.string_of_call call in
   Printf.printf "rpc function: call_string='%s'\n" call_string;
   let call = Jsonrpc.call_of_string call_string in
@@ -117,7 +118,7 @@ module Server = API(Rpc_lwt.GenServer ())
 module Client = API(Rpc_lwt.GenClient ())
 
 let main () =
-  let open Rpc_lwt.M in
+  let open Rpc_lwt in
 
   Server.rpc1 ImplM.rpc1;
   Server.rpc2 ImplM.rpc2;
@@ -125,12 +126,13 @@ let main () =
   Server.rpc4 ImplM.rpc4;
 
   let funcs = Server.implementation in
-  let rpc r = rpc (Rpc_lwt.server funcs |> Obj.magic) r |> Obj.magic in
+  let rpc r = rpc (Rpc_lwt.server funcs) r in
 
+  let open ErrM in
   Client.rpc1 rpc "test argument" 2 >>= fun result ->
-  Printf.printf "result.result='%s', metadata=[%s]\n"
-    result.result (String.concat ";" (List.map (fun (a,b) -> Printf.sprintf "(%d,%d)" a b) result.metadata));
-
+      Printf.printf "result.result='%s', metadata=[%s]\n"
+        result.result (String.concat ";" (List.map (fun (a,b) -> Printf.sprintf "(%d,%d)" a b) result.metadata));
+  
   checked_bind (Client.rpc1 rpc "test argument" 5) (fun result ->
       Printf.printf "result.result='%s', metadata=[%s]\n"
         result.result (String.concat ";" (List.map (fun (a,b) -> Printf.sprintf "(%d,%d)" a b) result.metadata));
@@ -149,7 +151,8 @@ let main () =
 
 let run _switch () =
   let open Lwt.Infix in
-  main () |> Rpc_lwt.M.lwt >>= fun _ ->
+  let (>>>=) x f = x |> Rpc_lwt.T.unbox |> Rpc_lwt.T.run |> f in
+  main () >>>= fun _ ->
   Lwt.return_unit
 
 let tests =

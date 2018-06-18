@@ -11,22 +11,26 @@ let test_call_lwt _switch () =
 
   let server =
     let module Server = Test_common.Test_interface.Interface(Rpc_lwt.GenServer ()) in
-    Server.add (fun a b -> Rpc_lwt.M.return (a + b));
-    Server.sub (fun a b -> Rpc_lwt.M.return (a - b));
-    Server.mul (fun a b -> Rpc_lwt.M.return (a * b));
-    Server.div (fun a b -> Rpc_lwt.M.return (a / b));
+    let open Rpc_lwt in
+    Server.add (fun a b -> ErrM.return (a + b));
+    Server.sub (fun a b -> ErrM.return (a - b));
+    Server.mul (fun a b -> ErrM.return (a * b));
+    Server.div (fun a b -> ErrM.return (a / b));
     Rpc_lwt.server Server.implementation
   in
   let rpc call = server call in
   let module Client = Test_common.Test_interface.Interface(Rpc_lwt.GenClient()) in
   let t =
-    Client.add rpc 1 3 |> Rpc_lwt.M.lwt >>=
+    let open Rpc_lwt in
+    (* TODO: Add this to the Transformer itself *)
+    let (>>>=) x f = x |> T.unbox |> T.run >>= f in
+    Client.add rpc 1 3 >>>=
     with_ok (fun n -> Alcotest.(check int) "add" 4 n |> Lwt.return) >>= fun () ->
-    Client.sub rpc 1 3 |> Rpc_lwt.M.lwt >>=
+    Client.sub rpc 1 3 >>>=
     with_ok (fun n -> Alcotest.(check int) "sub" (-2) n |> Lwt.return) >>= fun () ->
-    Client.mul rpc 2 3 |> Rpc_lwt.M.lwt >>=
+    Client.mul rpc 2 3 >>>=
     with_ok (fun n -> Alcotest.(check int) "mul" 6 n |> Lwt.return) >>= fun () ->
-    Client.div rpc 8 2 |> Rpc_lwt.M.lwt >>=
+    Client.div rpc 8 2 >>>=
     with_ok (fun n -> Alcotest.(check int) "div" 4 n |> Lwt.return)
   in
   t

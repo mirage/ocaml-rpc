@@ -42,7 +42,7 @@ module API(R:Idl.RPC) = struct
 end
 
 module ImplM = struct
-  open Rpc_async.M
+  open Rpc_async.ErrM
 
   let rpc1 arg1 x =
     if x=5
@@ -75,20 +75,21 @@ module ImplM = struct
 end
 
 let rpc rpc_fn call =
-  let open Async.Deferred in
+  let open Rpc_async in
+  let (>>=) = T.bind in
   let call_string = Jsonrpc.string_of_call call in
   Printf.printf "rpc function: call_string='%s'\n" call_string;
   let call = Jsonrpc.call_of_string call_string in
   rpc_fn call >>= fun response ->
   let response_str = Jsonrpc.string_of_response response in
   Printf.printf "rpc function: response_string = '%s'\n" response_str;
-  return (Jsonrpc.response_of_string response_str)
+  Async.Deferred.return (Jsonrpc.response_of_string response_str)
 
 module Server = API(Rpc_async.GenServer ())
 module Client = API(Rpc_async.GenClient ())
 
 let main () =
-  let open Rpc_async.M in
+  let open Rpc_async in
 
   Server.rpc1 ImplM.rpc1;
   Server.rpc2 ImplM.rpc2;
@@ -96,8 +97,8 @@ let main () =
 
   let funcs = Server.implementation in
 
-  let rpc r = rpc (Rpc_async.server funcs |> Obj.magic) r |> Obj.magic in
-
+  let rpc r = rpc (Rpc_async.server funcs) r in
+  let open ErrM in
   Client.rpc1 rpc "test argument" 2 >>= fun result ->
   Printf.printf "result.result='%s', metadata=[%s]\n"
     result.result (String.concat ";" (List.map (fun (a,b) -> Printf.sprintf "(%d,%d)" a b) result.metadata));
@@ -120,8 +121,9 @@ let main () =
 let run () =
   let open Async in
   ignore (main ());
+  let (>>>=) x f = Rpc_async.(x |> T.unbox |> T.run |> f) in
   Thread_safe.block_on_async_exn
-    (fun () -> main () |> Rpc_async.M.deferred >>= fun _ -> return ())
+    (fun () -> main () >>>= fun _ -> return ())
 
 let tests =
   [ "basic Async client-server test", `Quick, run ]
