@@ -121,13 +121,13 @@ module Make (M: MONAD): sig
   type server_implementation
 
   (** The module [!T], the [RPC] [MONAD] transformer, defines the minimal set
-    of types and functions needed for the [!GenClient] and [!GenServer] modules
-    to generate clients and servers. These allow to provide different syncronous
-    and asynctronous engines for the client and server implementations.
-*)
+      of types and functions needed for the [!GenClient] and [!GenServer] modules
+      to generate clients and servers. These allow to provide different syncronous
+      and asynctronous engines for the client and server implementations.
+  *)
   module T: sig
     type _ m
-    type 'a box = { box: 'a m }
+    type 'a box
     type ('a, 'b) resultb = ('a, 'b) Result.result box
 
     type rpcfn = Rpc.call -> Rpc.response m
@@ -196,21 +196,22 @@ module Make (M: MONAD): sig
 end
 
 module IdM: MONAD
+
 module GenClient () : sig
   open IdM
   include RPC
     with type implementation = Make(IdM).client_implementation
-     and type 'a res = IdM.rpcfn -> 'a
-     and type ('a,'b) comp = ('a,'b) t
+     and type 'a res = Make(IdM).T.rpcfn -> 'a
+     and type ('a,'b) comp = ('a,'b) Make(IdM).T.resultb
 end
 module GenServer () : sig
   open IdM
   include RPC
     with type implementation = Make(IdM).server_implementation
      and type 'a res = 'a -> unit
-     and type ('a,'b) comp = ('a,'b) t
+     and type ('a,'b) comp = ('a,'b) Make(IdM).T.resultb
 end
-val server : Make(IdM).server_implementation -> IdM.rpcfn
+val server : Make(IdM).server_implementation -> Make(IdM).T.rpcfn
 val combine : Make(IdM).server_implementation list -> Make(IdM).server_implementation
 
 
