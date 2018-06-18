@@ -60,19 +60,27 @@ module type RPC = sig
   val declare : string -> string list -> 'a fn -> 'a res
 end
 
-module type RPCMONAD = sig
+module type MONAD = sig
+  type 'a t
+  val return: 'a -> 'a t
+  val bind: 'a t -> ('a -> 'b t) -> 'b t
+  val fail: exn -> 'a t
+end
+
+module type RPCTRANSFORMER = functor (M: MONAD) -> sig
   type _ m
   type 'a box = { box: 'a m }
-  type ('a, 'b) t = ('a, 'b) Result.result box
+  type ('a, 'b) resultb = ('a, 'b) Result.result box
 
   type rpcfn = Rpc.call -> Rpc.response m
 
   val box: 'a m -> 'a box
   val unbox: 'a box -> 'a m
-  val bind:  'a m -> ('a -> 'b m) -> 'b m
+  val lift: ('a -> 'b M.t) -> ('a -> 'b m)
+  val bind:  'a m -> ('a -> 'b M.t) -> 'b m
   val return: 'a -> 'a m
-  val fail: exn -> 'a m
-  val run: 'a m -> 'a
+
+  val run: 'a m -> 'a M.t
 end
 
 let debug_rpc call =
@@ -120,21 +128,52 @@ let get_arg call has_named name is_opt =
   | false, Some x, _ ->
     failwith "Can't happen by construction"
 
-module Make (M: RPCMONAD) = struct
+module Make (M: MONAD) = struct
+  module T : sig
+    type _ m
+    type 'a box = { box: 'a m }
+    type ('a, 'b) resultb = ('a, 'b) Result.result box
+
+    type rpcfn = Rpc.call -> Rpc.response m
+
+    val box: 'a m -> 'a box
+    val unbox: 'a box -> 'a m
+    val lift: ('a -> 'b M.t) -> ('a -> 'b m)
+    val bind:  'a m -> ('a -> 'b M.t) -> 'b m
+    val return: 'a -> 'a m
+
+    val run: 'a m -> 'a M.t
+  end
+  = struct
+    type _ m = | In : 'a M.t -> 'a m
+    type 'a box = { box: 'a m }
+    type ('a, 'b) resultb = ('a, 'b) Result.result box
+
+    type rpcfn = Rpc.call -> Rpc.response m
+
+    let box x = { box=x }
+    let unbox { box } = box
+
+    let lift f = fun x -> In (f x)
+    let bind (In x) f = In (M.bind x f)
+    let return x = In (M.return x)
+
+    let run (In a) = a
+  end
 
   type client_implementation = unit
-  type server_implementation = (string, M.rpcfn option) Hashtbl.t
+  type server_implementation = (string, T.rpcfn option) Hashtbl.t
 
-  module ImplM: sig
-    val return : 'a -> ('a, 'b) M.t
-    val return_err : 'b -> ('a, 'b) M.t
-    val checked_bind : ('a, 'b) M.t -> ('a -> ('c, 'd) M.t) -> ('b -> ('c, 'd) M.t) -> ('c, 'd) M.t
-    val bind : ('a, 'b) M.t -> ('a -> ('c, 'b) M.t) -> ('c, 'b) M.t
-    val ( >>= ) : ('a, 'b) M.t -> ('a -> ('c, 'b) M.t) -> ('c, 'b) M.t
+  module ErrM: sig
+    val return : 'a -> ('a, 'b) T.resultb
+    val return_err : 'b -> ('a, 'b) T.resultb
+    val checked_bind : ('a, 'b) T.resultb -> ('a -> ('c, 'd) T.resultb ) -> ('b -> ('c, 'd) T.resultb ) -> ('c, 'd) T.resultb
+    val bind : ('a, 'b) T.resultb -> ('a -> ('c, 'b) T.resultb ) -> ('c, 'b) T.resultb
+    val ( >>= ) : ('a, 'b) T.resultb -> ('a -> ('c, 'b) T.resultb ) -> ('c, 'b) T.resultb
   end = struct
-    let return x = M.box (M.return (Result.Ok x))
-    let return_err e = M.box (M.return (Result.Error e))
-    let checked_bind x f f1 = M.box (M.bind (M.unbox x) (function | Result.Ok x -> M.unbox (f x) | Result.Error x -> M.unbox (f1 x)))
+    let return x = T.box (T.return (Result.Ok x))
+    let return_err e = T.box (T.return (Result.Error e))
+    let checked_bind x f f1 = T.box (T.bind (T.unbox x) (function | Result.Ok x -> T.run (T.unbox (f x)) | Result.Error x -> T.run (T.unbox (f1 x))))
     let bind x f = checked_bind x f return_err
     let (>>=) x f = bind x f
   end
@@ -142,8 +181,8 @@ module Make (M: RPCMONAD) = struct
   module GenClient () =
   struct
     type implementation = client_implementation
-    type 'a res = M.rpcfn -> 'a
-    type ('a,'b) comp = ('a,'b) M.t
+    type 'a res = T.rpcfn -> 'a
+    type ('a,'b) comp = ('a,'b) T.resultb
     type _ fn =
       | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
       | Returning : ('a Param.t * 'b Error.t) -> ('a, 'b) comp fn
@@ -154,7 +193,7 @@ module Make (M: RPCMONAD) = struct
     let returning a err = Returning (a, err)
     let (@->) = fun t f -> Function (t, f)
 
-    let declare name _ ty (rpc : M.rpcfn) =
+    let declare name _ ty (rpc : T.rpcfn) =
       let open Result in
       let rec inner : type b. ((string * Rpc.t) list * Rpc.t list) -> b fn -> b = fun (named, unnamed) ->
         function
@@ -184,11 +223,11 @@ module Make (M: RPCMONAD) = struct
             | _ -> (Rpc.Dict named) :: List.rev unnamed
           in
           let call = Rpc.call wire_name args in
-          let res = M.bind (rpc call) (fun r ->
+          let res = T.bind (rpc call) (fun r ->
               if r.Rpc.success
               then match Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty r.Rpc.contents with Ok x -> M.return (Ok x) | Error (`Msg x) -> M.fail (MarshalError x)
               else match Rpcmarshal.unmarshal e.Error.def.Rpc.Types.ty r.Rpc.contents with Ok x -> M.return (Error x) | Error (`Msg x) -> M.fail  (MarshalError x))
-          in M.box res    
+          in T.box res
       in inner ([],[]) ty
   end
 
@@ -212,7 +251,7 @@ module Make (M: RPCMONAD) = struct
 
   module GenServer () = struct
     type implementation = server_implementation
-    type ('a,'b) comp = ('a,'b) M.t
+    type ('a,'b) comp = ('a,'b) T.resultb
     type 'a res = 'a -> unit
     type _ fn =
       | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
@@ -250,26 +289,26 @@ module Make (M: RPCMONAD) = struct
         end;
         let rpcfn =
           let has_named = has_named_args ty in
-          let rec inner : type a. a fn -> a -> Rpc.call -> Rpc.response M.m = fun f impl call ->
+          let rec inner : type a. a fn -> a -> Rpc.call -> Rpc.response T.m = fun f impl call ->
             match f with
             | Function (t, f) -> begin
                 let is_opt = match t.Param.typedef.Rpc.Types.ty with | Rpc.Types.Option _ -> true | _ -> false in
                 let (arg_rpc, call') =
                   match get_arg call has_named t.Param.name is_opt with
                   | Result.Ok (x,y) -> (x,y)
-                  (* TODO: use binds and M.fail here, don't raise randomly *)
+                  (* TODO: use binds and T.fail here, don't raise randomly *)
                   | Result.Error (`Msg m) -> raise (MarshalError m)
                 in
                 let z = Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty arg_rpc in
                 match z with
                 | Result.Ok arg -> inner f (impl arg) call'
-                | Result.Error (`Msg m) -> M.fail (MarshalError m)
+                (* TODO: use binds and T.fail here, don't raise randomly *)
+                | Result.Error (`Msg m) -> raise (MarshalError m)
               end
-            | Returning (t,e) -> begin
-                M.bind (M.unbox impl) (function
-                    | Result.Ok x -> M.return (Rpc.success (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty x))
-                    | Result.Error y -> M.return (Rpc.failure (Rpcmarshal.marshal e.Error.def.Rpc.Types.ty y)))
-              end
+            | Returning (t,e) ->
+              T.bind (T.unbox impl) (function
+                  | Result.Ok x -> M.return (Rpc.success (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty x))
+                  | Result.Error y -> M.return (Rpc.failure (Rpcmarshal.marshal e.Error.def.Rpc.Types.ty y)))
           in
           inner ty impl
         in
@@ -281,19 +320,12 @@ module Make (M: RPCMONAD) = struct
   end
 end
 
-module IdM: RPCMONAD = struct
-  type _ m = | In: 'a -> 'a m
-  type 'a box = { box: 'a m }
-  type ('a, 'b) t = ('a, 'b) Result.result box
 
-  type rpcfn = Rpc.call -> Rpc.response m
-
-  let box x = { box=x }
-  let unbox { box } = box
-  let bind x f = let In x' = x in f x'
-  let return x = In x
-  let fail exn = raise exn
-  let run (In a) = a
+module IdM = struct
+  type 'a t = 'a
+  let return x = x
+  let bind x f = f x
+  let fail e = raise e
 end
 
 module IdIdl = Make(IdM)

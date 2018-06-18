@@ -102,24 +102,11 @@ module type RPC = sig
   val declare : string -> string list -> 'a fn -> 'a res
 end
 
-(** The [RPCMONAD] signature describes the minimal set of types and functions 
-    needed for the [!GenClient] and [!GenServer] functor to generate clients
-    and servers. These allow to provide different syncronous and asynctronous
-    engines for the client and server implementations
-*)
-module type RPCMONAD = sig
-  type 'a m
-  type 'a box = { box: 'a m }
-  type ('a, 'b) t = ('a, 'b) Result.result box
-
-  type rpcfn = Rpc.call -> Rpc.response m
-
-  val box: 'a m -> 'a box
-  val unbox: 'a box -> 'a m
-  val bind:  'a m -> ('a -> 'b m) -> 'b m
-  val return: 'a -> 'a m
-  val fail: exn -> 'a m
-  val run: 'a m -> 'a
+module type MONAD = sig
+  type 'a t
+  val return: 'a -> 'a t
+  val bind: 'a t -> ('a -> 'b t) -> 'b t
+  val fail: exn -> 'a t
 end
 
 
@@ -128,17 +115,40 @@ end
     tries to do this. *)
 exception NoDescription
 
-module Make(M: RPCMONAD): sig
+module Make (M: MONAD): sig
 
   type client_implementation
   type server_implementation
 
-  module ImplM: sig
-    val return : 'a -> ('a, 'b) M.t
-    val return_err : 'b -> ('a, 'b) M.t
-    val checked_bind : ('a, 'b) M.t -> ('a -> ('c, 'd) M.t) -> ('b -> ('c, 'd) M.t) -> ('c, 'd) M.t
-    val bind : ('a, 'b) M.t -> ('a -> ('c, 'b) M.t) -> ('c, 'b) M.t
-    val ( >>= ) : ('a, 'b) M.t -> ('a -> ('c, 'b) M.t) -> ('c, 'b) M.t
+  (** The module [!T], the [RPC] [MONAD] transformer, defines the minimal set
+    of types and functions needed for the [!GenClient] and [!GenServer] modules
+    to generate clients and servers. These allow to provide different syncronous
+    and asynctronous engines for the client and server implementations.
+*)
+  module T: sig
+    type _ m
+    type 'a box = { box: 'a m }
+    type ('a, 'b) resultb = ('a, 'b) Result.result box
+
+    type rpcfn = Rpc.call -> Rpc.response m
+
+    val box: 'a m -> 'a box
+    val unbox: 'a box -> 'a m
+    val lift: ('a -> 'b M.t) -> ('a -> 'b m)
+    val bind:  'a m -> ('a -> 'b M.t) -> 'b m
+    val return: 'a -> 'a m
+
+    val run: 'a m -> 'a M.t
+  end
+
+  (** [!ErrM] defines monad to use for the implementation and combination
+      of RPC functions *)
+  module ErrM: sig
+    val return : 'a -> ('a, 'b) T.resultb
+    val return_err : 'b -> ('a, 'b) T.resultb
+    val checked_bind : ('a, 'b) T.resultb -> ('a -> ('c, 'd) T.resultb ) -> ('b -> ('c, 'd) T.resultb ) -> ('c, 'd) T.resultb
+    val bind : ('a, 'b) T.resultb -> ('a -> ('c, 'b) T.resultb ) -> ('c, 'b) T.resultb
+    val ( >>= ) : ('a, 'b) T.resultb -> ('a -> ('c, 'b) T.resultb ) -> ('c, 'b) T.resultb
   end
 
   (** This module generates Client modules from RPC declarations.
@@ -158,8 +168,8 @@ module Make(M: RPCMONAD): sig
   module GenClient (): sig
     include RPC
       with type implementation = client_implementation
-       and type 'a res = M.rpcfn -> 'a
-       and type ('a,'b) comp = ('a,'b) M.t
+       and type 'a res = T.rpcfn -> 'a
+       and type ('a,'b) comp = ('a,'b) T.resultb
   end
 
   (** This module generates a server that dispatches RPC calls to their
@@ -178,14 +188,14 @@ module Make(M: RPCMONAD): sig
     include RPC
       with type implementation = server_implementation
        and type 'a res = 'a -> unit
-       and type ('a,'b) comp = ('a,'b) M.t
+       and type ('a,'b) comp = ('a,'b) T.resultb
   end
 
-  val server : server_implementation -> M.rpcfn
+  val server : server_implementation -> T.rpcfn
   val combine : server_implementation list -> server_implementation
 end
 
-module IdM: RPCMONAD
+module IdM: MONAD
 module GenClient () : sig
   open IdM
   include RPC
