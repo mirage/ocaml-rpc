@@ -95,13 +95,9 @@ let _ =
   let rpc rpc =
     Printf.printf "Marshalled RPC call: '%s'\n"
       (Rpc.string_of_call rpc);
-    (* We need a better way to extract the inner value... 
-       There must be a way to construct the RPCMONAD type
-       and force replacing 'a m with the actual used type. *)
-    let response = rpc_fn rpc in
-    Printf.printf "Marshalled RPC type: '%s'\n"
-      (response |> T.run |> Rpc.string_of_response);
-    response
+      MyIdl.T.bind
+        (rpc_fn rpc)
+        (fun r -> Printf.printf "Marshalled RPC type: '%s'\n" (Rpc.string_of_response r); r)
   in
 
   (* The Client module exposes client-side implementations of the methods,
