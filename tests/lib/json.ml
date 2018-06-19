@@ -5,6 +5,10 @@ let valid_json = "
  { \"a\":\"b\" }
 "
 
+let valid_json_with_junk = "
+ { \"a\":\"b\" }Some junk
+"
+
 let v1 = "{
   \"method\": \"session.login_with_password\",
 	\"params\": [\"user\", \"password\"],
@@ -99,6 +103,12 @@ let v2_success = "{
     \"id\": 0
 }"
 
+let v2_success_with_junk = "{
+    \"jsonrpc\": \"2.0\",
+    \"result\": \"OpaqueRef:0d01bcdd-9b33-a0d8-1870-d4fb80af354e\",
+    \"id\": 0
+}{!&some junk for test"
+
 let v2_failure_bad_error = "{
     \"jsonrpc\": \"2.0\",
     \"error\": [ \"SESSION_AUTHENTICATION_FAILED\", \"root\", \"Authentication failure\" ],
@@ -132,6 +142,11 @@ let v2_failure_bad_message = "{
 let tests_json = [
   "invalid_json", invalid_json, false;
   "valid_json", valid_json, true;
+  "valid_json_with_junk", valid_json_with_junk, false;
+]
+
+let tests_json_plus = [
+  "valid_json_with_junk", valid_json_with_junk, true;
 ]
 
 let tests_call = [
@@ -152,12 +167,17 @@ let tests_call = [
 
 let tests_response = [
   "v2_success", v2_success, true;
+  "v2_success_with_junk", v2_success_with_junk, false;
   "v2_failure", v2_failure, false;
   "v2_mixed", v2_mixed, false;
   "v2_failure_bad_error", v2_failure_bad_error, false;
   "v2_failure_no_data", v2_failure_no_data, true;
   "v2_failure_bad_code", v2_failure_bad_code, false;
   "v2_failure_bad_message", v2_failure_bad_message, false;
+]
+
+let tests_response_plus = [
+  "v2_success_with_junk", v2_success_with_junk, true;
 ]
 
 let invoke parse_func (test_name, json, pass) =
@@ -175,6 +195,8 @@ let test tcs unmarshal () =
 
 let tests =
   [ "Jsonrpc.of_string", `Quick, test tests_json Jsonrpc.of_string
+  ; "Jsonrpc.of_string ~strict:false", `Quick, test tests_json_plus (Jsonrpc.of_string ~strict:false)
   ; "Jsonrpc.call_of_string", `Quick, test tests_call Jsonrpc.call_of_string
   ; "Jsonrpc.response_of_string", `Quick, test tests_response Jsonrpc.response_of_string
+  ; "Jsonrpc.response_of_string ~strict:false", `Quick, test tests_response_plus (Jsonrpc.response_of_string ~strict:false)
   ]

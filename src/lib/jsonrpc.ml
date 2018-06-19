@@ -17,7 +17,23 @@
 
 open Rpc
 
-module Y = Yojson.Safe
+module Yojson_private = struct
+  include Yojson.Safe
+
+  let from_string ?(strict = true) ?buf ?fname ?lnum s =
+    let open Yojson in
+    try
+      let lexbuf = Lexing.from_string s in
+      let v = init_lexer ?buf ?fname ?lnum () in
+      if strict then
+        from_lexbuf v lexbuf
+      else
+        from_lexbuf v ~stream:true lexbuf
+    with End_of_input ->
+      json_error "Blank input data"
+end
+
+module Y = Yojson_private
 module U = Yojson.Basic.Util
 
 type version = V1 | V2
@@ -142,7 +158,7 @@ let a_of_response ?(id=Int 0L) ?(version=V1) ~empty ~append response =
   let json = json_of_response ~id version response in
   to_a ~empty ~append json
 
-let of_string s = s |> Y.from_string |> json_to_rpc
+let of_string ?(strict=true) s = s |> Y.from_string ~strict |> json_to_rpc
 
 let of_a ~next_char b =
   let buf = Buffer.create 2048 in
@@ -261,8 +277,8 @@ let get_response extractor str =
     | JsonToRpcError json ->
       raise (Malformed_method_response (Printf.sprintf "<unable to parse %s>" (Y.to_string json)))
 
-let response_of_string str =
- get_response of_string str
+let response_of_string ?(strict = true) str =
+   get_response (of_string ~strict) str
 
 let response_of_in_channel channel =
   let of_channel s = s |> Y.from_channel |> json_to_rpc in
