@@ -42,7 +42,7 @@ module GenClient () = struct
             match t.Param.name with
             | Some n -> begin
                 match t.Param.typedef.Rpc.Types.ty, v with
-                | Rpc.Types.Option t1, None ->
+                | Rpc.Types.Option _, None ->
                   inner (named, unnamed) f
                 | Rpc.Types.Option t1, Some v' ->
                   let marshalled = Rpcmarshal.marshal t1 v' in
@@ -105,8 +105,6 @@ module GenServer () = struct
   let implement x = description := Some x; funcs
 
   type ('a,'b) comp = ('a,'b) Result.result M.lwt
-  type rpcfn = Rpc.call -> Rpc.response Lwt.t
-  type funcs = (string, rpcfn option) Hashtbl.t
   type 'a res = 'a -> unit
 
   type _ fn =
@@ -120,14 +118,13 @@ module GenServer () = struct
     function
     | Function (t, f) -> begin
         match t.Param.name with
-        | Some n -> true
+        | Some _ -> true
         | None -> has_named_args f
       end
-    | Returning (t, e) ->
+    | Returning (_, _) ->
       false
 
   let declare : string -> string list -> 'a fn -> 'a res = fun name _ ty ->
-    let open Rresult.R in
     (* We do not know the wire name yet as the description may still be unset *)
     Hashtbl.add funcs name None;
     fun impl ->

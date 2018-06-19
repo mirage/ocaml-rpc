@@ -54,16 +54,6 @@
  ))
 
 (library
- ((name rpclib_unix)
-  (public_name rpclib.unix)
-  (modules (rpc_client))
-  (libraries (rpclib.core
-              rpclib.json
-              rpclib.xml))
-  (wrapped false)
- ))
-
-(library
  ((name rpclib)
   (public_name rpclib)
   (libraries (rpclib.core
