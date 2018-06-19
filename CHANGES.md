@@ -1,3 +1,7 @@
+## 5.7.0 (June 2018) -- rpclib only
+- Add optional `strict` parameter to `jsonrpc.of_string` to ignore trailing
+  junk from input. The old behaviour (`strict=true`) is the default.
+
 ## 5.6.0 (June 2018) --
 * rpclib, rpclib-async, rpclib-ppx:
   - Remove duplication in .mlis, expose MarshalError, add docs
