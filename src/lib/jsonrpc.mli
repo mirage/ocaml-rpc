@@ -11,7 +11,8 @@ val to_a : empty:(unit -> 'a) -> append:('a -> string -> unit) -> Rpc.t -> 'a [@
 val string_of_call: ?version:version -> Rpc.call -> string
 val string_of_response: ?id:Rpc.t -> ?version:version -> Rpc.response -> string
 
-val of_string : string -> Rpc.t
+val of_string : ?strict:bool -> string -> Rpc.t
+
 val of_a : next_char:('a -> char option) -> 'a -> Rpc.t [@@ocaml.deprecated]
 val a_of_response : ?id:Rpc.t -> ?version:version -> empty:(unit -> 'a) -> append:('a -> string -> unit) -> Rpc.response -> 'a [@@ocaml.deprecated]
 val json_of_response : ?id:Rpc.t -> version -> Rpc.response -> Rpc.t
@@ -22,5 +23,5 @@ val get : string -> (string * 'a) list -> 'a
 val call_of_string : string -> Rpc.call
 val version_id_and_call_of_string : string -> version * Rpc.t * Rpc.call
 
-val response_of_string : string -> Rpc.response
+val response_of_string : ?strict:bool -> string -> Rpc.response
 val response_of_in_channel : in_channel -> Rpc.response
