@@ -89,6 +89,6 @@ let start_server () =
   let rpc_fn = MyIdl.server Server.implementation in
 
   let process x =
-    rpc_fn (Jsonrpc.call_of_string (Bytes.unsafe_to_string x)) |> MyIdl.T.run |> Jsonrpc.string_of_response in
+    rpc_fn (Jsonrpc.call_of_string (Bytes.unsafe_to_string x)) |> Jsonrpc.string_of_response in
 
   serve_requests process sockpath

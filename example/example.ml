@@ -94,9 +94,9 @@ let _ =
   let rpc rpc =
     Printf.printf "Marshalled RPC call: '%s'\n"
       (Rpc.string_of_call rpc);
-      MyIdl.T.bind
-        (rpc_fn rpc)
-        (fun r -> Printf.printf "Marshalled RPC type: '%s'\n" (Rpc.string_of_response r); r)
+    let res = rpc_fn rpc in
+      Printf.printf "Marshalled RPC type: '%s'\n" (Rpc.string_of_response res);
+    res
   in
 
   (* The Client module exposes client-side implementations of the methods,
@@ -299,7 +299,7 @@ let _ =
       (Rpc.string_of_call rpc);
     let response = rpcfn rpc in
     Printf.printf "Marshalled RPC type:\n'%s'\n"
-      (response |> MyIdl.T.run |> Rpc.string_of_response);
+      (Rpc.string_of_response response);
     let response = rpcfnexn rpc in
     Printf.printf "Marshalled RPC type from exception producing impl (should be the same):\n'%s'\n"
       (Rpc.string_of_response response);
@@ -312,7 +312,7 @@ let _ =
     let open Result in
     let vm = { name_label="test"; name_description="description" } in
     let open MyIdl in
-    begin match VMClient.start (fun c -> T.return (rpc c)) vm true |> T.unbox |> T.run with
+    begin match VMClient.start (fun c -> rpc c) vm true |> T.unbox |> T.run with
       | Ok () -> Printf.printf "Unexpected OK\n%!"
       | Error (Errors e) -> Printf.printf "Caught an (expected) error: %s\n%!" e
     end;
