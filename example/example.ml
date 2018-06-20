@@ -292,6 +292,8 @@ let _ =
   let rpcfn = MyIdl.server VMServer.implementation in
   let rpcfnexn = Idl.Exn.server VMServerExn.implementation in
 
+  (* This rpc function is quite wrong as we are calling two
+     functions that should live in completely different context! *)
   let rpc rpc =
     Printf.printf "Marshalled RPC call:\n'%s'\n"
       (Rpc.string_of_call rpc);
