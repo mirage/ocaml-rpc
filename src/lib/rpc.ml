@@ -80,7 +80,7 @@ module Types = struct
   }
   and 'a boxed_field = BoxedField : ('a, 's) field -> 's boxed_field
   and field_getter = {
-    fget : 'a. string -> 'a typ -> ('a, Rresult.R.msg) Result.result;
+    field_get : 'a. string -> 'a typ -> ('a, Rresult.R.msg) Result.result;
   }
   and 'a structure = {
     sname : string;

@@ -198,14 +198,12 @@ end
 module IdM: MONAD
 
 module GenClient () : sig
-  open IdM
   include RPC
     with type implementation = Make(IdM).client_implementation
      and type 'a res = Make(IdM).T.rpcfn -> 'a
      and type ('a,'b) comp = ('a,'b) Make(IdM).T.resultb
 end
 module GenServer () : sig
-  open IdM
   include RPC
     with type implementation = Make(IdM).server_implementation
      and type 'a res = 'a -> unit

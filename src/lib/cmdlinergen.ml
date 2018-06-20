@@ -89,8 +89,8 @@ module Gen () = struct
              | _ -> failwith "Type error"))
         (Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo))
     | Option _ -> Term.(const Rpc.Null)
-    | Tuple (t1, t2) -> Term.const Rpc.Null
-    | Struct {sname; fields} ->
+    | Tuple _ -> Term.const Rpc.Null
+    | Struct _ ->
       Term.app
         (Term.pure (fun x ->
              let x = Jsonrpc.of_string x in
@@ -98,7 +98,7 @@ module Gen () = struct
              | Rpc.Dict _ -> x
              | _ -> failwith "Type error"))
         (Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo))
-    | Variant {variants} ->
+    | Variant _ ->
       Term.app
         (Term.pure (fun x ->
              let x = Jsonrpc.of_string x in
@@ -131,7 +131,7 @@ module Gen () = struct
             let term = Cmdliner.Term.(const (fun x (named,unnamed) -> (named,x::unnamed)) $ term $ cur) in
             inner term f
           end
-        | Returning (ty, err) ->
+        | Returning (_, _) ->
           let run (named,unnamed) =
             let args = match named with | [] -> List.rev unnamed | _ -> (Rpc.Dict named)::(List.rev unnamed) in
             let call = Rpc.call wire_name args in

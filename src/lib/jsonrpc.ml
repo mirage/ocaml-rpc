@@ -17,13 +17,28 @@
 
 open Rpc
 
-module Y = Yojson.Safe
+module Yojson_private = struct
+  include Yojson.Safe
+
+  let from_string ?(strict = true) ?buf ?fname ?lnum s =
+    let open Yojson in
+    try
+      let lexbuf = Lexing.from_string s in
+      let v = init_lexer ?buf ?fname ?lnum () in
+      if strict then
+        from_lexbuf v lexbuf
+      else
+        from_lexbuf v ~stream:true lexbuf
+    with End_of_input ->
+      json_error "Blank input data"
+end
+
+module Y = Yojson_private
 module U = Yojson.Basic.Util
 
 type version = V1 | V2
 
 let rec rpc_to_json t =
-  let open Yojson.Safe in
   match t with
   | Int i -> `Intlit (Int64.to_string i)
   | Int32 i -> `Int (Int32.to_int i)
@@ -40,7 +55,6 @@ let rec rpc_to_json t =
 exception JsonToRpcError of Y.json
 
 let rec json_to_rpc t =
-  let open Yojson.Safe in
   match t with
   | `Intlit i -> Int (Int64.of_string i)
   | `Int i -> Int (Int64.of_int i)
@@ -55,7 +69,7 @@ let rec json_to_rpc t =
     )
   | unsupported -> raise (JsonToRpcError unsupported)
 
-let rec to_fct t f =
+let to_fct t f =
   rpc_to_json t
   |> Y.to_string
   |> f
@@ -142,7 +156,7 @@ let a_of_response ?(id=Int 0L) ?(version=V1) ~empty ~append response =
   let json = json_of_response ~id version response in
   to_a ~empty ~append json
 
-let of_string s = s |> Y.from_string |> json_to_rpc
+let of_string ?(strict=true) s = s |> Y.from_string ~strict |> json_to_rpc
 
 let of_a ~next_char b =
   let buf = Buffer.create 2048 in
@@ -200,8 +214,8 @@ let version_id_and_call_of_string str =
       in
       let id =
         match get "id" d with
-        | Int i as x -> x
-        | String s as y -> y
+        | Int _ as x -> x
+        | String _ as y -> y
         | _ -> raise (Malformed_method_request "Invalid field 'id' in request body")
       in
       version, id, call name params
@@ -223,8 +237,8 @@ let get_response extractor str =
       | Dict d ->
         let _ =
           match get "id" d with
-          | Int i as x -> x
-          | String s as y -> y
+          | Int _ as x -> x
+          | String _ as y -> y
           | _ -> raise (Malformed_method_response "id") in
         begin match get' "jsonrpc" d with
           | None ->
@@ -261,8 +275,8 @@ let get_response extractor str =
     | JsonToRpcError json ->
       raise (Malformed_method_response (Printf.sprintf "<unable to parse %s>" (Y.to_string json)))
 
-let response_of_string str =
- get_response of_string str
+let response_of_string ?(strict = true) str =
+   get_response (of_string ~strict) str
 
 let response_of_in_channel channel =
   let of_channel s = s |> Y.from_channel |> json_to_rpc in

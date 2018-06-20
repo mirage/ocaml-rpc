@@ -18,10 +18,6 @@
 open Printf
 open Rpc
 
-let debug = ref false
-let debug (fmt: ('a, unit, string, unit) format4) : 'a =
-  kprintf (fun s -> if !debug then begin print_string s; print_newline (); flush stdout end) fmt
-
 (* marshalling/unmarshalling code *)
 
 (* The XML-RPC is not very clear about what characters can be in a string value ... *)

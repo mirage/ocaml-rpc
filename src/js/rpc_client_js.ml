@@ -16,9 +16,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 *)
 
-open Lwt
-open Js
-
 let do_rpc enc dec content_type ~url call =
   let method_ = "POST" in
   let contents = enc call in

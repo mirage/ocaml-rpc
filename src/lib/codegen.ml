@@ -49,7 +49,7 @@ module Interface = struct
   let setify l =
     List.fold_left (fun set x -> if List.mem x set then set else x::set) [] l |> List.rev
 
-  let rec all_types : t -> boxed_def list = fun i ->
+  let all_types : t -> boxed_def list = fun i ->
     let all_inputs = List.map (function BoxedFunction f -> Method.(find_inputs f.ty)) i.methods in
     let all_outputs = List.map (function BoxedFunction f -> Method.(find_output f.ty)) i.methods in
     let all = List.concat (all_inputs @ [all_outputs]) in

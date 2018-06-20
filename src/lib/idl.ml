@@ -67,6 +67,7 @@ module type MONAD = sig
   val fail: exn -> 'a t
 end
 
+[@@@warning "-32-34"]
 module type RPCTRANSFORMER = functor (M: MONAD) -> sig
   type _ m
   type 'a box = { box: 'a m }
@@ -82,13 +83,8 @@ module type RPCTRANSFORMER = functor (M: MONAD) -> sig
 
   val run: 'a m -> 'a M.t
 end
+[@@@warning "+32+34"]
 
-let debug_rpc call =
-  let str = Rpc.string_of_call call in
-  Printf.printf "call: %s\n" str;
-  let response = {Rpc.success=true; contents=Rpc.Int 7L} in
-  Printf.printf "response: %s\n" (Rpc.string_of_response response);
-  response
 
 exception MarshalError of string
 exception UnknownMethod of string
@@ -106,10 +102,10 @@ let get_wire_name description name =
 let get_arg call has_named name is_opt =
   match has_named, name, call.Rpc.params with
   | true, Some n, (Rpc.Dict named)::unnamed -> begin
-      match List.partition (fun (x,y) -> x = n) named with
+      match List.partition (fun (x,_) -> x = n) named with
       | (_,arg)::dups,others when is_opt -> Result.Ok (Rpc.Enum [arg], {call with Rpc.params = (Rpc.Dict (dups @ others))::unnamed })
       | (_,arg)::dups,others -> Result.Ok (arg, {call with Rpc.params = (Rpc.Dict (dups @ others))::unnamed })
-      | [], others when is_opt -> Result.Ok (Rpc.Enum [], call)
+      | [], _others when is_opt -> Result.Ok (Rpc.Enum [], call)
       | _,_ -> Result.Error (`Msg (Printf.sprintf "Expecting named argument '%s'" n))
     end
   | true, None, (Rpc.Dict named)::unnamed -> begin
@@ -125,7 +121,7 @@ let get_arg call has_named name is_opt =
     end
   | false, None, [] ->
     Result.Error (`Msg "Incorrect number of arguments")
-  | false, Some x, _ ->
+  | false, Some _, _ ->
     failwith "Can't happen by construction"
 
 module Make (M: MONAD) = struct
@@ -205,7 +201,7 @@ module Make (M: MONAD) = struct
                   | Rpc.Types.Option ty, Some v' ->
                     let marshalled = Rpcmarshal.marshal ty v' in
                     inner (((n,marshalled)::named),unnamed) f
-                  | Rpc.Types.Option ty, None ->
+                  | Rpc.Types.Option _ty, None ->
                     inner (named, unnamed) f
                   | ty, v ->
                     let marshalled = Rpcmarshal.marshal ty v in
@@ -268,14 +264,13 @@ module Make (M: MONAD) = struct
       function
       | Function (t, f) -> begin
           match t.Param.name with
-          | Some n -> true
+          | Some _ -> true
           | None -> has_named_args f
         end
-      | Returning (t, e) ->
+      | Returning (_, _) ->
         false
 
     let declare : string -> string list -> 'a fn -> 'a res = fun name _ ty ->
-      let open Rresult.R in
       (* We do not know the wire name yet as the description may still be unset *)
       Hashtbl.add funcs name None;
       fun impl ->
@@ -401,7 +396,7 @@ module Legacy = struct
                   | Rpc.Types.Option ty, Some v' ->
                     let marshalled = Rpcmarshal.marshal ty v' in
                     inner (((n,marshalled)::named),unnamed) f
-                  | Rpc.Types.Option ty, None ->
+                  | Rpc.Types.Option _ty, None ->
                     inner (named, unnamed) f
                   | ty, v ->
                     let marshalled = Rpcmarshal.marshal ty v in
@@ -457,7 +452,7 @@ module Legacy = struct
                   | Rpc.Types.Option ty, Some v' ->
                     let marshalled = Rpcmarshal.marshal ty v' in
                     inner (((n,marshalled)::named),unnamed) f
-                  | Rpc.Types.Option ty, None ->
+                  | Rpc.Types.Option _ty, None ->
                     inner (named, unnamed) f
                   | ty, v ->
                     let marshalled = Rpcmarshal.marshal ty v in
@@ -506,7 +501,6 @@ module Legacy = struct
   module GenServerExn () = struct
     type implementation = server_implementation
     type ('a,'b) comp = 'a
-    type funcs = server_implementation
     type 'a res = 'a -> unit
     type _ fn =
       | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
@@ -529,14 +523,13 @@ module Legacy = struct
       function
       | Function (t, f) -> begin
           match t.Param.name with
-          | Some n -> true
+          | Some _ -> true
           | None -> has_named_args f
         end
-      | Returning (t, e) ->
+      | Returning (_, _) ->
         false
 
     let declare : string -> string list -> 'a fn -> 'a res = fun name _ ty ->
-      let open Rresult.R in
       (* We do not know the wire name yet as the description may still be unset *)
       Hashtbl.add funcs name None;
       fun impl ->
@@ -566,7 +559,7 @@ module Legacy = struct
                   | Result.Error (`Msg m) -> raise (MarshalError m)
                 in
                 inner f (impl arg) call'
-              | Returning (t,e) -> Rpc.success (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty impl)
+              | Returning (t,_) -> Rpc.success (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty impl)
             with e ->
               let BoxedError error_ty = get_error_ty f in
               match error_ty.Error.matcher e with
