@@ -127,18 +127,24 @@ module Make (M: MONAD): sig
   *)
   module T: sig
     type _ m
-    type 'a box
+    type 'a box = { box: 'a m }
     type ('a, 'b) resultb = ('a, 'b) Result.result box
 
-    type rpcfn = Rpc.call -> Rpc.response m
+    type rpcfn = Rpc.call -> Rpc.response M.t
 
     val box: 'a m -> 'a box
     val unbox: 'a box -> 'a m
-    val lift: ('a -> 'b M.t) -> ('a -> 'b m)
-    val bind:  'a m -> ('a -> 'b M.t) -> 'b m
-    val return: 'a -> 'a m
+
+    val lift: ('a -> 'b M.t) -> ('a -> 'b box)
+    val bind:  'a box -> ('a -> 'b M.t) -> 'b box
+    val return: 'a -> 'a box
 
     val run: 'a m -> 'a M.t
+
+    val get: 'a box -> 'a M.t
+    val (!@): 'a box -> 'a M.t
+    val put: 'a M.t -> 'a box
+    val (~@): 'a M.t -> 'a box
   end
 
   (** [!ErrM] defines monad to use for the implementation and combination

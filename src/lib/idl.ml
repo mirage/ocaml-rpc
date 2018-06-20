@@ -73,15 +73,21 @@ module type RPCTRANSFORMER = functor (M: MONAD) -> sig
   type 'a box = { box: 'a m }
   type ('a, 'b) resultb = ('a, 'b) Result.result box
 
-  type rpcfn = Rpc.call -> Rpc.response m
+  type rpcfn = Rpc.call -> Rpc.response M.t
 
   val box: 'a m -> 'a box
   val unbox: 'a box -> 'a m
-  val lift: ('a -> 'b M.t) -> ('a -> 'b m)
-  val bind:  'a m -> ('a -> 'b M.t) -> 'b m
-  val return: 'a -> 'a m
+
+  val lift: ('a -> 'b M.t) -> ('a -> 'b box)
+  val bind:  'a box -> ('a -> 'b M.t) -> 'b box
+  val return: 'a -> 'a box
 
   val run: 'a m -> 'a M.t
+
+  val get: 'a box -> 'a M.t
+  val (!@): 'a box -> 'a M.t
+  val put: 'a M.t -> 'a box
+  val (~@): 'a M.t -> 'a box
 end
 [@@@warning "+32+34"]
 
@@ -130,31 +136,41 @@ module Make (M: MONAD) = struct
     type 'a box = { box: 'a m }
     type ('a, 'b) resultb = ('a, 'b) Result.result box
 
-    type rpcfn = Rpc.call -> Rpc.response m
+    type rpcfn = Rpc.call -> Rpc.response M.t
 
     val box: 'a m -> 'a box
     val unbox: 'a box -> 'a m
-    val lift: ('a -> 'b M.t) -> ('a -> 'b m)
-    val bind:  'a m -> ('a -> 'b M.t) -> 'b m
-    val return: 'a -> 'a m
+
+    val lift: ('a -> 'b M.t) -> ('a -> 'b box)
+    val bind:  'a box -> ('a -> 'b M.t) -> 'b box
+    val return: 'a -> 'a box
 
     val run: 'a m -> 'a M.t
+
+    val get: 'a box -> 'a M.t
+    val (!@): 'a box -> 'a M.t
+    val put: 'a M.t -> 'a box
+    val (~@): 'a M.t -> 'a box
   end
   = struct
     type _ m = | In : 'a M.t -> 'a m
     type 'a box = { box: 'a m }
     type ('a, 'b) resultb = ('a, 'b) Result.result box
 
-    type rpcfn = Rpc.call -> Rpc.response m
+    type rpcfn = Rpc.call -> Rpc.response M.t
 
     let box x = { box=x }
     let unbox { box } = box
 
-    let lift f = fun x -> In (f x)
-    let bind (In x) f = In (M.bind x f)
-    let return x = In (M.return x)
+    let lift f = fun x -> {box=In (f x)}
+    let bind {box=In x} f = {box=In (M.bind x f)}
+    let return x = {box=In (M.return x)}
 
     let run (In a) = a
+    let get {box=(In x)} = x
+    let (!@) = get
+    let put x = {box=(In x)}
+    let (~@) = put
   end
 
   type client_implementation = unit
@@ -167,9 +183,11 @@ module Make (M: MONAD) = struct
     val bind : ('a, 'b) T.resultb -> ('a -> ('c, 'b) T.resultb ) -> ('c, 'b) T.resultb
     val ( >>= ) : ('a, 'b) T.resultb -> ('a -> ('c, 'b) T.resultb ) -> ('c, 'b) T.resultb
   end = struct
-    let return x = T.box (T.return (Result.Ok x))
-    let return_err e = T.box (T.return (Result.Error e))
-    let checked_bind x f f1 = T.box (T.bind (T.unbox x) (function | Result.Ok x -> T.run (T.unbox (f x)) | Result.Error x -> T.run (T.unbox (f1 x))))
+    let return x = T.put (M.return (Result.Ok x))
+    let return_err e = T.put (M.return (Result.Error e))
+    let checked_bind x f f1 =
+      T.bind x
+        T.(function | Result.Ok x -> !@(f x) | Result.Error x -> !@(f1 x))
     let bind x f = checked_bind x f return_err
     let (>>=) x f = bind x f
   end
@@ -219,11 +237,12 @@ module Make (M: MONAD) = struct
             | _ -> (Rpc.Dict named) :: List.rev unnamed
           in
           let call = Rpc.call wire_name args in
-          let res = T.bind (rpc call) (fun r ->
+          let rpc = T.put (rpc call) in
+          let res = T.bind rpc (fun r ->
               if r.Rpc.success
               then match Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty r.Rpc.contents with Ok x -> M.return (Ok x) | Error (`Msg x) -> M.fail (MarshalError x)
               else match Rpcmarshal.unmarshal e.Error.def.Rpc.Types.ty r.Rpc.contents with Ok x -> M.return (Error x) | Error (`Msg x) -> M.fail  (MarshalError x))
-          in T.box res
+          in res
       in inner ([],[]) ty
   end
 
@@ -284,7 +303,7 @@ module Make (M: MONAD) = struct
         end;
         let rpcfn =
           let has_named = has_named_args ty in
-          let rec inner : type a. a fn -> a -> Rpc.call -> Rpc.response T.m = fun f impl call ->
+          let rec inner : type a. a fn -> a -> T.rpcfn = fun f impl call ->
             match f with
             | Function (t, f) -> begin
                 let is_opt = match t.Param.typedef.Rpc.Types.ty with | Rpc.Types.Option _ -> true | _ -> false in
@@ -301,9 +320,10 @@ module Make (M: MONAD) = struct
                 | Result.Error (`Msg m) -> raise (MarshalError m)
               end
             | Returning (t,e) ->
-              T.bind (T.unbox impl) (function
+              T.bind impl (function
                   | Result.Ok x -> M.return (Rpc.success (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty x))
                   | Result.Error y -> M.return (Rpc.failure (Rpcmarshal.marshal e.Error.def.Rpc.Types.ty y)))
+              |> T.get
           in
           inner ty impl
         in
