@@ -79,16 +79,16 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result  = fun t v 
         unmarshal t1 x >>= fun v1 ->
         unmarshal t2 y >>= fun v2 ->
         Ok (v1,v2)
-      | Rpc.Enum list, _ ->
+      | Rpc.Enum _, _ ->
         Rresult.R.error_msg "Too many items in a tuple!"
       | _, _ ->
         error_msg "Expecting Rpc.Enum when unmarshalling a tuple"
     end
-  | Struct { constructor; sname } -> begin
+  | Struct { constructor; sname; _ } -> begin
       match v with
       | Rpc.Dict keys' ->
         let keys = List.map (fun (s,v) -> (String.lowercase_ascii s, v)) keys' in
-        constructor { fget = (
+        constructor { field_get = (
             let x : type a. string -> a typ -> (a, Rresult.R.msg) Result.result  = fun s ty ->
               let s = String.lowercase_ascii s in
               match ty with
@@ -104,7 +104,7 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result  = fun t v 
       | _ ->
         error_msg (Printf.sprintf "Expecting Rpc.Dict when unmarshalling a '%s'" sname)
     end
-  | Variant { vconstructor; variants } ->
+  | Variant { vconstructor; _ } ->
     (match v with
      | Rpc.String name -> ok (name, Rpc.Null)
      | Rpc.Enum [ Rpc.String name; contents ] -> ok (name, contents)
@@ -112,13 +112,12 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result  = fun t v 
     >>= fun (name, contents) ->
     let constr = { tget = fun typ -> unmarshal typ contents } in
     vconstructor name constr
-  | Abstract { of_rpc } ->
+  | Abstract { of_rpc; _ } ->
     of_rpc v
 
 
 let rec marshal : type a. a typ -> a -> Rpc.t = fun t v ->
   let open Rpc in
-  let open Result in
   let rpc_of_basic : type a. a basic -> a -> Rpc.t = fun t v ->
     match t with
     | Int -> rpc_of_int v
@@ -150,7 +149,7 @@ let rec marshal : type a. a typ -> a -> Rpc.t = fun t v ->
     end
   | Tuple (x, y) ->
     Rpc.Enum [marshal x (fst v); marshal y (snd v)]
-  | Struct { fields } -> begin
+  | Struct { fields; _ } -> begin
       let fields = List.fold_left (fun acc f ->
           match f with
           | BoxedField f -> begin
@@ -163,7 +162,7 @@ let rec marshal : type a. a typ -> a -> Rpc.t = fun t v ->
         ) [] fields
       in Rpc.Dict fields
     end
-  | Variant { variants } -> begin
+  | Variant { variants; _ } -> begin
       List.fold_left (fun acc t ->
           match t with
           | BoxedTag t ->
@@ -177,7 +176,7 @@ let rec marshal : type a. a typ -> a -> Rpc.t = fun t v ->
               end
             | None -> acc) Rpc.Null variants
     end
-  | Abstract { rpc_of } -> begin
+  | Abstract { rpc_of; _ } -> begin
       rpc_of v
     end
 
@@ -200,12 +199,12 @@ let rec ocaml_of_t : type a. a typ -> string = function
   | Unit -> "unit"
   | Option t -> ocaml_of_t t ^ " option"
   | Tuple (a,b) -> Printf.sprintf "(%s * %s)" (ocaml_of_t a) (ocaml_of_t b)
-  | Struct { sname; fields } ->
+  | Struct { fields; _ } ->
     let fields = List.map (function
         | BoxedField f ->
           Printf.sprintf "%s: %s;" f.fname (ocaml_of_t f.field)) fields in
     Printf.sprintf "{ %s }" (String.concat " " fields)
-  | Variant { variants } ->
+  | Variant { variants; _ } ->
     let tags = List.map (function
         | BoxedTag t ->
           Printf.sprintf "| %s (%s) (** %s *)" t.tname (ocaml_of_t t.tcontents) (String.concat " " t.tdescription)) variants in

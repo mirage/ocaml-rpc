@@ -161,7 +161,7 @@ let rec typecheck : type a.a typ -> string -> t list = fun ty v ->
   | Basic Float -> handle_basic Float
   | Basic Char -> handle_basic Char
   | DateTime -> handle_basic String
-  | Struct { fields } ->
+  | Struct { fields; _ } ->
     let check boxedfield =
       let BoxedField f = boxedfield in
       let member = (sprintf "%s['%s']" v f.fname) in
@@ -173,7 +173,7 @@ let rec typecheck : type a.a typ -> string -> t list = fun ty v ->
       | _ -> typecheck f.field member
     in
     List.concat (List.rev (List.map check (List.rev fields)))
-  | Variant { variants } ->
+  | Variant { variants; _ } ->
     let check first boxed_tag =
       let BoxedTag t = boxed_tag in
       match t.tcontents with
@@ -253,12 +253,12 @@ let rec value_of : type a. a typ -> string =
     | Basic Float -> "1.1"
     | Basic Bool -> "True"
     | DateTime -> {|"19700101T00:00:00Z"|}
-    | Struct { fields } ->
+    | Struct { fields; _ } ->
       let member boxed_field =
         let BoxedField f = boxed_field in
         sprintf {|"%s": %s|} f.fname (value_of f.field) in
       sprintf "{%s}" (String.concat ", " (List.map member fields))
-    | Variant { variants } -> "None"
+    | Variant _ -> "None"
     | Array t ->
       sprintf "[%s]" (value_of t)
     | List t ->
@@ -266,8 +266,8 @@ let rec value_of : type a. a typ -> string =
     | Dict (key, va) ->
       sprintf "{%s: %s}" (value_of (Basic key)) (value_of va)
     | Unit -> "None"
-    | Option t -> "None"
-    | Tuple (a, b) -> "[]"
+    | Option _ -> "None"
+    | Tuple _ -> "[]"
     | Abstract _ -> failwith "Cannot get default value for abstract types"
 
 
@@ -303,9 +303,9 @@ let exn_var myarg =
     end
   in
   match myarg with
-  | BoxedDef { ty = Variant { variants } } ->
+  | BoxedDef { ty = Variant { variants; _ }; _ } ->
     List.concat (List.map (fun (BoxedTag t) -> inner t) variants)
-  | BoxedDef { ty } ->
+  | BoxedDef { ty; _ } ->
     failwith (Printf.sprintf "Unable to handle non-variant exceptions (%s)" (Rpcmarshal.ocaml_of_t ty))
 
 
@@ -315,7 +315,7 @@ let skeleton_method unimplemented i (BoxedFunction m) =
 
   let inputs = List.filter
       (function
-        | Idl.Param.Boxed { Idl.Param.typedef } ->
+        | Idl.Param.Boxed { Idl.Param.typedef; _ } ->
           match typedef.ty with
           | Unit -> false
           | _ -> true) inputs in
@@ -397,7 +397,7 @@ let example_skeleton_user i m =
         ]);
   ]
 
-let rec skeleton_of_interface unimplemented suffix i =
+let skeleton_of_interface unimplemented suffix i =
   let open Printf in
   [
     Line "";
@@ -424,7 +424,7 @@ let server_of_interface i =
     let inputs = Method.(find_inputs m.ty) in
     let inputs = List.filter
         (function
-          | Idl.Param.Boxed { Idl.Param.typedef } ->
+          | Idl.Param.Boxed { Idl.Param.typedef; _ } ->
             match typedef.ty with
             | Unit -> false
             | _ -> true) inputs in
@@ -537,12 +537,12 @@ let test_impl_of_interfaces i =
     ]
   ]
 
-let commandline_parse i (BoxedFunction m) =
+let commandline_parse _ (BoxedFunction m) =
   let open Printf in
   let inputs = Method.(find_inputs m.ty) in
   let inputs = List.filter
       (function
-        | Idl.Param.Boxed { Idl.Param.typedef } ->
+        | Idl.Param.Boxed { Idl.Param.typedef; _ } ->
           match typedef.ty with
           | Unit -> false
           | _ -> true) inputs in
@@ -594,7 +594,7 @@ let commandline_parse i (BoxedFunction m) =
       ])
   ]
 
-let commandline_run i (BoxedFunction m) =
+let commandline_run _ (BoxedFunction m) =
   let open Printf in
   [
     Line "";

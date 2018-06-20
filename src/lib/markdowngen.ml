@@ -40,7 +40,7 @@ let rec string_of_t : type a.a typ -> string list =
   | Unit -> print "unit"
   | Option x -> string_of_t x @ (print " option")
   | Tuple (a, b) -> string_of_t a @ (print " * ") @ (string_of_t b)
-  | Abstract a -> print "<abstract>"
+  | Abstract _ -> print "<abstract>"
 
 let definition_of_t : type a.a typ -> string list = function
   | Struct _ -> ["struct { ... }"]
@@ -61,16 +61,16 @@ let rec ocaml_patt_of_t : type a. a typ -> string = fun ty ->
   | Basic b -> of_basic b
   | DateTime -> "datetime"
   | Struct s -> s.Rpc.Types.sname
-  | Variant v -> "v"
+  | Variant _ -> "v"
   | Array t -> Printf.sprintf "%s_list" (ocaml_patt_of_t t)
   | List t -> Printf.sprintf "%s_list" (ocaml_patt_of_t t)
-  | Dict (key, v) -> "dict"
+  | Dict _ -> "dict"
   | Unit -> "()"
   | Option x -> Printf.sprintf "%s_opt" (ocaml_patt_of_t x)
   | Tuple (a, b) -> Printf.sprintf "(%s,%s)" (ocaml_patt_of_t a) (ocaml_patt_of_t b)
   | Abstract _ -> "abstract"
 
-let rec rpc_of : type a. a typ -> string -> Rpc.t = fun ty hint ->
+let rpc_of : type a. a typ -> string -> Rpc.t = fun ty hint ->
   Rpcmarshal.marshal ty (Rpc_genfake.gen_nice ty hint)
 
 let table headings rows =
@@ -78,8 +78,8 @@ let table headings rows =
      also ensures each row has the correct number of entries. *)
   let transpose mat =
     let rec inner r =
-      let safe_hd = function | hd::tl -> hd | _ -> "" in
-      let safe_tl = function | hd::tl -> tl | _ -> [] in
+      let safe_hd = function | hd::_ -> hd | _ -> "" in
+      let safe_tl = function | _::tl -> tl | _ -> [] in
       match r with
       | ([])::_ -> []
       | _ -> List.(map safe_hd r :: inner (map safe_tl r))
@@ -145,7 +145,7 @@ let of_variant_tags : 'a boxed_tag list -> string list = fun all ->
   in
   table ["Name"; "Type"; "Description"] (List.map of_row all)
 
-let of_type_decl i_opt ((BoxedDef t) as t') =
+let of_type_decl _ ((BoxedDef t) as t') =
   if List.mem t' default_types then [] else
     let name = t.name in
     let header = [ Printf.sprintf "### %s" name ]
@@ -166,7 +166,7 @@ let of_type_decl i_opt ((BoxedDef t) as t') =
       | _ -> [] in
     header @ example @ definition @ rest
 
-let json_of_method namespace is i (Codegen.BoxedFunction m) =
+let json_of_method namespace _ _ (Codegen.BoxedFunction m) =
   let inputs = Codegen.Method.find_inputs (m.Codegen.Method.ty) in
   let Idl.Param.Boxed output = Codegen.Method.find_output (m.Codegen.Method.ty) in
   let (named,unnamed) = List.fold_left (fun (named, unnamed) bp ->

@@ -8,7 +8,6 @@ let badstuff msg =
   failwith (Printf.sprintf "Failed to construct the record: %s" msg)
 
 let rec gentest : type a. a typ -> a list  = fun t ->
-  let open Rpc in
   match t with
   | Basic Int -> [0; 1; max_int; -1; 1000000;]
   | Basic Int32 -> [0l; 1l; Int32.max_int; -1l; 999999l]
@@ -33,23 +32,23 @@ let rec gentest : type a. a typ -> a list  = fun t ->
     let v1s = gentest t1 in
     let v2s = gentest t2 in
     List.map (fun v1 -> List.map (fun v2 -> (v1,v2)) v2s) v1s |> List.flatten
-  | Struct { constructor; sname } ->
+  | Struct { constructor; _ } ->
     let rec gen_n acc n =
       match n with
       | 0 -> acc
       | n ->
-        let fget : type a. string -> a typ -> (a, Rresult.R.msg) Result.result  = fun _ ty ->
+        let field_get : type a. string -> a typ -> (a, Rresult.R.msg) Result.result  = fun _ ty ->
           let vs = gentest ty in
           Result.Ok (List.nth vs (Random.int (List.length vs)))
         in
-        match constructor { fget } with Result.Ok x -> gen_n (x::acc) (n-1) | Result.Error (`Msg y) -> badstuff y
+        match constructor { field_get } with Result.Ok x -> gen_n (x::acc) (n-1) | Result.Error (`Msg y) -> badstuff y
     in gen_n [] 10
-  | Variant { vconstructor; variants } ->
+  | Variant { variants; _ } ->
     List.map (function Rpc.Types.BoxedTag v ->
         let contents = gentest v.tcontents in
         let content = List.nth contents (Random.int (List.length contents)) in
         v.treview content) variants
-  | Abstract { test_data } -> test_data
+  | Abstract { test_data; _ } -> test_data
 
 let thin d result =
   if d < 0
@@ -57,7 +56,6 @@ let thin d result =
   else result
 
 let rec genall : type a. int -> string -> a typ -> a list  = fun depth strhint t ->
-  let open Rpc in
   match t with
   | Basic Int -> [0]
   | Basic Int32 -> [0l]
@@ -84,7 +82,7 @@ let rec genall : type a. int -> string -> a typ -> a list  = fun depth strhint t
     let v1s = genall (depth - 1) strhint t1 in
     let v2s = genall (depth - 1) strhint t2 in
     List.map (fun v1 -> List.map (fun v2 -> (v1,v2)) v2s) v1s |> List.flatten |> thin depth
-  | Struct { constructor; sname; fields} ->
+  | Struct { constructor; fields; _} ->
     let fields_maxes = List.map (function BoxedField f -> let n = List.length (genall (depth - 1) strhint f.field) in (f.fname,n)) fields in
     let all_combinations = List.fold_left (fun acc (f,max) ->
         let rec inner n = if n=0 then [] else (f,n)::inner (n-1) in
@@ -92,17 +90,17 @@ let rec genall : type a. int -> string -> a typ -> a list  = fun depth strhint t
         List.map (fun (f,n) -> List.map (fun dict -> (f,(n-1))::dict) acc) ns |> List.flatten
       ) [[]] fields_maxes in
     List.map (fun combination ->
-      let fget : type a. string -> a typ -> (a, Rresult.R.msg) Result.result  = fun fname ty ->
+      let field_get : type a. string -> a typ -> (a, Rresult.R.msg) Result.result  = fun fname ty ->
         let n = List.assoc fname combination in
         let vs = genall (depth - 1) fname ty in
         Result.Ok (List.nth vs n)
       in
-      match constructor { fget } with Result.Ok x -> x | Result.Error (`Msg y) -> badstuff y) all_combinations |> thin depth
-  | Variant { vconstructor; variants } ->
+      match constructor { field_get } with Result.Ok x -> x | Result.Error (`Msg y) -> badstuff y) all_combinations |> thin depth
+  | Variant { variants; _ } ->
     List.map (function Rpc.Types.BoxedTag v ->
         let contents = genall (depth - 1) strhint v.tcontents in
         List.map (fun content -> v.treview content) contents) variants |> List.flatten |> thin depth
-  | Abstract { test_data } -> test_data
+  | Abstract { test_data; _ } -> test_data
 
 let rec gen_nice : type a. a typ -> string -> a = fun ty hint ->
   let narg n = Printf.sprintf "%s_%d" hint n in
@@ -128,15 +126,15 @@ let rec gen_nice : type a. a typ -> string -> a = fun ty hint ->
     Some (gen_nice ty (Printf.sprintf "optional_%s" hint))
   | Tuple (x, y) ->
     (gen_nice x (narg 1), gen_nice y (narg 2))
-  | Struct { constructor; fields } -> begin
-    let fget : type a. string -> a typ -> (a, Rresult.R.msg) Result.result = fun name ty ->
+  | Struct { constructor; _ } -> begin
+    let field_get : type a. string -> a typ -> (a, Rresult.R.msg) Result.result = fun name ty ->
       Result.Ok (gen_nice ty name)
     in
-    match constructor { fget } with Result.Ok x -> x | Result.Error (`Msg y) -> badstuff y
+    match constructor { field_get } with Result.Ok x -> x | Result.Error (`Msg y) -> badstuff y
     end
-  | Variant { variants } -> begin
+  | Variant { variants; _ } -> begin
     List.hd variants |> function Rpc.Types.BoxedTag v ->
         let content = gen_nice v.tcontents v.tname in
         v.treview content
     end
-  | Abstract { test_data } -> List.hd test_data
+  | Abstract { test_data; _ } -> List.hd test_data

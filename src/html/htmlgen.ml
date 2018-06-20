@@ -120,7 +120,7 @@ let of_variant_tags : 'a boxed_tag list -> Cow.Html.t = fun all ->
             tag "tbody" (list (List.map of_row all)) ])
 
 
-let of_type_decl i_opt (BoxedDef t) =
+let of_type_decl _ (BoxedDef t) =
   let anchor = Printf.sprintf "a-%s" t.name in
   let name = t.name in
   let defn = String.concat "" (html_of_t t.ty) in
@@ -140,7 +140,7 @@ let of_type_decl i_opt (BoxedDef t) =
     | _ -> [] in
   common @ rest
 
-let tabs_of is i m =
+let tabs_of _ i m =
   let mname = m.Method.name in
   let hash_defn = "#defn-" ^ mname in
   let hash_ocaml = "#ocaml-" ^ mname in

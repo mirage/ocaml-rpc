@@ -10,7 +10,7 @@ module M = struct
 
   let return x = { async=Deferred.return (Result.Ok x) }
   let return_err e = { async=Deferred.return (Result.Error e)}
-  let checked_bind x f f1 = { async=Deferred.bind x.async (function | Result.Ok x -> (f x).async | Result.Error x -> (f1 x).async) }
+  let checked_bind x f f1 = { async=Deferred.bind x.async ~f:(function | Result.Ok x -> (f x).async | Result.Error x -> (f1 x).async) }
   let bind x f = checked_bind x f return_err
   let (>>=) x f = bind x f
   let deferred x = x.async
@@ -41,7 +41,7 @@ module GenClient () = struct
             match t.Param.name with
             | Some n -> begin
                 match t.Param.typedef.Rpc.Types.ty, v with
-                | Rpc.Types.Option t1, None ->
+                | Rpc.Types.Option _, None ->
                   inner (named, unnamed) f
                 | Rpc.Types.Option t1, Some v' ->
                   let marshalled = Rpcmarshal.marshal t1 v' in
@@ -62,7 +62,7 @@ module GenClient () = struct
           | _ -> (Rpc.Dict named) :: List.rev unnamed
         in
         let call = Rpc.call wire_name args in
-        let res = Deferred.bind (rpc call) (fun r ->
+        let res = Deferred.bind (rpc call) ~f:(fun r ->
             if r.Rpc.success
             then match Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty r.Rpc.contents with Ok x -> Deferred.return (Ok x) | Error (`Msg x) -> raise (MarshalError x)
             else match Rpcmarshal.unmarshal e.Idl.Error.def.Rpc.Types.ty r.Rpc.contents with Ok x -> Deferred.return (Error x) | Error (`Msg x) -> raise (MarshalError x)) in
@@ -101,8 +101,6 @@ module GenServer () = struct
   let implement x = description := Some x; funcs
 
   type ('a,'b) comp = ('a,'b) Result.result M.async
-  type rpcfn = Rpc.call -> Rpc.response Deferred.t
-  type funcs = (string, rpcfn option) Hashtbl.t
   type 'a res = 'a -> unit
 
   type _ fn =
@@ -116,14 +114,13 @@ module GenServer () = struct
     function
     | Function (t, f) -> begin
         match t.Param.name with
-        | Some n -> true
+        | Some _ -> true
         | None -> has_named_args f
       end
-    | Returning (t, e) ->
+    | Returning _ ->
       false
 
   let declare : string -> string list -> 'a fn -> 'a res = fun name _ ty ->
-    let open Rresult.R in
     (* We do not know the wire name yet as the description may still be unset *)
     Hashtbl.add funcs name None;
     fun impl ->
@@ -151,7 +148,7 @@ module GenServer () = struct
               | Result.Error (`Msg m) -> raise (MarshalError m)
             end
           | Returning (t,e) -> begin
-              Deferred.bind impl.M.async (function
+              Deferred.bind impl.M.async ~f:(function
                   | Result.Ok x -> Deferred.return (success (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty x))
                   | Result.Error y -> Deferred.return (failure (Rpcmarshal.marshal e.Idl.Error.def.Rpc.Types.ty y)))
             end

@@ -71,7 +71,7 @@ module Types : sig
   }
   and 'a boxed_field = BoxedField : ('a, 's) field -> 's boxed_field
   and field_getter = {
-    fget : 'a. string -> 'a typ -> ('a, Rresult.R.msg) Result.result;
+    field_get : 'a. string -> 'a typ -> ('a, Rresult.R.msg) Result.result;
   }
   and 'a structure = {
     sname : string;
@@ -137,7 +137,6 @@ val float_of_rpc : t -> float
 val string_of_rpc : t -> string
 val dateTime_of_rpc : t -> string
 val t_of_rpc : t -> t
-val rpc_of_t : t -> t
 val char_of_rpc : t -> char
 val unit_of_rpc : t -> unit
 
@@ -151,6 +150,7 @@ module ResultUnmarshallers : sig
   val dateTime_of_rpc : t -> (string, Rresult.R.msg) Result.result
   val t_of_rpc : t -> (t, Rresult.R.msg) Result.result
   val unit_of_rpc : t -> (unit, Rresult.R.msg) Result.result
+  val char_of_rpc : t -> (char, Rresult.R.msg) Result.result
 end
 
 
