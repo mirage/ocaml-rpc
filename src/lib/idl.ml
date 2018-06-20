@@ -367,67 +367,15 @@ module DefaultError = struct
     }
 end
 
-module Legacy = struct
+module Exn = struct
+
   type rpcfn = Rpc.call -> Rpc.response
-  module GenClientExn () =
+  type client_implementation = unit
+  type server_implementation = (string, rpcfn option) Hashtbl.t
+
+  module GenClient (R: sig val rpc: rpcfn end) =
   struct
-    type implementation = unit
-    type ('a,'b) comp = 'a
-    type 'a res = rpcfn -> 'a
-    type _ fn =
-      | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
-      | Returning : ('a Param.t * 'b Error.t) -> ('a,_) comp fn
-
-    let description = ref None
-    let implement x = description := Some x; ()
-
-    let returning a err = Returning (a, err)
-    let (@->) = fun t f -> Function (t, f)
-
-    let declare name _ ty (rpc : rpcfn) =
-      let open Result in
-      let rec inner : type b. ((string * Rpc.t) list * Rpc.t list) -> b fn -> b = fun (named,unnamed) ->
-        function
-        | Function (t, f) -> begin
-            fun v ->
-              match t.Param.name with
-              | Some n -> begin
-                  match t.Param.typedef.Rpc.Types.ty, v with
-                  | Rpc.Types.Option ty, Some v' ->
-                    let marshalled = Rpcmarshal.marshal ty v' in
-                    inner (((n,marshalled)::named),unnamed) f
-                  | Rpc.Types.Option _ty, None ->
-                    inner (named, unnamed) f
-                  | ty, v ->
-                    let marshalled = Rpcmarshal.marshal ty v in
-                    inner (((n,marshalled)::named),unnamed) f
-                end
-              | None ->
-                let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
-                inner (named,(marshalled::unnamed)) f
-          end
-        | Returning (t, e) ->
-          let wire_name = get_wire_name !description name in
-          let args =
-            match named with
-            | [] -> List.rev unnamed
-            | _ -> (Rpc.Dict named) :: List.rev unnamed
-          in
-          let call = Rpc.call wire_name args in
-          let r = rpc call in
-          if r.Rpc.success
-          then match Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty r.Rpc.contents with Ok x -> x | Error (`Msg x) -> raise (MarshalError x)
-          else match Rpcmarshal.unmarshal e.Error.def.Rpc.Types.ty r.Rpc.contents with Ok x -> raise (e.Error.raiser x) | Error (`Msg x) -> raise (MarshalError x)
-      in inner ([],[]) ty
-  end
-
-  module type RPCfunc = sig
-    val rpc : Rpc.call -> Rpc.response
-  end
-
-  module GenClientExnRpc (R : RPCfunc) =
-  struct
-    type implementation = unit
+    type implementation = client_implementation
     type ('a,'b) comp = 'a
     type 'a res = 'a
     type _ fn =
@@ -471,14 +419,11 @@ module Legacy = struct
           in
           let call = Rpc.call wire_name args in
           let r = R.rpc call in
-          (* The specific signature used down here for the return is "problematic" at the moment for the way the new functor is built *)
           if r.Rpc.success
           then match Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty r.Rpc.contents with Ok x -> x | Error (`Msg x) -> raise (MarshalError x)
           else match Rpcmarshal.unmarshal e.Error.def.Rpc.Types.ty r.Rpc.contents with Ok x -> raise (e.Error.raiser x) | Error (`Msg x) -> raise (MarshalError x)
       in inner ([],[]) ty
   end
-
-  type server_implementation = (string, rpcfn option) Hashtbl.t
 
   let server hashtbl =
     let impl = Hashtbl.create (Hashtbl.length hashtbl) in
@@ -498,7 +443,7 @@ module Legacy = struct
     List.iter (Hashtbl.iter (fun k v -> Hashtbl.add result k v)) hashtbls;
     result
 
-  module GenServerExn () = struct
+  module GenServer () = struct
     type implementation = server_implementation
     type ('a,'b) comp = 'a
     type 'a res = 'a -> unit

@@ -224,32 +224,20 @@ module DefaultError : sig
 end
 
 
-module Legacy : sig
+module Exn : sig
   type rpcfn = Rpc.call -> Rpc.response
+  type client_implementation
 
   (** This module generates exception-raising Client modules from RPC
       declarations. See the {!GenClient} module for a description of
       the common entries. *)
-  module GenClientExn () : sig
+  module GenClient (R: sig val rpc: rpcfn end) : sig
     include RPC
-      with type implementation = unit
-       and type 'a res = rpcfn -> 'a
+      with type implementation = client_implementation
+       and type 'a res = 'a
        (* Our functions never return the error parameter, hence the following
           type declaration drops the `b parameter. Instead, the exception declared
           in the Error.t passed in the `returning` function below will be raised.  *)
-       and type ('a,'b) comp = 'a
-  end
-
-  module type RPCfunc = sig
-    val rpc : Rpc.call -> Rpc.response
-  end
-
-  (** This module is like {!GenClientExn}, but it allows the user to specify the
-      [rpc] function once when generating the client. *)
-  module GenClientExnRpc (R : RPCfunc) : sig
-    include RPC
-      with type implementation = unit
-       and type 'a res = 'a
        and type ('a,'b) comp = 'a
   end
 
@@ -259,7 +247,7 @@ module Legacy : sig
 
   (** Generates a server, like {!GenServer}, but for an implementation that
       raises exceptions instead of returning a [result]. *)
-  module GenServerExn () : sig
+  module GenServer () : sig
     include RPC
       with type implementation = server_implementation
        and type 'a res = 'a -> unit
