@@ -73,7 +73,6 @@ let _ =
      and hence it is convenient to use the Monadic `bind` and `return`
      functions in Rresult.R *)
   let open MyIdl in
-  let open Rresult.R in
 
   (* The server is used by associating the RPC declarations with their
      implementations. The return type is expected to be Result.result, hence
@@ -166,8 +165,8 @@ let vm_name_description : (string, vm) field = {
 *)
 let constructor getter =
   let open Rresult.R in
-  getter.fget "name_label" (Basic String) >>= fun name_label ->
-  getter.fget "name_description" (Basic String) >>= fun name_description ->
+  getter.field_get "name_label" (Basic String) >>= fun name_label ->
+  getter.field_get "name_description" (Basic String) >>= fun name_description ->
   return { name_label; name_description }
 
 (* These values are combined to define a value of type `vm structure` here *)
@@ -269,8 +268,6 @@ module VMClientExn = VMRPC(Idl.Legacy.GenClientExn ())
 module VMServerExn = VMRPC(Idl.Legacy.GenServerExn ())
 
 let _ =
-  let open Rresult.R in
-
   (* As before, we define an implementation of the method, and associate it
      with the server impls *)
   let impl vm' paused =
@@ -285,7 +282,7 @@ let _ =
 
   (* And an implementation that raises exceptions rather than Result.result
      types *)
-  let implexn vm' paused =
+  let implexn _vm' paused =
     if paused
     then raise (ExampleExn (Errors "Paused start is unimplemented"));
     ()
@@ -315,7 +312,6 @@ let _ =
     let open Result in
     let vm = { name_label="test"; name_description="description" } in
     let open MyIdl in
-    let open ErrM in
     begin match VMClient.start (fun c -> T.return (rpc c)) vm true |> T.unbox |> T.run with
       | Ok () -> Printf.printf "Unexpected OK\n%!"
       | Error (Errors e) -> Printf.printf "Caught an (expected) error: %s\n%!" e

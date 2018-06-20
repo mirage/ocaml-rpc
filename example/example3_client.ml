@@ -1,5 +1,4 @@
 open Idl
-open Rpc
 open Example3_idl
 
 module PClient=Datapath(GenClient ())

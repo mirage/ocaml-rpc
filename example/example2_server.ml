@@ -82,8 +82,6 @@ let serve_requests rpcfn path =
   done
 
 let start_server () =
-  let open Rresult in
-
   Server.query query;
   Server.diagnostics diagnostics;
   Server.test test;
