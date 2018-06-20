@@ -264,9 +264,7 @@ end
 (* Once again we generate a client and server module *)
 module VMClient = VMRPC(MyIdl.GenClient ())
 module VMServer = VMRPC(MyIdl.GenServer ())
-module VMClientExn = VMRPC(Idl.Legacy.GenClientExn ())
-module VMServerExn = VMRPC(Idl.Legacy.GenServerExn ())
-
+module VMServerExn = VMRPC(Idl.Exn.GenServer ())
 let _ =
   (* As before, we define an implementation of the method, and associate it
      with the server impls *)
@@ -292,7 +290,7 @@ let _ =
   (* Again we create a wrapper RPC function that dumps the marshalled data to
      stdout for clarity *)
   let rpcfn = MyIdl.server VMServer.implementation in
-  let rpcfnexn = Idl.Legacy.server VMServerExn.implementation in
+  let rpcfnexn = Idl.Exn.server VMServerExn.implementation in
 
   let rpc rpc =
     Printf.printf "Marshalled RPC call:\n'%s'\n"
@@ -305,7 +303,7 @@ let _ =
       (Rpc.string_of_response response);
     response
   in
-
+  let module VMClientExn = VMRPC(Idl.Exn.GenClient (struct let rpc = rpc end)) in
   (* And once again, we use a pass the server's rpc function as a
      short-circuit to the client. *)
   let test () =
@@ -317,7 +315,7 @@ let _ =
       | Error (Errors e) -> Printf.printf "Caught an (expected) error: %s\n%!" e
     end;
     try
-      VMClientExn.start rpc vm true;
+      VMClientExn.start vm true;
       Printf.printf "Unexpected OK!\n%!";
     with ExampleExn (Errors s) ->
       Printf.printf "Caught an (expected) error: %s\n%!" s
