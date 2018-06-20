@@ -6,13 +6,20 @@ module T: sig
   type _ m
   type 'a box
   type ('a, 'b) resultb = ('a, 'b) Result.result box
-  type rpcfn = Rpc.call -> Rpc.response m
+  type rpcfn = Rpc.call -> Rpc.response Async.Deferred.t
+
   val box : 'a m -> 'a box
   val unbox : 'a box -> 'a m
-  val lift : ('a -> 'b Async.Deferred.t) -> 'a -> 'b m
-  val bind : 'a m -> ('a -> 'b Async.Deferred.t) -> 'b m
-  val return : 'a -> 'a m
   val run : 'a m -> 'a Async.Deferred.t
+
+  val lift : ('a -> 'b Async.Deferred.t) -> ('a -> 'b box)
+  val bind : 'a box -> ('a -> 'b Async.Deferred.t) -> 'b box
+  val return : 'a -> 'a box
+
+  val get: 'a box -> 'a Async.Deferred.t
+  val (!@): 'a box -> 'a Async.Deferred.t
+  val put: 'a Async.Deferred.t -> 'a box
+  val (~@): 'a Async.Deferred.t -> 'a box
 end
 
 module ErrM: sig
