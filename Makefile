@@ -1,4 +1,4 @@
-.PHONY: build release install uninstall clean test reindent
+.PHONY: build release install uninstall clean test reindent reformat
 
 build:
 	jbuilder build @install --dev
@@ -19,4 +19,7 @@ test:
 	jbuilder runtest
 
 reindent:
-	ocp-indent -i **/*.ml*
+	git ls-files '*.ml*' | xargs ocp-indent -i
+
+reformat:
+	git ls-files '*.ml*' | xargs ocamlformat -i
