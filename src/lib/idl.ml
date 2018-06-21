@@ -285,15 +285,14 @@ module Make (M: MONAD) = struct
         false
 
     let declare : string -> string list -> 'a fn -> 'a res = fun name _ ty ->
+      let (>>=) = M.bind in
       (* We do not know the wire name yet as the description may still be unset *)
       Hashtbl.add funcs name None;
-      fun impl ->
-        begin
+      fun impl -> begin
           (* Sanity check: ensure the description has been set before we declare
-             any RPCs *)
+             any RPCs. Here we raise an exception immediately and let everything fail. *)
           match !description with
           | Some _ -> ()
-          (* TODO: use binds and M.fail in this case as well? *)
           | None -> raise NoDescription
         end;
         let rpcfn =
@@ -302,17 +301,14 @@ module Make (M: MONAD) = struct
             match f with
             | Function (t, f) -> begin
                 let is_opt = match t.Param.typedef.Rpc.Types.ty with | Rpc.Types.Option _ -> true | _ -> false in
-                let (arg_rpc, call') =
-                  match get_arg call has_named t.Param.name is_opt with
-                  | Result.Ok (x,y) -> (x,y)
-                  (* TODO: use binds and T.fail here, don't raise randomly *)
-                  | Result.Error (`Msg m) -> raise (MarshalError m)
-                in
+                begin match get_arg call has_named t.Param.name is_opt with
+                  | Result.Ok (x,y) -> M.return (x,y)
+                  | Result.Error (`Msg m) -> M.fail (MarshalError m)
+                end >>= fun (arg_rpc, call') ->
                 let z = Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty arg_rpc in
                 match z with
                 | Result.Ok arg -> inner f (impl arg) call'
-                (* TODO: use binds and T.fail here, don't raise randomly *)
-                | Result.Error (`Msg m) -> raise (MarshalError m)
+                | Result.Error (`Msg m) -> M.fail (MarshalError m)
               end
             | Returning (t,e) ->
               T.bind impl (function
