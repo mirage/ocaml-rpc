@@ -3,23 +3,22 @@ type client_implementation
 type server_implementation
 
 module T: sig
-  type _ m
-  type 'a box
-  type ('a, 'b) resultb = ('a, 'b) Result.result box
-  type rpcfn = Rpc.call -> Rpc.response Lwt.t
-  
-  val box : 'a m -> 'a box
-  val unbox : 'a box -> 'a m
-  val run : 'a m -> 'a Lwt.t
+    type 'a box
+    type ('a, 'b) resultb = ('a, 'b) Result.result box
 
-  val lift : ('a -> 'b Lwt.t) -> ('a -> 'b box)
-  val bind : 'a box -> ('a -> 'b Lwt.t) -> 'b box
-  val return : 'a -> 'a box
+    type rpcfn = Rpc.call -> Rpc.response Lwt.t
 
-  val get: 'a box -> 'a Lwt.t
-  val (!@): 'a box -> 'a Lwt.t
-  val put: 'a Lwt.t -> 'a box
-  val (~@): 'a Lwt.t -> 'a box
+    val box: 'a Lwt.t -> 'a box
+    val unbox: 'a box -> 'a Lwt.t
+
+    val lift: ('a -> 'b Lwt.t) -> ('a -> 'b box)
+    val bind:  'a box -> ('a -> 'b Lwt.t) -> 'b box
+    val return: 'a -> 'a box
+
+    val get: 'a box -> 'a Lwt.t
+    val (!@): 'a box -> 'a Lwt.t
+    val put: 'a Lwt.t -> 'a box
+    val (~@): 'a Lwt.t -> 'a box
 end
 
 module ErrM: sig

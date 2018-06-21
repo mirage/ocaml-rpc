@@ -23,7 +23,7 @@ let test_call_lwt _switch () =
   let t =
     let open Rpc_lwt in
     (* TODO: Add this to the Transformer itself *)
-    let (>>>=) x f = x |> T.unbox |> T.run >>= f in
+    let (>>>=) x f = x |> T.get >>= f in
     Client.add rpc 1 3 >>>=
     with_ok (fun n -> Alcotest.(check int) "add" 4 n |> Lwt.return) >>= fun () ->
     Client.sub rpc 1 3 >>>=
