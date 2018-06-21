@@ -55,14 +55,12 @@ module MyAPI(R : Idl.RPC) = struct
 
 end
 
-module IdM = struct
-  type 'a t = 'a
-  let return x = x
-  let bind x f = f x
-  let fail e = raise e
-end
-
-module MyIdl = Idl.Make(IdM)
+(* You can swap the rpc engine, by using a different monad here, 
+   note however that if you are using an asynchronous one, like
+   lwt or async, you should also use their specific IO functions
+   including the print functions. *)
+module M = Idl.IdM (* You can easily put ExnM here and the code would stay unchanged *)
+module MyIdl = Idl.Make(M)
 (* By passing in different modules to the `MyAPI` functor above, we can
    generate Client and Server modules *)
 module Client=MyAPI(MyIdl.GenClient ())
@@ -92,11 +90,12 @@ let _ =
   (* To see a little more clearly what's going on, we will wrap this rpc
      function in something to print out the marshalled call and response. *)
   let rpc rpc =
-    Printf.printf "Marshalled RPC call: '%s'\n"
-      (Rpc.string_of_call rpc);
-    let res = rpc_fn rpc in
-      Printf.printf "Marshalled RPC type: '%s'\n" (Rpc.string_of_response res);
-    res
+    let open M in
+    Printf.printf "Marshalled RPC call: '%s'\n" (Rpc.string_of_call rpc);
+    rpc_fn rpc >>= fun res ->
+    Printf.printf "Marshalled RPC type: '%s'\n" (Rpc.string_of_response res)
+    |> return >>= fun () -> (* You can actually use a semicolon here *)
+    return res
   in
 
   (* The Client module exposes client-side implementations of the methods,
@@ -292,35 +291,44 @@ let _ =
   let rpcfn = MyIdl.server VMServer.implementation in
   let rpcfnexn = Idl.Exn.server VMServerExn.implementation in
 
-  (* This rpc function is quite wrong as we are calling two
-     functions that should live in completely different context! *)
   let rpc rpc =
+    let open M in
+    Printf.printf "Marshalled RPC call:\n'%s'\n" (Rpc.string_of_call rpc);
+    rpcfn rpc >>= fun res ->
+    Printf.printf "Marshalled RPC type:\n'%s'\n" (Rpc.string_of_response res)
+    |> return >>= fun () ->  (* You could have used a semicolon here *)
+    return res
+  in
+  let rpcexn rpc =
     Printf.printf "Marshalled RPC call:\n'%s'\n"
       (Rpc.string_of_call rpc);
-    let response = rpcfn rpc in
-    Printf.printf "Marshalled RPC type:\n'%s'\n"
-      (Rpc.string_of_response response);
     let response = rpcfnexn rpc in
     Printf.printf "Marshalled RPC type from exception producing impl (should be the same):\n'%s'\n"
       (Rpc.string_of_response response);
     response
   in
-  let module VMClientExn = VMRPC(Idl.Exn.GenClient (struct let rpc = rpc end)) in
+  let module VMClientExn = VMRPC(Idl.Exn.GenClient (struct let rpc = rpcexn end)) in
   (* And once again, we use a pass the server's rpc function as a
      short-circuit to the client. *)
   let test () =
-    let open Result in
     let vm = { name_label="test"; name_description="description" } in
     let open MyIdl in
-    begin match VMClient.start (fun c -> rpc c) vm true |> T.get with
-      | Ok () -> Printf.printf "Unexpected OK\n%!"
-      | Error (Errors e) -> Printf.printf "Caught an (expected) error: %s\n%!" e
-    end;
-    try
-      VMClientExn.start vm true;
-      Printf.printf "Unexpected OK!\n%!";
-    with ExampleExn (Errors s) ->
-      Printf.printf "Caught an (expected) error: %s\n%!" s
+    let client = 
+      let open M in 
+      VMClient.start (fun c -> rpc c) vm true |> T.get >>= function
+      | Ok () -> Printf.printf "Unexpected OK\n%!" |> return
+      | Error (Errors e) -> Printf.printf "Caught an (expected) error: %s\n%!" e |> return
+    in
+    let clientexn () =
+      try
+        VMClientExn.start vm true;
+        Printf.printf "Unexpected OK!\n%!";
+      with ExampleExn (Errors s) ->
+        Printf.printf "Caught an (expected) error: %s\n%!" s
+    in
+    M.run client;
+    clientexn ()
+
   in
   test ()
 
