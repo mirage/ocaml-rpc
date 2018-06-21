@@ -1,2 +1,2 @@
-module LwtIdl = Idl.Make(Lwt)
+module LwtIdl = Idl.Make (Lwt)
 include LwtIdl
