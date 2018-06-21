@@ -198,23 +198,19 @@ module Make (M: MONAD): sig
   val combine : server_implementation list -> server_implementation
 end
 
-module IdM: MONAD
-
-module GenClient () : sig
-  include RPC
-    with type implementation = Make(IdM).client_implementation
-     and type 'a res = Make(IdM).T.rpcfn -> 'a
-     and type ('a,'b) comp = ('a,'b) Make(IdM).T.resultb
+module ExnM: sig
+  include MONAD
+  val lift: ('a -> 'b) -> 'a -> 'b t
+  val (>>=): 'a t -> ('a -> 'b t) -> 'b t
+  val run: 'a t -> 'a
 end
-module GenServer () : sig
-  include RPC
-    with type implementation = Make(IdM).server_implementation
-     and type 'a res = 'a -> unit
-     and type ('a,'b) comp = ('a,'b) Make(IdM).T.resultb
-end
-val server : Make(IdM).server_implementation -> Make(IdM).T.rpcfn
-val combine : Make(IdM).server_implementation list -> Make(IdM).server_implementation
 
+module IdM: sig
+  include MONAD
+  val lift: ('a -> 'b) -> 'a -> 'b t
+  val (>>=): 'a t -> ('a -> 'b t) -> 'b t
+  val run: 'a t -> 'a
+end
 
 module DefaultError : sig
   type t = InternalError of string

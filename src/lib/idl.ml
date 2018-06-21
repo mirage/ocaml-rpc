@@ -330,23 +330,33 @@ module Make (M: MONAD) = struct
   end
 end
 
-
-module IdM = struct
-  type 'a t = 'a
-  let return x = x
-  let bind x f = f x
-  let fail e = raise e
+module ExnM = struct
+  type 'a t = V of 'a | E of exn
+  let return x = V x
+  let lift f = fun x -> match f x with
+    | y -> V y
+    | exception e -> E e
+  let bind x (f:'a -> 'b t) : 'b t = match x with
+    | V x -> f x
+    | E e -> E e
+  let (>>=) = bind
+  let fail e = E e
+  let run = function
+    | V x -> x
+    | E e -> raise e
 end
 
-module IdIdl = Make(IdM)
-module GenClient = IdIdl.GenClient
-let server = IdIdl.server
-let combine = IdIdl.combine
-module GenServer = IdIdl.GenServer
-
+module IdM = struct
+  type 'a t = T of 'a
+  let return x = T x
+  let lift f = fun x -> T (f x)
+  let bind (T x) f = f x
+  let (>>=) = bind
+  let fail e = raise e
+  let run (T x) = x
+end
 
 (* A default error variant as an example. In real code, this is more easily expressed by using the PPX:
-
       type default_error = InternalError of string [@@deriving rpcty]
 *)
 module DefaultError = struct
@@ -383,7 +393,6 @@ module DefaultError = struct
 end
 
 module Exn = struct
-
   type rpcfn = Rpc.call -> Rpc.response
   type client_implementation = unit
   type server_implementation = (string, rpcfn option) Hashtbl.t
