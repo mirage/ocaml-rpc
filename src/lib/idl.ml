@@ -132,20 +132,17 @@ let get_arg call has_named name is_opt =
 
 module Make (M: MONAD) = struct
   module T : sig
-    type _ m
-    type 'a box = { box: 'a m }
+    type 'a box = { box: 'a M.t }
     type ('a, 'b) resultb = ('a, 'b) Result.result box
 
     type rpcfn = Rpc.call -> Rpc.response M.t
 
-    val box: 'a m -> 'a box
-    val unbox: 'a box -> 'a m
+    val box: 'a M.t -> 'a box
+    val unbox: 'a box -> 'a M.t
 
     val lift: ('a -> 'b M.t) -> ('a -> 'b box)
     val bind:  'a box -> ('a -> 'b M.t) -> 'b box
     val return: 'a -> 'a box
-
-    val run: 'a m -> 'a M.t
 
     val get: 'a box -> 'a M.t
     val (!@): 'a box -> 'a M.t
@@ -153,8 +150,7 @@ module Make (M: MONAD) = struct
     val (~@): 'a M.t -> 'a box
   end
   = struct
-    type _ m = | In : 'a M.t -> 'a m
-    type 'a box = { box: 'a m }
+    type 'a box = { box: 'a M.t }
     type ('a, 'b) resultb = ('a, 'b) Result.result box
 
     type rpcfn = Rpc.call -> Rpc.response M.t
@@ -162,14 +158,13 @@ module Make (M: MONAD) = struct
     let box x = { box=x }
     let unbox { box } = box
 
-    let lift f = fun x -> {box=In (f x)}
-    let bind {box=In x} f = {box=In (M.bind x f)}
-    let return x = {box=In (M.return x)}
+    let lift f = fun x -> {box=f x}
+    let bind {box=x} f = {box=M.bind x f}
+    let return x = {box=M.return x}
 
-    let run (In a) = a
-    let get {box=(In x)} = x
+    let get {box=x} = x
     let (!@) = get
-    let put x = {box=(In x)}
+    let put x = {box=x}
     let (~@) = put
   end
 

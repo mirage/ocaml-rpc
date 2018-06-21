@@ -126,20 +126,17 @@ module Make (M: MONAD): sig
       and asynctronous engines for the client and server implementations.
   *)
   module T: sig
-    type _ m
-    type 'a box = { box: 'a m }
+    type 'a box
     type ('a, 'b) resultb = ('a, 'b) Result.result box
 
     type rpcfn = Rpc.call -> Rpc.response M.t
 
-    val box: 'a m -> 'a box
-    val unbox: 'a box -> 'a m
+    val box: 'a M.t -> 'a box
+    val unbox: 'a box -> 'a M.t
 
     val lift: ('a -> 'b M.t) -> ('a -> 'b box)
     val bind:  'a box -> ('a -> 'b M.t) -> 'b box
     val return: 'a -> 'a box
-
-    val run: 'a m -> 'a M.t
 
     val get: 'a box -> 'a M.t
     val (!@): 'a box -> 'a M.t
