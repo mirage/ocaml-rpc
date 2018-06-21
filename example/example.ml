@@ -312,7 +312,7 @@ let _ =
     let open Result in
     let vm = { name_label="test"; name_description="description" } in
     let open MyIdl in
-    begin match VMClient.start (fun c -> rpc c) vm true |> T.unbox |> T.run with
+    begin match VMClient.start (fun c -> rpc c) vm true |> T.get with
       | Ok () -> Printf.printf "Unexpected OK\n%!"
       | Error (Errors e) -> Printf.printf "Caught an (expected) error: %s\n%!" e
     end;
