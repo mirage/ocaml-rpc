@@ -3,11 +3,6 @@
   (deps    (ppx_deriving_rpc.cppo.ml))
   (action  (run ${bin:cppo} -V OCAML:${ocaml_version} ${<} -o ${@}))))
 
-(rule
- ((targets (ppx_deriving_rpcty.ml))
-  (deps    (ppx_deriving_rpcty.cppo.ml))
-  (action  (run ${bin:cppo} -V OCAML:${ocaml_version} ${<} -o ${@}))))
-
 
 (library
  ((name ppx_deriving_rpc)
