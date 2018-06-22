@@ -9,10 +9,6 @@ module T : sig
 
   type rpcfn = Rpc.call -> Rpc.response Async.Deferred.t
 
-  val box : 'a Async.Deferred.t -> 'a box
-
-  val unbox : 'a box -> 'a Async.Deferred.t
-
   val lift : ('a -> 'b Async.Deferred.t) -> 'a -> 'b box
 
   val bind : 'a box -> ('a -> 'b Async.Deferred.t) -> 'b box
