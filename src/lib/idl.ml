@@ -211,6 +211,10 @@ module Make (M : MONAD) = struct
 
     let description = ref None
 
+    let strict = ref false
+
+    let make_strict () = strict := true
+
     let implement x =
       description := Some x ;
       ()
@@ -263,7 +267,9 @@ module Make (M : MONAD) = struct
                       Rpcmarshal.unmarshal e.Error.def.Rpc.Types.ty
                         r.Rpc.contents
                     with
-                    | Ok x -> M.return (Error x)
+                    | Ok x ->
+                        if !strict then M.fail (e.Error.raiser x)
+                        else M.return (Error x)
                     | Error (`Msg x) -> M.fail (MarshalError x) )
             in
             res

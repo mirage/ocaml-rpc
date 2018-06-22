@@ -195,6 +195,11 @@ module Make (M : MONAD) : sig
             with type implementation = client_implementation
              and type 'a res = T.rpcfn -> 'a
              and type ('a, 'b) comp = ('a, 'b) T.resultb
+
+    val make_strict : unit -> unit
+    (** This is irreversible, once used the client will fail in case of Rpc
+        failure ([M.fail]) instead of returning the error
+        ([M.return (Error ...)]). *)
   end
 
   (** This module generates a server that dispatches RPC calls to their
