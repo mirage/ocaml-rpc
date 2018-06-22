@@ -9,10 +9,6 @@ module T : sig
 
   type rpcfn = Rpc.call -> Rpc.response Lwt.t
 
-  val box : 'a Lwt.t -> 'a box
-
-  val unbox : 'a box -> 'a Lwt.t
-
   val lift : ('a -> 'b Lwt.t) -> 'a -> 'b box
 
   val bind : 'a box -> ('a -> 'b Lwt.t) -> 'b box
