@@ -81,9 +81,14 @@ module Typ_of = struct
         [%expr List [%e expr_of_typ  typ]]
       | [%type: [%t? typ] array] ->
         [%expr Array [%e expr_of_typ  typ]]
-      | {ptyp_desc = Ptyp_tuple typs; _ } ->
-        let typs = List.rev typs in
-        List.fold_right (fun t acc -> [%expr Tuple ([%e expr_of_typ  t], [%e acc])]) (List.rev (List.tl typs)) [%expr [%e (expr_of_typ  (List.hd typs))] ]
+      | {ptyp_desc = Ptyp_tuple [t1;t2]; _ } ->
+        [%expr Tuple ([%e expr_of_typ t1], [%e expr_of_typ t2])]
+      | {ptyp_desc = Ptyp_tuple [t1;t2;t3]; _ } ->
+        [%expr Tuple3 ([%e expr_of_typ t1], [%e expr_of_typ t2], [%e expr_of_typ t3])]
+      | {ptyp_desc = Ptyp_tuple [t1;t2;t3;t4]; _ } ->
+        [%expr Tuple4 ([%e expr_of_typ t1], [%e expr_of_typ t2], [%e expr_of_typ t3], [%e expr_of_typ t4])]
+      | {ptyp_desc = Ptyp_tuple _; _ } ->
+        failwith "Tuples with arity > 4 are not supported"
       | [%type: [%t? typ] option] ->
         [%expr Option [%e expr_of_typ typ]]
       | { ptyp_desc = Ptyp_constr ( { txt = lid; _ }, _ ); _ } ->
@@ -191,10 +196,11 @@ module Typ_of = struct
               in
               let contents = match typs with
                 | [] -> [%expr Unit]
-                | typs_hd::typs_tl -> List.fold_right (fun t acc ->
-                    [%expr Tuple ([%e expr_of_typ  t], [%e acc])])
-                    typs_tl
-                    [%expr [%e (expr_of_typ  typs_hd)]]
+                | [t1] -> expr_of_typ t1
+                | [t1;t2] -> [%expr Tuple ([%e expr_of_typ t1], [%e expr_of_typ t2])]
+                | [t1;t2;t3] -> [%expr Tuple3 ([%e expr_of_typ t1], [%e expr_of_typ t2], [%e expr_of_typ t3])]
+                | [t1;t2;t3;t4] -> [%expr Tuple4 ([%e expr_of_typ t1], [%e expr_of_typ t2], [%e expr_of_typ t3], [%e expr_of_typ t4])]
+                | _ -> failwith "Tuples with arity > 4 are not supported"
               in
               let args = List.mapi (fun i _ -> evar (argn i)) typs in
               let pattern = List.mapi (fun i _ -> pvar (argn i)) typs in

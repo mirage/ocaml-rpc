@@ -40,6 +40,8 @@ let rec string_of_t : type a.a typ -> string list =
   | Unit -> print "unit"
   | Option x -> string_of_t x @ (print " option")
   | Tuple (a, b) -> string_of_t a @ (print " * ") @ (string_of_t b)
+  | Tuple3 (a, b, c) -> string_of_t a @ (print " * ") @ (string_of_t b) @ (print " * ") @ (string_of_t c)
+  | Tuple4 (a, b, c, d) -> string_of_t a @ (print " * ") @ (string_of_t b) @ (print " * ") @ (string_of_t c) @ (print " * ") @ (string_of_t d)
   | Abstract _ -> print "<abstract>"
 
 let definition_of_t : type a.a typ -> string list = function
@@ -68,6 +70,8 @@ let rec ocaml_patt_of_t : type a. a typ -> string = fun ty ->
   | Unit -> "()"
   | Option x -> Printf.sprintf "%s_opt" (ocaml_patt_of_t x)
   | Tuple (a, b) -> Printf.sprintf "(%s,%s)" (ocaml_patt_of_t a) (ocaml_patt_of_t b)
+  | Tuple3 (a, b, c) -> Printf.sprintf "(%s,%s,%s)" (ocaml_patt_of_t a) (ocaml_patt_of_t b) (ocaml_patt_of_t c)
+  | Tuple4 (a, b, c, d) -> Printf.sprintf "(%s,%s,%s,%s)" (ocaml_patt_of_t a) (ocaml_patt_of_t b) (ocaml_patt_of_t c) (ocaml_patt_of_t d)
   | Abstract _ -> "abstract"
 
 let rpc_of : type a. a typ -> string -> Rpc.t = fun ty hint ->
@@ -301,6 +305,8 @@ let expand_types is =
       | Dict (_, ty) -> expand ty
       | Option ty -> expand ty
       | Tuple (ty1, ty2) -> (expand ty1) @ (expand ty2)
+      | Tuple3 (ty1, ty2, ty3) -> (expand ty1) @ (expand ty2) @ (expand ty3)
+      | Tuple4 (ty1, ty2, ty3, ty4) -> (expand ty1) @ (expand ty2) @ (expand ty3) @ (expand ty4)
       | Struct { fields; _ } -> List.map (function BoxedField field -> expand field.field) fields |> List.flatten
       | Variant { variants; _ } -> List.map (function BoxedTag tag -> expand tag.tcontents) variants |> List.flatten
       | _ -> []
