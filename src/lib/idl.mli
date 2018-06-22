@@ -21,8 +21,8 @@ module Param : sig
     -> 'a Rpc.Types.def
     -> 'a t
   (** [mk ~name ~description typ] creates a Param.t out of a type definition
-      from the Types module. If the name or description are omitted, the name
-      or description from the type definition will be inherited *)
+        from the Types module. If the name or description are omitted, the name
+        or description from the type definition will be inherited *)
 end
 
 (* An error that might be raised by an RPC *)
@@ -127,21 +127,12 @@ module Make (M : MONAD) : sig
 
   type server_implementation
 
-  (** The module [!T], the [RPC] [MONAD] transformer, defines the minimal set
-      of types and functions needed for the [!GenClient] and [!GenServer] modules
-      to generate clients and servers. These allow to provide different syncronous
-      and asynctronous engines for the client and server implementations.
-  *)
-  module T : sig
+  module type RPCTRANSFORMER = sig
     type 'a box
 
     type ('a, 'b) resultb = ('a, 'b) Result.result box
 
     type rpcfn = Rpc.call -> Rpc.response M.t
-
-    val box : 'a M.t -> 'a box
-
-    val unbox : 'a box -> 'a M.t
 
     val lift : ('a -> 'b M.t) -> 'a -> 'b box
 
@@ -157,6 +148,13 @@ module Make (M : MONAD) : sig
 
     val ( ~@ ) : 'a M.t -> 'a box
   end
+
+  (** The module [!T], the [RPC] [MONAD] transformer, defines the minimal set
+      of types and functions needed for the [!GenClient] and [!GenServer] modules
+      to generate clients and servers. These allow to provide different syncronous
+      and asynctronous engines for the client and server implementations.
+  *)
+  module T : RPCTRANSFORMER
 
   (** [!ErrM] defines monad to use for the implementation and combination
       of RPC functions *)

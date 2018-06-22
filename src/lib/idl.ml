@@ -74,40 +74,6 @@ module type MONAD = sig
   val fail : exn -> 'a t
 end
 
-[@@@warning "-32-34"]
-
-module type RPCTRANSFORMER = functor (M : MONAD) -> sig
-  type _ m
-
-  type 'a box = {box: 'a m}
-
-  type ('a, 'b) resultb = ('a, 'b) Result.result box
-
-  type rpcfn = Rpc.call -> Rpc.response M.t
-
-  val box : 'a m -> 'a box
-
-  val unbox : 'a box -> 'a m
-
-  val lift : ('a -> 'b M.t) -> 'a -> 'b box
-
-  val bind : 'a box -> ('a -> 'b M.t) -> 'b box
-
-  val return : 'a -> 'a box
-
-  val run : 'a m -> 'a M.t
-
-  val get : 'a box -> 'a M.t
-
-  val ( !@ ) : 'a box -> 'a M.t
-
-  val put : 'a M.t -> 'a box
-
-  val ( ~@ ) : 'a M.t -> 'a box
-end
-
-[@@@warning "+32+34"]
-
 exception MarshalError of string
 
 exception UnknownMethod of string
@@ -154,16 +120,12 @@ let get_arg call has_named name is_opt =
   | false, Some _, _ -> failwith "Can't happen by construction"
 
 module Make (M : MONAD) = struct
-  module T : sig
-    type 'a box = {box: 'a M.t}
+  module type RPCTRANSFORMER = sig
+    type 'a box
 
     type ('a, 'b) resultb = ('a, 'b) Result.result box
 
     type rpcfn = Rpc.call -> Rpc.response M.t
-
-    val box : 'a M.t -> 'a box
-
-    val unbox : 'a box -> 'a M.t
 
     val lift : ('a -> 'b M.t) -> 'a -> 'b box
 
@@ -178,16 +140,14 @@ module Make (M : MONAD) = struct
     val put : 'a M.t -> 'a box
 
     val ( ~@ ) : 'a M.t -> 'a box
-  end = struct
+  end
+
+  module T = struct
     type 'a box = {box: 'a M.t}
 
     type ('a, 'b) resultb = ('a, 'b) Result.result box
 
     type rpcfn = Rpc.call -> Rpc.response M.t
-
-    let box x = {box= x}
-
-    let unbox {box} = box
 
     let lift f x = {box= f x}
 
