@@ -136,9 +136,26 @@ let test_tuple2 () =
     , Rpc.Enum [Rpc.Int 3L; Rpc.String "hello"]
     , typ_of_test_tuple2 )
 
-(*type test_tuple3 = (int * string * char) [@@deriving rpcty]
+type test_tuple3 = int * string * char [@@deriving rpcty]
+
 let test_tuple3 () =
-  check_marshal_unmarshal ((3, "hi", 'c'), Rpc.Enum [Rpc.Int 3L; Rpc.String "hi"; Rpc.Int (Char.code 'c' |> Int64.of_int)], typ_of_test_tuple3)*)
+  check_marshal_unmarshal
+    ( (3, "hi", 'c')
+    , Rpc.Enum
+        [Rpc.Int 3L; Rpc.String "hi"; Rpc.Int (Char.code 'c' |> Int64.of_int)]
+    , typ_of_test_tuple3 )
+
+type test_tuple4 = int * string * char * bool [@@deriving rpcty]
+
+let test_tuple4 () =
+  check_marshal_unmarshal
+    ( (3, "hi", 'c', true)
+    , Rpc.Enum
+        [ Rpc.Int 3L
+        ; Rpc.String "hi"
+        ; Rpc.Int (Char.code 'c' |> Int64.of_int)
+        ; Rpc.Bool true ]
+    , typ_of_test_tuple4 )
 
 type test_option = int option [@@deriving rpcty]
 
@@ -330,6 +347,36 @@ let test_defaults_bad () =
   | Ok _ -> Alcotest.fail "Should have had an error"
   | Error _ -> ()
 
+type varianttest =
+  | Banana of string option * string list
+  | Carrot of int * string * float
+  | Beetroot of int * string * float * bool
+[@@deriving rpcty]
+
+let test_multiple_args () =
+  let (x : varianttest) = Banana (Some "foo", ["hello"]) in
+  check_marshal_unmarshal
+    ( x
+    , (let open Rpc in
+      Enum [String "Banana"; Enum [Enum [String "foo"]; Enum [String "hello"]]])
+    , typ_of_varianttest )
+
+let test_multiple_args3 () =
+  let (x : varianttest) = Carrot (1, "two", 3.0) in
+  check_marshal_unmarshal
+    ( x
+    , Rpc.(Enum [String "Carrot"; Enum [Int 1L; String "two"; Float 3.0]])
+    , typ_of_varianttest )
+
+let test_multiple_args4 () =
+  let (x : varianttest) = Beetroot (6, "seven", 8.0, true) in
+  check_marshal_unmarshal
+    ( x
+    , (let open Rpc in
+      Enum
+        [String "Beetroot"; Enum [Int 6L; String "seven"; Float 8.0; Bool true]])
+    , typ_of_varianttest )
+
 let tests =
   [ ("int", `Quick, test_int)
   ; ("int_from_string", `Quick, test_int_from_string)
@@ -357,7 +404,9 @@ let tests =
   ; ("bad_char", `Quick, test_bad_char)
   ; ("int list", `Quick, test_int_list)
   ; ("int array", `Quick, test_int_array)
-  ; ("tuple2", `Quick, test_tuple2) (*    "tuple3", `Quick, test_tuple3;*)
+  ; ("tuple2", `Quick, test_tuple2)
+  ; ("tuple3", `Quick, test_tuple3)
+  ; ("tuple4", `Quick, test_tuple4)
   ; ("option", `Quick, test_option)
   ; ("option (none)", `Quick, test_option_none)
   ; ("bad_option", `Quick, test_bad_option)
@@ -383,4 +432,7 @@ let tests =
   ; ("defaults", `Quick, test_defaults)
   ; ("defaults_var", `Quick, test_defaults_var)
   ; ("defaults_bad", `Quick, test_defaults_bad)
-  ; ("dict", `Quick, test_dict_key) ]
+  ; ("dict", `Quick, test_dict_key)
+  ; ("multiple_args", `Quick, test_multiple_args)
+  ; ("multiple_args3", `Quick, test_multiple_args3)
+  ; ("multiple_args4", `Quick, test_multiple_args4) ]

@@ -56,6 +56,8 @@ module Types : sig
     | Unit : unit typ
     | Option: 'a typ -> 'a option typ
     | Tuple: 'a typ * 'b typ -> ('a * 'b) typ
+    | Tuple3: 'a typ * 'b typ * 'c typ -> ('a * 'b * 'c) typ
+    | Tuple4: 'a typ * 'b typ * 'c typ * 'd typ -> ('a * 'b * 'c * 'd) typ
     | Struct: 'a structure -> 'a typ
     | Variant: 'a variant -> 'a typ
     | Abstract: 'a abstract -> 'a typ

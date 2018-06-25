@@ -4,6 +4,7 @@ module Interface (R : Idl.RPC) = struct
   type exns =
     | Error1 of string  (** error 1 *)
     | Error2 of (int * bool)  (** error 2 *)
+    | Error3 of (int * bool * string)  (** error 3 *)
   [@@deriving rpcty]
 
   exception Calc_error of exns
@@ -61,26 +62,26 @@ let interfaces =
     ~description:[{|Test Interface for integer arithmetic|}]
     ~interfaces:[IfCode.implementation ()]
 
-let gen_python file =
+let gen_python_bindings file =
   let oc = open_out file in
   output_string oc
     (Pythongen.of_interfaces interfaces |> Pythongen.string_of_ts) ;
   close_out oc
 
+let run_cmd msg cmd =
+  print_endline cmd ;
+  Alcotest.(check int) msg 0 (Sys.command cmd)
+
 let run_linters file =
-  let run msg cmd =
-    print_endline cmd ;
-    Alcotest.(check int) msg 0 (Sys.command cmd)
-  in
-  run "pylint should exit with 0"
+  run_cmd "pylint should exit with 0"
     ( "pylint \
        --disable=line-too-long,too-few-public-methods,unused-argument,no-self-use,invalid-name,broad-except,protected-access,redefined-builtin "
     ^ file ) ;
-  run "pycodestyle should exit with 0" ("pycodestyle --ignore=E501 " ^ file)
+  run_cmd "pycodestyle should exit with 0" ("pycodestyle --ignore=E501 " ^ file)
 
 let lint_bindings () =
   let file = "python/bindings.py" in
-  gen_python file ; run_linters file
+  gen_python_bindings file ; run_linters file
 
 let run ?input cmd =
   print_endline cmd ;
@@ -91,7 +92,7 @@ let run ?input cmd =
   close_in inp ; l |> String.trim
 
 let test_commandline () =
-  gen_python "python/calc_impl/bindings.py" ;
+  gen_python_bindings "python/calc_impl/bindings.py" ;
   let run ?input cmd = run ?input ("python python/calc_impl/" ^ cmd) in
   let n = run "Calc.add 4 5" in
   Alcotest.(check string)
@@ -113,7 +114,7 @@ let test_commandline () =
     "Calc.noop with parameters passed to stdin as JSON" "null" b
 
 let check_test_class () =
-  gen_python "python/calc_test/bindings.py" ;
+  gen_python_bindings "python/calc_test/bindings.py" ;
   let run ?input cmd = run ?input ("python python/calc_test/" ^ cmd) in
   run "Calc.add 4 5" |> ignore ;
   run ~input:{|{"int1":3,"int2":2}|} "Calc.add --json" |> ignore ;
@@ -122,6 +123,11 @@ let check_test_class () =
   run "Calc.noop false" |> ignore ;
   run ~input:{|{"bool1":true}|} "Calc.noop --json" |> ignore
 
+let check_exceptions () =
+  gen_python_bindings "python/bindings.py" ;
+  run_cmd "Exceptions should be correctly generated"
+    "python python/exn_test.py"
+
 let tests =
   [ ( "Check generated test interface bindings with pylint & pycodestyle"
     , `Slow
@@ -129,4 +135,5 @@ let tests =
   ; ("Check generated commandline bindings", `Slow, test_commandline)
   ; ( "Check generated test class with commandline bindings"
     , `Slow
-    , check_test_class ) ]
+    , check_test_class )
+  ; ("Cehck generated exceptions", `Slow, check_exceptions) ]

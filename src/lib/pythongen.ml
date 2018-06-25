@@ -46,7 +46,7 @@ class Rpc_light_failure(Exception):
 class Unimplemented(Rpc_light_failure):
     """The called RPC method is not implemented."""
     def __init__(self, arg):
-        super(Unimplemented, self).__init__(self, "Unimplemented", [arg])
+        super(Unimplemented, self).__init__("Unimplemented", [arg])
 
 
 class InternalError(Rpc_light_failure):
@@ -56,14 +56,13 @@ class InternalError(Rpc_light_failure):
     declared in the interface.
     """
     def __init__(self, error):
-        super(InternalError, self).__init__(self, "Internal_error", [error])
+        super(InternalError, self).__init__("Internal_error", [error])
 
 
 class UnmarshalException(InternalError):
     """The input does not have the expected structure."""
     def __init__(self, thing, ty, desc):
         super(UnmarshalException, self).__init__(
-            self,
             "UnmarshalException thing=%s ty=%s desc=%s" % (thing, ty, desc))
 
 
@@ -71,13 +70,13 @@ class TypeError(InternalError):
     """The type of an argument differs from the one defined in the interface."""
     def __init__(self, expected, actual):
         super(TypeError, self).__init__(
-            self, "TypeError expected=%s actual=%s" % (expected, actual))
+            "TypeError expected=%s actual=%s" % (expected, actual))
 
 
 class UnknownMethod(InternalError):
     """The called method is not defined in the interface."""
     def __init__(self, name):
-        super(UnknownMethod, self).__init__(self, "Unknown method %s" % name)
+        super(UnknownMethod, self).__init__("Unknown method %s" % name)
 
 
 class ListAction(argparse.Action):
@@ -228,9 +227,24 @@ let rec typecheck : type a. a typ -> string -> t list =
   | Tuple (a, b) ->
       [ Line (sprintf "if not (isinstance(%s, tuple) and len(%s) == 2):" v v)
       ; Block [raise_type_error]
-      ; Line (sprintf "left, right = %s" v) ]
-      @ typecheck a (Printf.sprintf "left")
-      @ typecheck b (Printf.sprintf "right")
+      ; Line (sprintf "v1, v2 = %s" v) ]
+      @ typecheck a (Printf.sprintf "v1")
+      @ typecheck b (Printf.sprintf "v2")
+  | Tuple3 (a, b, c) ->
+      [ Line (sprintf "if not (isinstance(%s, tuple) and len(%s) == 3):" v v)
+      ; Block [raise_type_error]
+      ; Line (sprintf "v1, v2, v3 = %s" v) ]
+      @ typecheck a (Printf.sprintf "v1")
+      @ typecheck b (Printf.sprintf "v2")
+      @ typecheck c (Printf.sprintf "v3")
+  | Tuple4 (a, b, c, d) ->
+      [ Line (sprintf "if not (isinstance(%s, tuple) and len(%s) == 4):" v v)
+      ; Block [raise_type_error]
+      ; Line (sprintf "v1, v2, v3, v4 = %s" v) ]
+      @ typecheck a (Printf.sprintf "v1")
+      @ typecheck b (Printf.sprintf "v2")
+      @ typecheck c (Printf.sprintf "v3")
+      @ typecheck d (Printf.sprintf "v4")
   | Abstract _ -> failwith "Abstract types cannot be typechecked by pythongen"
 
 let rec value_of : type a. a typ -> string =
@@ -257,6 +271,8 @@ let rec value_of : type a. a typ -> string =
     | Unit -> "None"
     | Option _ -> "None"
     | Tuple _ -> "[]"
+    | Tuple3 _ -> "[]"
+    | Tuple4 _ -> "[]"
     | Abstract _ -> failwith "Cannot get default value for abstract types"
 
 let exn_var myarg =
@@ -279,14 +295,13 @@ let exn_var myarg =
                 [ Line "def __init__(self)"
                 ; Block
                     [ Line
-                        (sprintf {|super(%s, self).__init__(self, "%s", [])|}
+                        (sprintf {|super(%s, self).__init__("%s", [])|}
                            tag.tname tag.tname) ] ]
               else
                 [ Line (sprintf "def __init__(self, arg_0):")
                 ; Block
                     ( [ Line
-                          (sprintf
-                             {|super(%s, self).__init__(self, "%s", [arg_0])|}
+                          (sprintf {|super(%s, self).__init__("%s", [arg_0])|}
                              tag.tname tag.tname) ]
                     @ typecheck tag.tcontents "arg_0"
                     @ [Line "self.arg_0 = arg_0"] ) ] ) ]

@@ -102,6 +102,8 @@ module Gen () = struct
           Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo)
     | Option _ -> Term.(const Rpc.Null)
     | Tuple _ -> Term.const Rpc.Null
+    | Tuple3 _ -> Term.const Rpc.Null
+    | Tuple4 _ -> Term.const Rpc.Null
     | Struct _ ->
         Term.app
           (Term.pure (fun x ->
