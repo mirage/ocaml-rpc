@@ -236,10 +236,29 @@ let rec typecheck : type a.a typ -> string -> t list = fun ty v ->
     [
       Line (sprintf "if not (isinstance(%s, tuple) and len(%s) == 2):" v v);
       Block [ raise_type_error ];
-      Line (sprintf "left, right = %s" v)
+      Line (sprintf "v1, v2 = %s" v)
     ] @
-    typecheck a (Printf.sprintf "left") @
-    typecheck b (Printf.sprintf "right")
+    typecheck a (Printf.sprintf "v1") @
+    typecheck b (Printf.sprintf "v2")
+  | Tuple3 (a, b, c) ->
+    [
+      Line (sprintf "if not (isinstance(%s, tuple) and len(%s) == 3):" v v);
+      Block [ raise_type_error ];
+      Line (sprintf "v1, v2, v3 = %s" v)
+    ] @
+    typecheck a (Printf.sprintf "v1") @
+    typecheck b (Printf.sprintf "v2") @
+    typecheck c (Printf.sprintf "v3")
+  | Tuple4 (a, b, c, d) ->
+    [
+      Line (sprintf "if not (isinstance(%s, tuple) and len(%s) == 4):" v v);
+      Block [ raise_type_error ];
+      Line (sprintf "v1, v2, v3, v4 = %s" v)
+    ] @
+    typecheck a (Printf.sprintf "v1") @
+    typecheck b (Printf.sprintf "v2") @
+    typecheck c (Printf.sprintf "v3") @
+    typecheck d (Printf.sprintf "v4")
   | Abstract _ ->
     failwith "Abstract types cannot be typechecked by pythongen"
 
@@ -268,6 +287,8 @@ let rec value_of : type a. a typ -> string =
     | Unit -> "None"
     | Option _ -> "None"
     | Tuple _ -> "[]"
+    | Tuple3 _ -> "[]"
+    | Tuple4 _ -> "[]"
     | Abstract _ -> failwith "Cannot get default value for abstract types"
 
 

@@ -32,6 +32,17 @@ let rec gentest : type a. a typ -> a list  = fun t ->
     let v1s = gentest t1 in
     let v2s = gentest t2 in
     List.map (fun v1 -> List.map (fun v2 -> (v1,v2)) v2s) v1s |> List.flatten
+  | Tuple3 (t1, t2, t3) ->
+    let v1s = gentest t1 in
+    let v2s = gentest t2 in
+    let v3s = gentest t3 in
+    List.map (fun v1 -> List.map (fun v2 -> List.map (fun v3 -> (v1,v2,v3)) v3s) v2s) v1s |> List.flatten |> List.flatten
+  | Tuple4 (t1, t2, t3, t4) ->
+    let v1s = gentest t1 in
+    let v2s = gentest t2 in
+    let v3s = gentest t3 in
+    let v4s = gentest t4 in
+    List.map (fun v1 -> List.map (fun v2 -> List.map (fun v3 -> List.map (fun v4 -> (v1,v2,v3,v4)) v4s) v3s) v2s) v1s |> List.flatten |> List.flatten |> List.flatten
   | Struct { constructor; _ } ->
     let rec gen_n acc n =
       match n with
@@ -82,6 +93,19 @@ let rec genall : type a. int -> string -> a typ -> a list  = fun depth strhint t
     let v1s = genall (depth - 1) strhint t1 in
     let v2s = genall (depth - 1) strhint t2 in
     List.map (fun v1 -> List.map (fun v2 -> (v1,v2)) v2s) v1s |> List.flatten |> thin depth
+  | Tuple3 (t1, t2, t3) ->
+    let v1s = genall (depth - 1) strhint t1 in
+    let v2s = genall (depth - 1) strhint t2 in
+    let v3s = genall (depth - 1) strhint t3 in
+    let l = List.map (fun v1 -> List.map (fun v2 -> List.map (fun v3 -> (v1,v2,v3)) v3s) v2s) v1s in
+    l |> List.flatten |> List.flatten |> thin depth
+  | Tuple4 (t1, t2, t3, t4) ->
+    let v1s = genall (depth - 1) strhint t1 in
+    let v2s = genall (depth - 1) strhint t2 in
+    let v3s = genall (depth - 1) strhint t3 in
+    let v4s = genall (depth - 1) strhint t4 in
+    let l = List.map (fun v1 -> List.map (fun v2 -> List.map (fun v3 -> List.map (fun v4 -> (v1,v2,v3,v4)) v4s) v3s) v2s) v1s in
+    l |> List.flatten |> List.flatten |> List.flatten |> thin depth
   | Struct { constructor; fields; _} ->
     let fields_maxes = List.map (function BoxedField f -> let n = List.length (genall (depth - 1) strhint f.field) in (f.fname,n)) fields in
     let all_combinations = List.fold_left (fun acc (f,max) ->
@@ -126,6 +150,10 @@ let rec gen_nice : type a. a typ -> string -> a = fun ty hint ->
     Some (gen_nice ty (Printf.sprintf "optional_%s" hint))
   | Tuple (x, y) ->
     (gen_nice x (narg 1), gen_nice y (narg 2))
+  | Tuple3 (x, y, z) ->
+    (gen_nice x (narg 1), gen_nice y (narg 2), gen_nice z (narg 3))
+  | Tuple4 (x, y, z, a) ->
+    (gen_nice x (narg 1), gen_nice y (narg 2), gen_nice z (narg 3), gen_nice a (narg 4))
   | Struct { constructor; _ } -> begin
     let field_get : type a. string -> a typ -> (a, Rresult.R.msg) Result.result = fun name ty ->
       Result.Ok (gen_nice ty name)

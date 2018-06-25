@@ -84,6 +84,31 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result  = fun t v 
       | _, _ ->
         error_msg "Expecting Rpc.Enum when unmarshalling a tuple"
     end
+  | Tuple3 (t1, t2, t3) -> begin
+      match v with
+      | Rpc.Enum ([x;y;z]) ->
+        unmarshal t1 x >>= fun v1 ->
+        unmarshal t2 y >>= fun v2 ->
+        unmarshal t3 z >>= fun v3 ->
+        Ok (v1,v2,v3)
+      | Rpc.Enum _ ->
+        Rresult.R.error_msg "Expecting precisely 3 items when unmarshalling a Tuple3"
+      | _ ->
+        error_msg "Expecting Rpc.Enum when unmarshalling a tuple3"
+    end
+  | Tuple4 (t1, t2, t3, t4) -> begin
+      match v with
+      | Rpc.Enum ([x;y;z;a]) ->
+        unmarshal t1 x >>= fun v1 ->
+        unmarshal t2 y >>= fun v2 ->
+        unmarshal t3 z >>= fun v3 ->
+        unmarshal t4 a >>= fun v4 ->
+        Ok (v1,v2,v3,v4)
+      | Rpc.Enum _ ->
+        Rresult.R.error_msg "Expecting precisely 4 items in an Enum when unmarshalling a Tuple4"
+      | _ ->
+        error_msg "Expecting Rpc.Enum when unmarshalling a tuple4"
+    end
   | Struct { constructor; sname; _ } -> begin
       match v with
       | Rpc.Dict keys' ->
@@ -149,6 +174,12 @@ let rec marshal : type a. a typ -> a -> Rpc.t = fun t v ->
     end
   | Tuple (x, y) ->
     Rpc.Enum [marshal x (fst v); marshal y (snd v)]
+  | Tuple3 (x, y, z) ->
+    let (vx, vy, vz) = v in
+    Rpc.Enum [marshal x vx; marshal y vy; marshal z vz]
+  | Tuple4 (x, y, z, a) ->
+    let (vx, vy, vz, va) = v in
+    Rpc.Enum [marshal x vx; marshal y vy; marshal z vz; marshal a va]
   | Struct { fields; _ } -> begin
       let fields = List.fold_left (fun acc f ->
           match f with
@@ -199,6 +230,8 @@ let rec ocaml_of_t : type a. a typ -> string = function
   | Unit -> "unit"
   | Option t -> ocaml_of_t t ^ " option"
   | Tuple (a,b) -> Printf.sprintf "(%s * %s)" (ocaml_of_t a) (ocaml_of_t b)
+  | Tuple3 (a,b,c) -> Printf.sprintf "(%s * %s * %s)" (ocaml_of_t a) (ocaml_of_t b) (ocaml_of_t c)
+  | Tuple4 (a,b,c,d) -> Printf.sprintf "(%s * %s * %s * %s)" (ocaml_of_t a) (ocaml_of_t b) (ocaml_of_t c) (ocaml_of_t d)
   | Struct { fields; _ } ->
     let fields = List.map (function
         | BoxedField f ->
