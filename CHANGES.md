@@ -1,3 +1,11 @@
+## 5.8.0 (June 2018)
+* rpclib:
+  - New `Rpc.Types` variants for 3- and 4-tuples
+  - pythongen: fix generated exceptions
+  - Remove broken `Rpc_client`
+* ppx_deriving_rpc:
+  - rpcty ppx: Add support for 3- and 4-tuples
+
 ## 5.7.0 (June 2018) -- rpclib only
 - Add optional `strict` parameter to `jsonrpc.of_string` to ignore trailing
   junk from input. The old behaviour (`strict=true`) is the default.
