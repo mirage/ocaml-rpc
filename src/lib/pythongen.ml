@@ -47,7 +47,7 @@ class Rpc_light_failure(Exception):
 class Unimplemented(Rpc_light_failure):
     """The called RPC method is not implemented."""
     def __init__(self, arg):
-        super(Unimplemented, self).__init__(self, "Unimplemented", [arg])
+        super(Unimplemented, self).__init__("Unimplemented", [arg])
 
 
 class InternalError(Rpc_light_failure):
@@ -57,14 +57,13 @@ class InternalError(Rpc_light_failure):
     declared in the interface.
     """
     def __init__(self, error):
-        super(InternalError, self).__init__(self, "Internal_error", [error])
+        super(InternalError, self).__init__("Internal_error", [error])
 
 
 class UnmarshalException(InternalError):
     """The input does not have the expected structure."""
     def __init__(self, thing, ty, desc):
         super(UnmarshalException, self).__init__(
-            self,
             "UnmarshalException thing=%s ty=%s desc=%s" % (thing, ty, desc))
 
 
@@ -72,13 +71,13 @@ class TypeError(InternalError):
     """The type of an argument differs from the one defined in the interface."""
     def __init__(self, expected, actual):
         super(TypeError, self).__init__(
-            self, "TypeError expected=%s actual=%s" % (expected, actual))
+            "TypeError expected=%s actual=%s" % (expected, actual))
 
 
 class UnknownMethod(InternalError):
     """The called method is not defined in the interface."""
     def __init__(self, name):
-        super(UnknownMethod, self).__init__(self, "Unknown method %s" % name)
+        super(UnknownMethod, self).__init__("Unknown method %s" % name)
 
 
 class ListAction(argparse.Action):
@@ -310,12 +309,12 @@ let exn_var myarg =
           if not has_arg then
             [ Line "def __init__(self)";
               Block (
-                [ Line (sprintf {|super(%s, self).__init__(self, "%s", [])|} tag.tname tag.tname) ])
+                [ Line (sprintf {|super(%s, self).__init__("%s", [])|} tag.tname tag.tname) ])
             ]
           else
             [ Line (sprintf "def __init__(self, arg_0):");
               Block (
-                [ Line (sprintf {|super(%s, self).__init__(self, "%s", [arg_0])|} tag.tname tag.tname )
+                [ Line (sprintf {|super(%s, self).__init__("%s", [arg_0])|} tag.tname tag.tname )
                 ] @ (typecheck tag.tcontents "arg_0")
                 @ [ Line "self.arg_0 = arg_0" ])
             ]
