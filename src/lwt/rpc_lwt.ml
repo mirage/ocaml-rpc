@@ -35,21 +35,22 @@ module GenClient () = struct
 
   let declare name _ ty (rpc : rpcfn) =
     let open Result in
-    let rec inner : type b. ((string * Rpc.t) list * Rpc.t list) -> b fn -> b = fun (named,unnamed) ->
+    let rec inner : type b. ((string * Rpc.t) list option * Rpc.t list) -> b fn -> b = fun (named,unnamed) ->
       function
       | Function (t, f) -> begin
+          let cur_named = match named with | Some n -> n | None -> [] in
           fun v ->
             match t.Param.name with
             | Some n -> begin
                 match t.Param.typedef.Rpc.Types.ty, v with
                 | Rpc.Types.Option _, None ->
-                  inner (named, unnamed) f
+                  inner (Some cur_named, unnamed) f
                 | Rpc.Types.Option t1, Some v' ->
                   let marshalled = Rpcmarshal.marshal t1 v' in
-                  inner ((n, marshalled)::named,unnamed) f
+                  inner (Some ((n, marshalled)::cur_named),unnamed) f
                 | ty, v ->
                   let marshalled = Rpcmarshal.marshal ty v in
-                  inner ((n, marshalled)::named,unnamed) f
+                  inner (Some ((n, marshalled)::cur_named),unnamed) f
               end
             | None ->
               let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
@@ -59,8 +60,8 @@ module GenClient () = struct
         let wire_name = get_wire_name !description name in
         let args =
           match named with
-          | [] -> List.rev unnamed
-          | _ -> (Rpc.Dict named) :: List.rev unnamed
+          | None -> List.rev unnamed
+          | Some l -> (Rpc.Dict l) :: List.rev unnamed
         in
         let call = Rpc.call wire_name args in
         let res = Lwt.bind (rpc call) (fun r ->
@@ -68,7 +69,7 @@ module GenClient () = struct
             then match Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty r.Rpc.contents with Ok x -> Lwt.return (Ok x) | Error (`Msg x) -> Lwt.fail (MarshalError x)
             else match Rpcmarshal.unmarshal e.Idl.Error.def.Rpc.Types.ty r.Rpc.contents with Ok x -> Lwt.return (Error x) | Error (`Msg x) -> Lwt.fail (MarshalError x)) in
         {M.lwt=res}
-    in inner ([],[]) ty
+    in inner (None,[]) ty
 end
 
 exception UnknownMethod of string
