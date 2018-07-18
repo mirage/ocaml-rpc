@@ -30,6 +30,14 @@ module Error = struct
 
   module Make(T : ERROR) = struct
     exception Exn of T.t
+
+    let () =
+      let printer = function
+        | Exn x -> Some (Printf.sprintf "IDL Error: %s" (Rpcmarshal.marshal T.t.Rpc.Types.ty x |> Rpc.to_string))
+        | _ -> None
+      in
+      Printexc.register_printer printer
+
     let error = {
       def = T.t;
       raiser = (function e -> Exn e);
