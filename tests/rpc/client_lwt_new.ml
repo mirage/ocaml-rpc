@@ -71,6 +71,8 @@ module API (R : Idl.RPC) = struct
 
   let abs = Param.mk ~name:"abs" abstr
 
+  let argu_noname = Param.mk Rpc.Types.unit
+
   (* We'll use the default error type *)
   let e = Idl.DefaultError.err
 
@@ -84,6 +86,8 @@ module API (R : Idl.RPC) = struct
   let rpc3 = declare "rpc3" ["Test RPC 3"] (argi @-> returning argi e)
 
   let rpc4 = declare "rpc4" ["Test RPC 4"] (abs @-> returning arg1 e)
+
+  let rpc5 = declare "rpc5" ["Test RPC 5"] (argopt @-> argu_noname @-> returning arg1 e)
 end
 
 module ImplM = struct
@@ -111,6 +115,9 @@ module ImplM = struct
 
   let rpc4 abs =
     return (Printf.sprintf "Abs: %s\n" (AbstractMod.string_of abs))
+
+  let rpc5 str_opt () =
+    return "good"
 end
 
 let rpc rpc_fn call =
@@ -134,6 +141,7 @@ let main () =
   Server.rpc2 ImplM.rpc2 ;
   Server.rpc3 ImplM.rpc3 ;
   Server.rpc4 ImplM.rpc4 ;
+  Server.rpc5 ImplM.rpc5 ;
   let funcs = Server.implementation in
   let rpc r = rpc (Rpc_lwt.server funcs) r in
   let body =
@@ -167,6 +175,9 @@ let main () =
     >>= fun i ->
     Client.rpc4 rpc AbstractMod.init
     >>= fun s -> return (Printf.printf "%Ld,%s\n" i s)
+    >>= fun () ->
+    Client.rpc5 rpc None ()
+    >>= fun s -> return (Printf.printf "%s" s)
   in
   T.get body
 

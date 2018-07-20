@@ -31,6 +31,13 @@ module Error = struct
   module Make (T : ERROR) = struct
     exception Exn of T.t
 
+    let () =
+      let printer = function
+        | Exn x -> Some (Printf.sprintf "IDL Error: %s" (Rpcmarshal.marshal T.t.Rpc.Types.ty x |> Rpc.to_string))
+        | _ -> None
+      in
+      Printexc.register_printer printer
+
     let error =
       { def= T.t
       ; raiser= (function e -> Exn e)
@@ -225,20 +232,21 @@ module Make (M : MONAD) = struct
 
     let declare name _ ty (rpc: T.rpcfn) =
       let open Result in
-      let rec inner : type b. (string * Rpc.t) list * Rpc.t list -> b fn -> b =
+      let rec inner : type b. (string * Rpc.t) list option * Rpc.t list -> b fn -> b =
        fun (named, unnamed) -> function
         | Function (t, f) -> (
+            let cur_named = match named with Some l -> l | None -> [] in
             fun v ->
               match t.Param.name with
               | Some n -> (
                 match (t.Param.typedef.Rpc.Types.ty, v) with
                 | Rpc.Types.Option ty, Some v' ->
                     let marshalled = Rpcmarshal.marshal ty v' in
-                    inner ((n, marshalled) :: named, unnamed) f
-                | Rpc.Types.Option _ty, None -> inner (named, unnamed) f
+                    inner (Some ((n, marshalled) :: cur_named), unnamed) f
+                | Rpc.Types.Option _ty, None -> inner (Some cur_named, unnamed) f
                 | ty, v ->
                     let marshalled = Rpcmarshal.marshal ty v in
-                    inner ((n, marshalled) :: named, unnamed) f )
+                    inner (Some ((n, marshalled) :: cur_named), unnamed) f )
               | None ->
                   let marshalled =
                     Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v
@@ -248,8 +256,8 @@ module Make (M : MONAD) = struct
             let wire_name = get_wire_name !description name in
             let args =
               match named with
-              | [] -> List.rev unnamed
-              | _ -> Rpc.Dict named :: List.rev unnamed
+              | None -> List.rev unnamed
+              | Some l -> Rpc.Dict l :: List.rev unnamed
             in
             let call = Rpc.call wire_name args in
             let rpc = T.put (rpc call) in
@@ -274,7 +282,7 @@ module Make (M : MONAD) = struct
             in
             res
       in
-      inner ([], []) ty
+      inner (None, []) ty
   end
 
   let server hashtbl =
@@ -495,20 +503,21 @@ module Exn = struct
 
     let declare name _ ty =
       let open Result in
-      let rec inner : type b. (string * Rpc.t) list * Rpc.t list -> b fn -> b =
+      let rec inner : type b. (string * Rpc.t) list option * Rpc.t list -> b fn -> b =
        fun (named, unnamed) -> function
         | Function (t, f) -> (
+            let cur_named = match named with Some l -> l | None -> [] in
             fun v ->
               match t.Param.name with
               | Some n -> (
                 match (t.Param.typedef.Rpc.Types.ty, v) with
                 | Rpc.Types.Option ty, Some v' ->
                     let marshalled = Rpcmarshal.marshal ty v' in
-                    inner ((n, marshalled) :: named, unnamed) f
-                | Rpc.Types.Option _ty, None -> inner (named, unnamed) f
+                    inner (Some ((n, marshalled) :: cur_named), unnamed) f
+                | Rpc.Types.Option _ty, None -> inner (Some cur_named, unnamed) f
                 | ty, v ->
                     let marshalled = Rpcmarshal.marshal ty v in
-                    inner ((n, marshalled) :: named, unnamed) f )
+                    inner (Some ((n, marshalled) :: cur_named), unnamed) f )
               | None ->
                   let marshalled =
                     Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v
@@ -518,8 +527,8 @@ module Exn = struct
             let wire_name = get_wire_name !description name in
             let args =
               match named with
-              | [] -> List.rev unnamed
-              | _ -> Rpc.Dict named :: List.rev unnamed
+              | None -> List.rev unnamed
+              | Some l -> Rpc.Dict l :: List.rev unnamed
             in
             let call = Rpc.call wire_name args in
             let r = R.rpc call in
@@ -537,7 +546,7 @@ module Exn = struct
               | Ok x -> raise (e.Error.raiser x)
               | Error (`Msg x) -> raise (MarshalError x)
       in
-      inner ([], []) ty
+      inner (None, []) ty
   end
 
   let server hashtbl =
