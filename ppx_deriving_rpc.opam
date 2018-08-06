@@ -19,9 +19,10 @@ depends: [
   "ppx_deriving"
   "ppx_tools"
   "ppxfind"
-  "rpclib-lwt" {test & >= "5.0.0"}
+  "rpclib-lwt"   {test & >= "5.0.0"}
   "rpclib-async" {test & >= "5.0.0"}
-  "lwt" {test & >= "3.0.0"}
-  "async" {test}
+  "lwt"          {test & >= "3.0.0"}
+  "async"        {test}
+  "alcotest"     {test}
 ]
 available: [ ocaml-version >= "4.03.0" ]
