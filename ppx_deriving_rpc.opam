@@ -3,7 +3,7 @@ maintainer: "thomas@gazagnaire.org"
 authors: "Thomas Gazagnaire, Jon Ludlam"
 homepage: "https://github.com/mirage/ocaml-rpc"
 bug-reports: "https://github.com/mirage/ocaml-rpc/issues"
-dev-repo: "git://github.com/mirage/ocaml-rpc"
+dev-repo: "git@github.com:mirage/ocaml-rpc"
 doc: "https://mirage.github.io/ocaml-rpc/ppx_deriving_rpc"
 tags: [
   "org:mirage"
@@ -19,9 +19,10 @@ depends: [
   "ppx_deriving"
   "ppx_tools"
   "ppxfind"
-  "rpclib-lwt" {test & >= "5.0.0"}
+  "rpclib-lwt"   {test & >= "5.0.0"}
   "rpclib-async" {test & >= "5.0.0"}
-  "lwt" {test & >= "3.0.0"}
-  "async" {test}
+  "lwt"          {test & >= "3.0.0"}
+  "async"        {test}
+  "alcotest"     {test}
 ]
 available: [ ocaml-version >= "4.03.0" ]

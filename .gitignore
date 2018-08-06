@@ -5,3 +5,5 @@ idl_test_gen.ml
 *.install
 .merlin
 **/.merlin
+
+_opam
