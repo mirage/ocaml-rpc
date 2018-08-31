@@ -9,10 +9,8 @@
   (public_name ppx_deriving_rpc)
   (synopsis "[@@deriving rpc]")
   (kind ppx_deriver)
-  (libraries (compiler-libs.common
-              ppx_deriving
+  (libraries (
               ppx_deriving.api
-              ppx_tools
               rpclib.core))
   (preprocess (action (run ppxfind -legacy ppx_deriving.runtime,ppx_tools.metaquot --as-pp ${<})))
   (wrapped false)
