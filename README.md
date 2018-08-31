@@ -1,4 +1,4 @@
-# OCaml-RPC
+# OCaml-RPC -- remote procedure calls (RPC) library
 
 `ocaml-rpc` is a library that provides remote procedure calls (RPC)
 using XML or JSON as transport encodings. The transport mechanism itself

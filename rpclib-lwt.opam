@@ -18,4 +18,5 @@ depends: [
   "jbuilder" {build}
   "rpclib" {>= "5.0.0"}
   "lwt" {>= "3.0.0"}
+  "alcotest-lwt" {test}
 ]
