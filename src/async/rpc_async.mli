@@ -1,41 +1,63 @@
-module Deferred = Async.Deferred
-
-type async_rpcfn = Rpc.call -> Rpc.response Deferred.t
-
-module M : sig
-  type 'a async = { async : 'a Deferred.t; }
-  type ('a, 'b) t = ('a, 'b) Result.result async
-  val return : 'a -> ('a, 'b) Result.result async
-  val return_err : 'a -> ('b, 'a) Result.result async
-  val checked_bind :
-    ('a, 'b) Result.result async ->
-    ('a -> 'c async) -> ('b -> 'c async) -> 'c async
-  val bind :
-    ('a, 'b) Result.result async ->
-    ('a -> ('c, 'b) Result.result async) -> ('c, 'b) Result.result async
-  val ( >>= ) :
-    ('a, 'b) Result.result async ->
-    ('a -> ('c, 'b) Result.result async) -> ('c, 'b) Result.result async
-  val deferred : 'a async -> 'a Deferred.t
-end
-
-(** Client generator similar to {!Idl.GenClient} that uses [Async]. *)
-module GenClient () :
-  sig
-    include Idl.RPC
-      with type implementation = unit
-       and type 'a res = async_rpcfn -> 'a
-       and type ('a,'b) comp = ('a,'b) Result.result M.async
-  end
+type client_implementation
 
 type server_implementation
-val server : server_implementation -> async_rpcfn
-val combine : server_implementation list -> server_implementation
 
-(** Server generator similar to {!Idl.GenServer} that uses [Async]. *)
+module T : sig
+  type 'a box
+
+  type ('a, 'b) resultb = ('a, 'b) Result.result box
+
+  type rpcfn = Rpc.call -> Rpc.response Async.Deferred.t
+
+  val lift : ('a -> 'b Async.Deferred.t) -> 'a -> 'b box
+
+  val bind : 'a box -> ('a -> 'b Async.Deferred.t) -> 'b box
+
+  val return : 'a -> 'a box
+
+  val get : 'a box -> 'a Async.Deferred.t
+
+  val ( !@ ) : 'a box -> 'a Async.Deferred.t
+
+  val put : 'a Async.Deferred.t -> 'a box
+
+  val ( ~@ ) : 'a Async.Deferred.t -> 'a box
+end
+
+module ErrM : sig
+  val return : 'a -> ('a, 'b) T.resultb
+
+  val return_err : 'b -> ('a, 'b) T.resultb
+
+  val checked_bind :
+       ('a, 'b) T.resultb
+    -> ('a -> ('c, 'd) T.resultb)
+    -> ('b -> ('c, 'd) T.resultb)
+    -> ('c, 'd) T.resultb
+
+  val bind :
+    ('a, 'b) T.resultb -> ('a -> ('c, 'b) T.resultb) -> ('c, 'b) T.resultb
+
+  val ( >>= ) :
+    ('a, 'b) T.resultb -> ('a -> ('c, 'b) T.resultb) -> ('c, 'b) T.resultb
+end
+
+(** Client generator similar to {!Idl.GenClient} that uses [Async.Deferred]. *)
+module GenClient () : sig
+  include Idl.RPC
+          with type implementation = client_implementation
+           and type 'a res = T.rpcfn -> 'a
+           and type ('a, 'b) comp = ('a, 'b) T.resultb
+end
+
+(** Server generator similar to {!Idl.GenServer} that uses [Async.Deferred]. *)
 module GenServer () : sig
   include Idl.RPC
-    with type implementation = server_implementation
-     and type 'a res = 'a -> unit
-     and type ('a,'b) comp = ('a,'b) Result.result M.async
+          with type implementation = server_implementation
+           and type 'a res = 'a -> unit
+           and type ('a, 'b) comp = ('a, 'b) T.resultb
 end
+
+val server : server_implementation -> T.rpcfn
+
+val combine : server_implementation list -> server_implementation

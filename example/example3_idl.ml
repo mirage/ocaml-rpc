@@ -1,6 +1,5 @@
 open Idl
 open Rpc
-open Types
 
 (* Common parameters *)
 let dbg = Param.mk ~name:"dbg"

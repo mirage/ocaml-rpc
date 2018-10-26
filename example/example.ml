@@ -8,8 +8,6 @@
    this example does not use the ppx.
 *)
 
-open Idl
-
 (* Interfaces are described as a collection of methods which take some typed
    arguments and return a typed result, or possiby an error. These are declared
    as a functor which takes as an argument a module that conforms to the 'RPC'
@@ -20,8 +18,9 @@ open Idl
    example)
 *)
 
-module MyAPI(R : RPC) = struct
+module MyAPI(R : Idl.RPC) = struct
   open R
+  open Idl
 
   let description = Interface.{
       name = "MyAPI";
@@ -56,41 +55,47 @@ module MyAPI(R : RPC) = struct
 
 end
 
+(* You can swap the rpc engine, by using a different monad here, 
+   note however that if you are using an asynchronous one, like
+   lwt or async, you should also use their specific IO functions
+   including the print functions. *)
+module M = Idl.IdM (* You can easily put ExnM here and the code would stay unchanged *)
+module MyIdl = Idl.Make(M)
 (* By passing in different modules to the `MyAPI` functor above, we can
    generate Client and Server modules *)
-module Client=MyAPI(GenClient ())
-module Server=MyAPI(GenServer ())
+module Client=MyAPI(MyIdl.GenClient ())
+module Server=MyAPI(MyIdl.GenServer ())
 
 let _ =
   (* The Client module generated above makes use of the Result.result type,
      and hence it is convenient to use the Monadic `bind` and `return`
      functions in Rresult.R *)
-  let open Rresult.R in
+  let open MyIdl in
 
   (* The server is used by associating the RPC declarations with their
      implementations. The return type is expected to be Result.result, hence
      the use of `ok` here. *)
   Server.api1 (fun i s ->
-    Printf.printf "Received '%d' and '%s': returning '%b'\n" i s true;
-    ok true);
+      Printf.printf "Received '%d' and '%s': returning '%b'\n" i s true;
+      ErrM.return true);
 
   Server.api2 (fun s ->
-    Printf.printf "Received '%s': returning '%d'\n%!" s 56;
-    ok 56);
+      Printf.printf "Received '%s': returning '%d'\n%!" s 56;
+      ErrM.return 56);
 
   (* The Server module has a 'server' function that can be used to service RPC
      requests by passing the funcs value created above. *)
-  let rpc_fn : Rpc.call -> Rpc.response = server Server.implementation in
+  let rpc_fn = server Server.implementation in
 
   (* To see a little more clearly what's going on, we will wrap this rpc
      function in something to print out the marshalled call and response. *)
   let rpc rpc =
-    Printf.printf "Marshalled RPC call: '%s'\n"
-      (Rpc.string_of_call rpc);
-    let response = rpc_fn rpc in
-    Printf.printf "Marshalled RPC type: '%s'\n"
-      (Rpc.string_of_response response);
-    response
+    let open M in
+    Printf.printf "Marshalled RPC call: '%s'\n" (Rpc.string_of_call rpc);
+    rpc_fn rpc >>= fun res ->
+    Printf.printf "Marshalled RPC type: '%s'\n" (Rpc.string_of_response res)
+    |> return >>= fun () -> (* You can actually use a semicolon here *)
+    return res
   in
 
   (* The Client module exposes client-side implementations of the methods,
@@ -106,10 +111,10 @@ let _ =
      As it happens, we can pass the server rpc function directly to the client
      module as a short-circuit of the above process.
   *)
+  let open ErrM in
   Client.api1 rpc 7 "hello" >>= fun b -> Printf.printf "Result: %b\n" b;
   Client.api2 rpc "foo" >>= fun i -> Printf.printf "Result: %d\n" i;
-
-  Result.Ok ()
+  return (Result.Ok ())
 
 
 (* The above was using the built-in convenience types. More complex types can
@@ -159,8 +164,8 @@ let vm_name_description : (string, vm) field = {
 *)
 let constructor getter =
   let open Rresult.R in
-  getter.fget "name_label" (Basic String) >>= fun name_label ->
-  getter.fget "name_description" (Basic String) >>= fun name_description ->
+  getter.field_get "name_label" (Basic String) >>= fun name_label ->
+  getter.field_get "name_description" (Basic String) >>= fun name_description ->
   return { name_label; name_description }
 
 (* These values are combined to define a value of type `vm structure` here *)
@@ -229,12 +234,12 @@ let error = Idl.Error.{
    ppx_deriving_rpcty ppx. See later examples for descriptions of these *)
 
 (* These new types can then be used in RPCs *)
-let p   = Param.mk ~name:"vm" ~description:["Example structure"] vm
-let b   = Param.mk ~name:"paused" ~description:["Start the VM in a paused state"] Rpc.Types.bool
-let u   = Param.mk Rpc.Types.unit
+let p   = Idl.Param.mk ~name:"vm" ~description:["Example structure"] vm
+let b   = Idl.Param.mk ~name:"paused" ~description:["Start the VM in a paused state"] Rpc.Types.bool
+let u   = Idl.Param.mk Rpc.Types.unit
 let err = error
 
-module VMRPC (R : RPC) = struct
+module VMRPC (R : Idl.RPC) = struct
   open R
 
   (* We can declare some more information about the interface here for more
@@ -256,28 +261,25 @@ module VMRPC (R : RPC) = struct
 end
 
 (* Once again we generate a client and server module *)
-module VMClient = VMRPC(GenClient ())
-module VMServer = VMRPC(GenServer ())
-module VMClientExn = VMRPC(GenClientExn ())
-module VMServerExn = VMRPC(GenServerExn ())
-
+module VMClient = VMRPC(MyIdl.GenClient ())
+module VMServer = VMRPC(MyIdl.GenServer ())
+module VMServerExn = VMRPC(Idl.Exn.GenServer ())
 let _ =
-  let open Rresult.R in
-
   (* As before, we define an implementation of the method, and associate it
      with the server impls *)
   let impl vm' paused =
+    let open MyIdl.ErrM in
     Printf.printf "name=%s description=%s paused=%b\n"
       vm'.name_label vm'.name_description paused;
     if paused
-    then error (Errors "Paused start is unimplemented")
-    else ok ()
+    then return_err (Errors "Paused start is unimplemented")
+    else return ()
   in
   VMServer.start impl;
 
   (* And an implementation that raises exceptions rather than Result.result
      types *)
-  let implexn vm' paused =
+  let implexn _vm' paused =
     if paused
     then raise (ExampleExn (Errors "Paused start is unimplemented"));
     ()
@@ -286,35 +288,47 @@ let _ =
 
   (* Again we create a wrapper RPC function that dumps the marshalled data to
      stdout for clarity *)
-  let rpcfn = server VMServer.implementation in
-  let rpcfnexn = server VMServerExn.implementation in
+  let rpcfn = MyIdl.server VMServer.implementation in
+  let rpcfnexn = Idl.Exn.server VMServerExn.implementation in
 
   let rpc rpc =
+    let open M in
+    Printf.printf "Marshalled RPC call:\n'%s'\n" (Rpc.string_of_call rpc);
+    rpcfn rpc >>= fun res ->
+    Printf.printf "Marshalled RPC type:\n'%s'\n" (Rpc.string_of_response res)
+    |> return >>= fun () ->  (* You could have used a semicolon here *)
+    return res
+  in
+  let rpcexn rpc =
     Printf.printf "Marshalled RPC call:\n'%s'\n"
       (Rpc.string_of_call rpc);
-    let response = rpcfn rpc in
-    Printf.printf "Marshalled RPC type:\n'%s'\n"
-      (Rpc.string_of_response response);
     let response = rpcfnexn rpc in
     Printf.printf "Marshalled RPC type from exception producing impl (should be the same):\n'%s'\n"
       (Rpc.string_of_response response);
     response
   in
-
+  let module VMClientExn = VMRPC(Idl.Exn.GenClient (struct let rpc = rpcexn end)) in
   (* And once again, we use a pass the server's rpc function as a
      short-circuit to the client. *)
   let test () =
-    let open Result in
     let vm = { name_label="test"; name_description="description" } in
-    begin match VMClient.start rpc vm true with
-      | Ok () -> Printf.printf "Unexpected OK\n%!"
-      | Error (Errors e) -> Printf.printf "Caught an (expected) error: %s\n%!" e
-    end;
-    try
-      VMClientExn.start rpc vm true;
-      Printf.printf "Unexpected OK!\n%!";
-    with ExampleExn (Errors s) ->
-      Printf.printf "Caught an (expected) error: %s\n%!" s
+    let open MyIdl in
+    let client = 
+      let open M in 
+      VMClient.start (fun c -> rpc c) vm true |> T.get >>= function
+      | Ok () -> Printf.printf "Unexpected OK\n%!" |> return
+      | Error (Errors e) -> Printf.printf "Caught an (expected) error: %s\n%!" e |> return
+    in
+    let clientexn () =
+      try
+        VMClientExn.start vm true;
+        Printf.printf "Unexpected OK!\n%!";
+      with ExampleExn (Errors s) ->
+        Printf.printf "Caught an (expected) error: %s\n%!" s
+    in
+    M.run client;
+    clientexn ()
+
   in
   test ()
 

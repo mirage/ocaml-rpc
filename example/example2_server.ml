@@ -1,7 +1,12 @@
-open Idl
 open Example2_idl
 
-module Server=API(GenServer ())
+(* You can swap the rpc engine, by using a different monad here, 
+   note however that if you are using an asynchronous one, like
+   lwt or async, you should also use their specific IO functions
+   including the print functions. *)
+module M = Idl.IdM (* You can easily put ExnM here and the code would stay unchanged *)
+module MyIdl = Idl.Make(M)
+module Server=API(MyIdl.GenServer ())
 
 (* Implementations of the methods *)
 let query () =
@@ -14,10 +19,10 @@ let query () =
     features = ["defaults";"upgradability"];
     instance_id = string_of_int (Random.int 1000)
   } in
-  Result.Ok result
+  MyIdl.ErrM.return result
 
 let diagnostics () =
-  Result.Ok "This should be the diagnostics of the server"
+  MyIdl.ErrM.return "This should be the diagnostics of the server"
 
 let test i s1 s2 =
   Printf.printf "%Ld %s %s\n%!" i s1 s2;
@@ -50,11 +55,13 @@ let binary_handler process s =
   let len = int_of_string (Bytes.unsafe_to_string len_buf) in
   let msg_buf = Bytes.make len '\000' in
   really_input ic msg_buf 0 (Bytes.length msg_buf);
-  let result = process msg_buf in
+  let (>>=) = M.bind in
+  process msg_buf >>= fun result ->
   let len_buf = Printf.sprintf "%016d" (String.length result) in
   output_string oc len_buf;
   output_string oc result;
-  flush oc
+  flush oc;
+  M.return ()
 
 let serve_requests rpcfn path =
   (try Unix.unlink path with Unix.Unix_error(Unix.ENOENT, _, _) -> ());
@@ -67,23 +74,26 @@ let serve_requests rpcfn path =
     let this_connection, _ = Unix.accept sock in
     let (_: Thread.t) = Thread.create
         (fun () ->
-          finally
-            (fun () -> binary_handler rpcfn this_connection)
-            (fun () -> Unix.close this_connection)
+           finally
+             (* Here I am calling M.run to make sure that I am running the process,
+                this is not much of a problem with IdM or ExnM, but in general you
+                should ensure that the computation is started by a runner. *)
+             (fun () -> binary_handler rpcfn this_connection |> M.run)
+             (fun () -> Unix.close this_connection)
         ) () in
     ()
   done
 
 let start_server () =
-  let open Rresult in
-
   Server.query query;
   Server.diagnostics diagnostics;
   Server.test test;
 
-  let rpc_fn = server Server.implementation in
+  let rpc_fn = MyIdl.server Server.implementation in
 
   let process x =
-    Jsonrpc.string_of_response (rpc_fn (Jsonrpc.call_of_string (Bytes.unsafe_to_string x))) in
+    let open M in
+    rpc_fn (Jsonrpc.call_of_string (Bytes.unsafe_to_string x))
+    >>= fun response -> Jsonrpc.string_of_response response |> return in
 
   serve_requests process sockpath

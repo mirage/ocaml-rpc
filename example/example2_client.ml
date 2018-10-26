@@ -1,7 +1,8 @@
-open Idl
 open Example2_idl
 
-module Client = API(GenClient ())
+module M = Idl.IdM
+module MyIdl = Idl.Make(M)
+module Client = API(MyIdl.GenClient ())
 module Cmds   = API(Cmdlinergen.Gen ())
 
 (* Use a binary 16-byte length to frame RPC messages *)

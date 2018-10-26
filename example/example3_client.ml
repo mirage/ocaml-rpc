@@ -1,10 +1,10 @@
-open Idl
-open Rpc
 open Example3_idl
 
-module PClient=Datapath(GenClient ())
+module M = Idl.IdM
+module MyIdl = Idl.Make(M)
+module PClient=Datapath(MyIdl.GenClient ())
 module PCmds=Datapath(Cmdlinergen.Gen ())
-module DClient=Data(GenClient ())
+module DClient=Data(MyIdl.GenClient ())
 module DCmds=Data(Cmdlinergen.Gen ())
 
 module CD = Datapath(Codegen.Gen ())

@@ -17,5 +17,7 @@
 *)
 
 val do_json_rpc : url:string -> Rpc.call -> Rpc.response Lwt.t
+
 val do_json_rpc_opt : url:string -> Rpc.call -> Rpc.response Lwt.t
-val do_xml_rpc :  url:string -> Rpc.call -> Rpc.response Lwt.t
+
+val do_xml_rpc : url:string -> Rpc.call -> Rpc.response Lwt.t
