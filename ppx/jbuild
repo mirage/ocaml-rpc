@@ -1,16 +1,10 @@
-(rule
- ((targets (ppx_deriving_rpc.ml))
-  (deps    (ppx_deriving_rpc.cppo.ml))
-  (action  (run ${bin:cppo} -V OCAML:${ocaml_version} ${<} -o ${@}))))
-
-
 (library
  ((name ppx_deriving_rpc)
   (public_name ppx_deriving_rpc)
   (synopsis "[@@deriving rpc]")
   (kind ppx_deriver)
-  (libraries (ppx_deriving.api
-              rpclib.core))
-  (preprocess (action (run ppxfind -legacy ppx_tools.metaquot --as-pp ${<})))
+  (ppx_runtime_libraries (rpclib))
+  (libraries (ppxlib))
+  (preprocess (pps (ppxlib.metaquot ppxlib.runner)))
   (wrapped false)
 ))
