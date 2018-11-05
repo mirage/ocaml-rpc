@@ -15,3 +15,4 @@ depends: [
   "rpclib" {>= "5.0.0"}
   "cow"
 ]
+synopsis: "A library to deal with RPCs in OCaml - html documentation generator"

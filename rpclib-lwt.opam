@@ -20,3 +20,4 @@ depends: [
   "lwt" {>= "3.0.0"}
   "alcotest-lwt" {test}
 ]
+synopsis: "A library to deal with RPCs in OCaml - Lwt interface"

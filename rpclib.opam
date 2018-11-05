@@ -22,3 +22,4 @@ depends: [
   "yojson"
 ]
 available: [ ocaml-version >= "4.04.0" ]
+synopsis: "A library to deal with RPCs in OCaml"

@@ -17,3 +17,4 @@ depends: [
   "js_of_ocaml-ppx"
   "lwt"
 ]
+synopsis: "A library to deal with RPCs in OCaml - Bindings for js_of_ocaml"
