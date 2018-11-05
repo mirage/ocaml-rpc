@@ -103,24 +103,24 @@ module Of_rpc = struct
         tags |> List.map ~f:(fun field ->
             match field with
             | Rtag (label, _attrs, true, []) ->
-              let label' = String.lowercase label in
+              let label' = String.lowercase label.txt in
               let name = match Attribute.get Attrs.rt_name field with Some s -> s | None -> label' in
-              case ~lhs:[%pat? Rpc.String [%p pstring name]] ~guard:None ~rhs:(pexp_variant label None)
+              case ~lhs:[%pat? Rpc.String [%p pstring name]] ~guard:None ~rhs:(pexp_variant label.txt None)
             | Rtag (label, _attrs, false, [ { ptyp_desc = Ptyp_tuple typs; _ }]) ->
-              let label' = String.lowercase label in
+              let label' = String.lowercase label.txt in
               let name = match Attribute.get Attrs.rt_name field with Some s -> s | None -> label' in
               let exprs = List.mapi ~f:(fun i typ -> [%expr [%e expr_of_typ ~loc typ] [%e evar (argn i) ] ] ) typs in
               case ~lhs:([%pat? Rpc.Enum [Rpc.String [%p pstring name];
                                           Rpc.Enum [%p plist (List.mapi ~f:(fun i _ -> pvar (argn i)) typs)]]])
                 ~guard:None
-                ~rhs:(pexp_variant label (Some (pexp_tuple exprs)))
+                ~rhs:(pexp_variant label.txt (Some (pexp_tuple exprs)))
             | Rtag (label, _attrs, false, [typ]) ->
-              let label' = String.lowercase label in
+              let label' = String.lowercase label.txt in
               let name = match Attribute.get Attrs.rt_name field with Some s -> s | None -> label' in
               case ~lhs:[%pat? Rpc.Enum [Rpc.String [%p pstring name]; y]]
                 ~guard:None
                 ~rhs:[%expr [%e expr_of_typ ~loc typ] y |> fun x ->
-                            [%e pexp_variant label (Some [%expr x])]]
+                            [%e pexp_variant label.txt (Some [%expr x])]]
             | _ ->
               failwith "Cannot derive variant case")
       and inherits_case =
@@ -294,20 +294,20 @@ module Rpc_of = struct
         fields |> List.map ~f:(fun field ->
             match field with
             | Rtag (label, _, true, []) ->
-              let l = match Attribute.get Attrs.rt_name field with | Some x -> x | None -> label in
+              let l = match Attribute.get Attrs.rt_name field with | Some x -> x | None -> label.txt in
               case
-                ~lhs:(ppat_variant label None) ~guard:None
+                ~lhs:(ppat_variant label.txt None) ~guard:None
                 ~rhs:[%expr Rpc.String [%e estring l]]
             | Rtag (label, _, false, [{ ptyp_desc = Ptyp_tuple typs; _ }]) ->
               let l = elist (List.mapi ~f:(fun i typ -> pexp_apply (expr_of_typ ~loc typ) [Nolabel,evar (argn i)]) typs) in
-              let label = match Attribute.get Attrs.rt_name field with | Some x -> x | None -> label in
+              let label = match Attribute.get Attrs.rt_name field with | Some x -> x | None -> label.txt in
               case
                 ~lhs:(ppat_variant label (ppat_tuple_opt (List.mapi ~f:(fun i _ -> pvar (argn i)) typs)))
                 ~guard:None
                 ~rhs:[%expr Rpc.Enum ( Rpc.String ([%e estring label]) ::
                                        [Rpc.Enum [%e l]])]
             | Rtag (label, _, false, [typ]) ->
-              let label = match Attribute.get Attrs.rt_name field with | Some x -> x | None -> label in
+              let label = match Attribute.get Attrs.rt_name field with | Some x -> x | None -> label.txt in
               case
                 ~lhs:(ppat_variant label (Some [%pat? x]))
                 ~guard:None
