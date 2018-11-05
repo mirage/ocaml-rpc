@@ -11,6 +11,8 @@ let typ_of_f s = match s with "t" -> "typ_of" | s -> "typ_of_" ^ s
 
 module Typ_of = struct
 
+  (** [expr_of_typ ~loc typ] returns an expression of type `Rpc.Types.typ` that 
+      represents the  core_type typ`. *)
   let rec expr_of_typ ~loc typ =
     let expr =
       match typ with
@@ -63,8 +65,6 @@ module Typ_of = struct
     in
     expr
 
-  (*  | _ -> failwith "Error"*)
-
   type field_def = {
     f_name: string;
     rpc_name: string;
@@ -74,6 +74,9 @@ module Typ_of = struct
     typ: expression;
   }
 
+  (** [str_of_type loc type_decl] returns a list of value bindings that are values of
+      type `Rpc.Types.def` and `Rpc.Types.typ` that represent the newly defined type.
+       *)
   let str_of_type loc type_decl =
     let module Ast_builder = (val Ast_builder.make loc) in
     let open Ast_builder in
