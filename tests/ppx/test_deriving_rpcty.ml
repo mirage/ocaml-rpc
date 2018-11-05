@@ -377,6 +377,16 @@ let test_multiple_args4 () =
         [String "Beetroot"; Enum [Int 6L; String "seven"; Float 8.0; Bool true]])
     , typ_of_varianttest )
 
+type variantclash = | String of string | Set of string list | Pairs of (string * string) list [@@deriving rpcty]
+let test_variantclash () =
+  let (x : variantclash) = String "hello" in
+  check_marshal_unmarshal
+    ( x
+    , (let open Rpc in
+      Enum
+        [String "String"; String "hello"])
+    , typ_of_variantclash )
+
 let tests =
   [ ("int", `Quick, test_int)
   ; ("int_from_string", `Quick, test_int_from_string)
@@ -435,4 +445,5 @@ let tests =
   ; ("dict", `Quick, test_dict_key)
   ; ("multiple_args", `Quick, test_multiple_args)
   ; ("multiple_args3", `Quick, test_multiple_args3)
-  ; ("multiple_args4", `Quick, test_multiple_args4) ]
+  ; ("multiple_args4", `Quick, test_multiple_args4)
+  ; ("variantclash", `Quick, test_variantclash) ]
