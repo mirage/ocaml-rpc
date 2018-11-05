@@ -13,12 +13,9 @@ build: [["jbuilder" "build" "-p" name "-j" jobs]]
 build-test: [["jbuilder" "runtest" "-p" name "-j" jobs]]
 depends: [
   "jbuilder"  {build}
-  "cppo"      {build}
   "rpclib" {>= "5.0.0"}
   "rresult"
-  "ppx_deriving"
-  "ppx_tools"
-  "ppxfind"
+  "ppxlib"
   "rpclib-lwt"   {test & >= "5.0.0"}
   "rpclib-async" {test & >= "5.0.0"}
   "lwt"          {test & >= "3.0.0"}
