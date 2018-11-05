@@ -87,7 +87,7 @@ class ListAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         key = values[0]
         value = values[1]
-        if (hasattr(namespace, self.dest) and \
+        if (hasattr(namespace, self.dest) and
                 getattr(namespace, self.dest) is not None):
             getattr(namespace, self.dest)[key] = value
         else:
