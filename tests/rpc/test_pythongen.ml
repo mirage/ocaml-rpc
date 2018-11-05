@@ -77,7 +77,7 @@ let run_linters file =
     ( "pylint \
        --disable=line-too-long,too-few-public-methods,unused-argument,no-self-use,invalid-name,broad-except,protected-access,redefined-builtin "
     ^ file ) ;
-  run_cmd "pycodestyle should exit with 0" ("pycodestyle --ignore=E501 " ^ file)
+  run_cmd "pycodestyle should exit with 0" ("pycodestyle --ignore=W504,E501 " ^ file)
 
 let lint_bindings () =
   let file = "python/bindings.py" in
