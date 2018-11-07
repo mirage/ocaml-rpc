@@ -3,7 +3,6 @@
   (flags (:standard -warn-error +a))
   (libraries (
      alcotest
-     ppx_deriving
      result
      rpclib
      rpclib.core
