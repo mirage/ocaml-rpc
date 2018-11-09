@@ -155,7 +155,7 @@ let split = String.split_on_chars ~on:['\n']
 let convert_doc x = split x |> List.map ~f:(String.strip ~drop:(function | '\n' | ' ' -> true | _ -> false))
 
 (** [get_doc loc rpcdoc attrs] extracts documentation from the type declarations. rpcdoc is
-    the result of looking for @@doc tags. If this is found, we use that. If not, we look for
+    the result of looking for \@\@doc tags. If this is found, we use that. If not, we look for
     ocamldoc docstrings and return them instead. In both cases, the result is an expression of
     type list *)
 let get_doc ~loc rpcdoc (attrs : attributes) =

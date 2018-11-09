@@ -7,8 +7,6 @@ let deriver = "rpcty"
 
 let typ_of_f s = match s with "t" -> "typ_of" | s -> "typ_of_" ^ s
 
-(* For these types we have convertors in rpc.ml *)
-
 module Typ_of = struct
 
   (** [expr_of_typ ~loc typ] returns an expression of type `Rpc.Types.typ` that 

@@ -25,7 +25,8 @@ let is_string loc typ =
   | [%type: int] -> [%expr false]
   | [%type: bool] -> [%expr false]
   | { ptyp_desc = Ptyp_constr ( lid, [] ); _ } ->
-    [%expr let open Rpc in try (let _ = [%e type_constr_conv lid ~loc ~f:of_rpc [ [%expr Rpc.String ""] ] ] in true) with _ -> false ]
+    let constr = type_constr_conv lid ~loc ~f:of_rpc [ [%expr Rpc.String ""] ] in
+    [%expr let open Rpc in try let _ = [%e constr ] in true with _ -> false ]
   | _ -> [%expr false]
 
 let is_dict loc attr = match Attribute.get Attrs.is_dict attr with Some () -> [%expr true] | None -> [%expr false]

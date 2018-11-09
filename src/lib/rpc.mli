@@ -48,23 +48,23 @@ module Types : sig
     | Char : char basic
 
   type _ typ =
-    | Basic: 'a basic -> 'a typ
+    | Basic : 'a basic -> 'a typ
     | DateTime : string typ
-    | Array: 'a typ -> 'a array typ
-    | List: 'a typ -> 'a list typ
-    | Dict: 'a basic * 'b typ -> ('a * 'b) list typ
+    | Array : 'a typ -> 'a array typ
+    | List : 'a typ -> 'a list typ
+    | Dict : 'a basic * 'b typ -> ('a * 'b) list typ
     | Unit : unit typ
-    | Option: 'a typ -> 'a option typ
-    | Tuple: 'a typ * 'b typ -> ('a * 'b) typ
-    | Tuple3: 'a typ * 'b typ * 'c typ -> ('a * 'b * 'c) typ
-    | Tuple4: 'a typ * 'b typ * 'c typ * 'd typ -> ('a * 'b * 'c * 'd) typ
-    | Struct: 'a structure -> 'a typ
-    | Variant: 'a variant -> 'a typ
-    | Abstract: 'a abstract -> 'a typ
+    | Option : 'a typ -> 'a option typ
+    | Tuple : 'a typ * 'b typ -> ('a * 'b) typ
+    | Tuple3 : 'a typ * 'b typ * 'c typ -> ('a * 'b * 'c) typ
+    | Tuple4 : 'a typ * 'b typ * 'c typ * 'd typ -> ('a * 'b * 'c * 'd) typ
+    | Struct : 'a structure -> 'a typ
+    | Variant : 'a variant -> 'a typ
+    | Abstract : 'a abstract -> 'a typ
 
   and 'a def = {name: string; description: string list; ty: 'a typ}
 
-  and boxed_def = BoxedDef: 'a def -> boxed_def
+  and boxed_def = BoxedDef : 'a def -> boxed_def
 
   and ('a, 's) field =
     { fname: string
@@ -75,7 +75,7 @@ module Types : sig
     ; fget: 's -> 'a
     ; fset: 'a -> 's -> 's }
 
-  and 'a boxed_field = BoxedField: ('a, 's) field -> 's boxed_field
+  and 'a boxed_field = BoxedField : ('a, 's) field -> 's boxed_field
 
   and field_getter =
     {field_get: 'a. string -> 'a typ -> ('a, Rresult.R.msg) Result.result}
@@ -95,7 +95,7 @@ module Types : sig
     ; (* Prism *)
       treview: 'a -> 's }
 
-  and 'a boxed_tag = BoxedTag: ('a, 's) tag -> 's boxed_tag
+  and 'a boxed_tag = BoxedTag : ('a, 's) tag -> 's boxed_tag
 
   and tag_getter = {tget: 'a. 'a typ -> ('a, Rresult.R.msg) Result.result}
 
