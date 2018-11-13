@@ -173,7 +173,7 @@ let rpc_of_t x = x
 
 let rpc_of_int64 i = Int64 i
 
-let rpc_of_int32 i = Int32 (Int64.of_int32 i)
+let rpc_of_int32 i = Int32 i
 
 let rpc_of_int i = Int (Int64.of_int i)
 
