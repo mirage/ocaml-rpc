@@ -45,7 +45,7 @@ let test_bad_int_string () =
 type test_int32 = int32 [@@deriving rpc]
 
 let test_int32 () =
-  check_marshal_unmarshal (1l, Rpc.Int 1L, rpc_of_test_int32, test_int32_of_rpc)
+  check_marshal_unmarshal (1l, Rpc.Int32 1l, rpc_of_test_int32, test_int32_of_rpc)
 
 let test_int32_from_string () =
   check_unmarshal_ok Alcotest.int32 test_int32_of_rpc 1l (Rpc.String "1")
