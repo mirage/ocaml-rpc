@@ -172,6 +172,8 @@ module Types : sig
   val unit : unit def
 
   val default_types : boxed_def list
+
+  type _ cls += PolyType : 'a cls
 end
 
 (** {2 Basic constructors} *)

@@ -165,6 +165,7 @@ module Types = struct
     | NullRef : 'a cls -> 'a ref
 
   type _ cls += RefMapCls : 'a cls -> 'a Refmap.t cls
+  type _ cls += PolyType : 'a cls
 
   let rec string_of_typ : type a. prcls -> a typ -> string =
    fun {pr} t ->

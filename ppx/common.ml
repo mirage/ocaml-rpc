@@ -109,6 +109,7 @@ module Attrs = struct
   let label_version = version Attribute.Context.label_declaration
   let td_version = version Attribute.Context.type_declaration
   let constr_version = version Attribute.Context.constructor_declaration
+  let rtag_version = version Attribute.Context.rtag
 
   let label_typ =
     Attribute.declare "rpc.typ"

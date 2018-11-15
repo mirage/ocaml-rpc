@@ -1,5 +1,7 @@
 let string_of_err = function `Msg x -> x
 
+type test = [`foo | `bar] [@@deriving rpcty]
+
 let rec canonicalise r =
   match r with
   | Rpc.Dict x ->
