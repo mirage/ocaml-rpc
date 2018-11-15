@@ -44,6 +44,40 @@ module Version = struct
 end
 
 module Types = struct
+  type _ cls = ..
+
+  type 'a cls += Unnamed : 'a cls
+
+  type (_, _) eq = Eq : ('a, 'a) eq
+
+  type eqcls = {eq: 'a 'b. 'a cls -> 'b cls -> ('a, 'b) eq option}
+
+  type prcls = {pr: 'a. 'a cls -> string option}
+
+  let eqcls =
+    let eq : type a b. a cls -> b cls -> (a, b) eq option =
+     fun _x _y -> None
+    in
+    ref {eq}
+
+  let prcls =
+    let pr : type a. a cls -> string option = fun _x -> None in
+    ref {pr}
+
+  let register_eq {eq} =
+    let oldeq = !eqcls in
+    let eq : type a b. a cls -> b cls -> (a, b) eq option =
+     fun x y -> match eq x y with Some Eq -> Some Eq | None -> oldeq.eq x y
+    in
+    eqcls := {eq}
+
+  let register_pr {pr} =
+    let oldpr = !prcls in
+    let pr : type a. a cls -> string option =
+     fun x -> match pr x with Some s -> Some s | None -> oldpr.pr x
+    in
+    prcls := {pr}
+
   type _ basic =
     | Int : int basic
     | Int32 : int32 basic
@@ -58,6 +92,7 @@ module Types = struct
     | DateTime : string typ
     | Array : 'a typ -> 'a array typ
     | List : 'a typ -> 'a list typ
+    | Refv : 'a cls * 'a typ -> 'a ref typ
     | Dict : 'a basic * 'b typ -> ('a * 'b) list typ
     | Unit : unit typ
     | Option : 'a typ -> 'a option typ
@@ -67,6 +102,7 @@ module Types = struct
     | Struct : 'a structure -> 'a typ
     | Variant : 'a variant -> 'a typ
     | Abstract : 'a abstract -> 'a typ
+    | Refmap : 'a typ -> 'a Refmap.t typ
 
   (* A type definition has a name and description *)
   and 'a def = {name: string; description: string list; ty: 'a typ}
@@ -74,11 +110,12 @@ module Types = struct
   and boxed_def = BoxedDef : 'a def -> boxed_def
 
   and ('a, 's) field =
-    { fname: string
+    { fname: string list
     ; fdescription: string list
     ; fversion: Version.t option
     ; field: 'a typ
     ; fdefault: 'a option
+    ; fcls: 's cls
     ; fget: 's -> 'a (* Lenses *)
     ; fset: 'a -> 's -> 's }
 
@@ -98,6 +135,7 @@ module Types = struct
     ; tdescription: string list
     ; tversion: Version.t option
     ; tcontents: 'a typ
+    ; tcls: 's cls
     ; tpreview: 's -> 'a option
     ; treview: 'a -> 's }
 
@@ -115,9 +153,184 @@ module Types = struct
 
   and 'a abstract =
     { aname: string
+    ; acls: 'a cls
     ; test_data: 'a list
     ; rpc_of: 'a -> t
     ; of_rpc: t -> ('a, Rresult.R.msg) Result.result }
+
+  and 'a refs = 'a Refmap.t
+
+  and 'a ref =
+    | Ref : ('a option, 'a Refmap.t) field -> 'a ref
+    | NullRef : 'a cls -> 'a ref
+
+  type _ cls += RefMapCls : 'a cls -> 'a Refmap.t cls
+
+  let rec string_of_typ : type a. prcls -> a typ -> string =
+   fun {pr} t ->
+    match t with
+    | Basic Int -> "int"
+    | Basic Int32 -> "int32"
+    | Basic Int64 -> "int64"
+    | Basic Bool -> "bool"
+    | Basic Float -> "float"
+    | Basic String -> "string"
+    | Basic Char -> "char"
+    | DateTime -> "datetime"
+    | Array t -> Printf.sprintf "array(%s)" (string_of_typ {pr} t)
+    | List x -> Printf.sprintf "list(%s)" (string_of_typ {pr} x)
+    | Refv (cls, _typ) ->
+        Printf.sprintf "refv(%s)"
+          (match pr cls with Some x -> x | None -> "<unknown>")
+    | Dict (basic, ty) ->
+        Printf.sprintf "dict(%s,%s)"
+          (string_of_typ {pr} (Basic basic))
+          (string_of_typ {pr} ty)
+    | Unit -> Printf.sprintf "unit"
+    | Option x -> Printf.sprintf "option(%s)" (string_of_typ {pr} x)
+    | Tuple (t1, t2) ->
+        Printf.sprintf "(%s * %s)"
+          (string_of_typ {pr} t1)
+          (string_of_typ {pr} t2)
+    | Tuple3 (t1, t2, t3) ->
+        Printf.sprintf "(%s * %s * %s)"
+          (string_of_typ {pr} t1)
+          (string_of_typ {pr} t2)
+          (string_of_typ {pr} t3)
+    | Tuple4 (t1, t2, t3, t4) ->
+        Printf.sprintf "(%s * %s * %s * %s)"
+          (string_of_typ {pr} t1)
+          (string_of_typ {pr} t2)
+          (string_of_typ {pr} t3)
+          (string_of_typ {pr} t4)
+    | Struct s ->
+        Printf.sprintf "struct(%s)"
+          ( match List.hd s.fields with BoxedField fld -> (
+              match pr fld.fcls with Some x -> x | None -> "<unknown>" ) )
+    | Variant v ->
+        Printf.sprintf "variant(%s)"
+          ( match List.hd v.variants with BoxedTag t -> (
+              match pr t.tcls with Some x -> x | None -> "<unknown>" ) )
+    | Abstract a -> Printf.sprintf "abstract(%s)" a.aname
+    | Refmap ty -> Printf.sprintf "refmap(%s)" (string_of_typ {pr} ty)
+
+  let make_ref cls ty name =
+    Ref
+      { fget=
+          (fun r ->
+            try Some (Refmap.find name r) with Not_found ->
+              Printf.printf "No ref for %s (refs are: [%s])\n%!" name
+                (String.concat ";" (Refmap.keys r)) ;
+              None )
+      ; fset=
+          (fun v r ->
+            match v with
+            | Some v -> Refmap.update name v r
+            | None -> Refmap.remove name r )
+      ; fname= [name]
+      ; fdescription= ["Reference"]
+      ; fdefault= None
+      ; fcls= RefMapCls cls
+      ; field= Option ty
+      ; fversion= None }
+
+  let compose : ('b, 'a) field -> ('c, 'b) field -> ('c, 'a) field =
+   fun f1 f2 ->
+    { fname= f1.fname @ f2.fname
+    ; field= f2.field
+    ; fget= (fun x -> f2.fget (f1.fget x))
+    ; fset= (fun x r -> f1.fset (f2.fset x (f1.fget r)) r)
+    ; fcls= f1.fcls
+    ; fdefault= f2.fdefault
+    ; fdescription= f2.fdescription
+    ; fversion= f2.fversion }
+
+  let opt_compose : ('b option, 'a) field -> ('c, 'b) field -> ('c, 'a) field =
+   fun f1 f2 ->
+    { f2 with
+      fname= f1.fname @ f2.fname
+    ; field= f2.field
+    ; fget=
+        (fun x ->
+          match f1.fget x with
+          | Some y -> f2.fget y
+          | None ->
+              failwith
+                (Printf.sprintf "Missing row: %s" (String.concat "." f1.fname))
+          )
+    ; fset=
+        (fun x r ->
+          match f1.fget r with
+          | Some y -> f1.fset (Some (f2.fset x y)) r
+          | None -> r )
+    ; fcls= f1.fcls }
+
+  let name_of_ref = function
+    | Ref x -> (
+      match x.fname with [x] -> x | _ -> failwith "Invalid reference!" )
+    | NullRef _ -> "OpaqueRef:NULL"
+
+  let cls_of_ref = function
+    | Ref x -> (
+      match x.fcls with RefMapCls x -> x | _ -> failwith "Unknown cls" )
+    | NullRef cls -> cls
+
+  let rec eq_ty : type a b. a typ -> b typ -> (a, b) eq option =
+   fun t1 t2 ->
+    match (t1, t2) with
+    | Basic Int, Basic Int -> Some Eq
+    | Basic Int32, Basic Int32 -> Some Eq
+    | Basic Int64, Basic Int64 -> Some Eq
+    | Basic Bool, Basic Bool -> Some Eq
+    | Basic Float, Basic Float -> Some Eq
+    | Basic String, Basic String -> Some Eq
+    | Basic Char, Basic Char -> Some Eq
+    | DateTime, DateTime -> Some Eq
+    | Array x, Array y -> (
+      match eq_ty x y with Some Eq -> Some Eq | _ -> None )
+    | List x, List y -> (
+      match eq_ty x y with Some Eq -> Some Eq | _ -> None )
+    | Refv (x, _), Refv (x', _) -> (
+      match !eqcls.eq x x' with Some Eq -> Some Eq | _ -> None )
+    | Dict (basic1, ty1), Dict (basic2, ty2) -> (
+      match (eq_ty (Basic basic1) (Basic basic2), eq_ty ty1 ty2) with
+      | Some Eq, Some Eq -> Some Eq
+      | _, _ -> None )
+    | Unit, Unit -> Some Eq
+    | Option t1, Option t2 -> (
+      match eq_ty t1 t2 with Some Eq -> Some Eq | _ -> None )
+    | Tuple (t1, t2), Tuple (t1', t2') -> (
+      match (eq_ty t1 t1', eq_ty t2 t2') with
+      | Some Eq, Some Eq -> Some Eq
+      | _ -> None )
+    | Tuple3 (t1, t2, t3), Tuple3 (t1', t2', t3') -> (
+      match (eq_ty t1 t1', eq_ty t2 t2', eq_ty t3 t3') with
+      | Some Eq, Some Eq, Some Eq -> Some Eq
+      | _ -> None )
+    | Tuple4 (t1, t2, t3, t4), Tuple4 (t1', t2', t3', t4') -> (
+      match (eq_ty t1 t1', eq_ty t2 t2', eq_ty t3 t3', eq_ty t4 t4') with
+      | Some Eq, Some Eq, Some Eq, Some Eq -> Some Eq
+      | _ -> None )
+    | Struct s1, Struct s2 -> (
+      match (List.hd s1.fields, List.hd s2.fields)
+      with BoxedField f1, BoxedField f2 -> (
+        match !eqcls.eq f1.fcls f2.fcls with Some Eq -> Some Eq | _ -> None ) )
+    | Variant v1, Variant v2 -> (
+      match (List.hd v1.variants, List.hd v2.variants)
+      with BoxedTag t1, BoxedTag t2 -> (
+        match !eqcls.eq t1.tcls t2.tcls with Some Eq -> Some Eq | _ -> None ) )
+    | Abstract a1, Abstract a2 -> (
+      match !eqcls.eq a1.acls a2.acls with Some Eq -> Some Eq | None -> None )
+    | Refmap a1, Refmap a2 -> (
+      match eq_ty a1 a2 with Some Eq -> Some Eq | None -> None )
+    | _, _ -> None
+
+  let eq_field : type a b c d.
+      (a, b) field -> (c, d) field -> (a * b, c * d) eq option =
+   fun f1 f2 ->
+    match (!eqcls.eq f1.fcls f2.fcls, eq_ty f1.field f2.field) with
+    | Some Eq, Some Eq -> Some Eq
+    | _, _ -> None
 
   let int = {name= "int"; ty= Basic Int; description= ["Native integer"]}
 

@@ -38,6 +38,22 @@ end
 
 (** {2 Type declarations} *)
 module Types : sig
+  type _ cls = ..
+
+  type 'a cls += Unnamed : 'a cls
+
+  type (_, _) eq = Eq : ('a, 'a) eq
+
+  type eqcls = {eq: 'a 'b. 'a cls -> 'b cls -> ('a, 'b) eq option}
+
+  val eqcls : eqcls ref
+
+  type prcls = {pr: 'a. 'a cls -> string option}
+
+  val register_eq : eqcls -> unit
+
+  val register_pr : prcls -> unit
+
   type _ basic =
     | Int : int basic
     | Int32 : int32 basic
@@ -52,6 +68,7 @@ module Types : sig
     | DateTime : string typ
     | Array : 'a typ -> 'a array typ
     | List : 'a typ -> 'a list typ
+    | Refv : 'a cls * 'a typ -> 'a ref typ
     | Dict : 'a basic * 'b typ -> ('a * 'b) list typ
     | Unit : unit typ
     | Option : 'a typ -> 'a option typ
@@ -61,17 +78,25 @@ module Types : sig
     | Struct : 'a structure -> 'a typ
     | Variant : 'a variant -> 'a typ
     | Abstract : 'a abstract -> 'a typ
+    | Refmap : 'a typ -> 'a Refmap.t typ
 
   and 'a def = {name: string; description: string list; ty: 'a typ}
 
   and boxed_def = BoxedDef : 'a def -> boxed_def
 
+  and 'a refs = 'a Refmap.t
+
+  and 'a ref =
+    | Ref : ('a option, 'a Refmap.t) field -> 'a ref
+    | NullRef : 'a cls -> 'a ref
+
   and ('a, 's) field =
-    { fname: string
+    { fname: string list
     ; fdescription: string list
     ; fversion: Version.t option
     ; field: 'a typ
     ; fdefault: 'a option
+    ; fcls: 's cls
     ; fget: 's -> 'a
     ; fset: 'a -> 's -> 's }
 
@@ -91,6 +116,7 @@ module Types : sig
     ; tdescription: string list
     ; tversion: Version.t option
     ; tcontents: 'a typ
+    ; tcls: 's cls
     ; tpreview: 's -> 'a option
     ; (* Prism *)
       treview: 'a -> 's }
@@ -109,9 +135,25 @@ module Types : sig
 
   and 'a abstract =
     { aname: string
+    ; acls: 'a cls
     ; test_data: 'a list
     ; rpc_of: 'a -> t
     ; of_rpc: t -> ('a, Rresult.R.msg) Result.result }
+
+  val string_of_typ : prcls -> 'a typ -> string
+
+  val make_ref : 'a cls -> 'a typ -> string -> 'a ref
+
+  val compose : ('b, 'a) field -> ('c, 'b) field -> ('c, 'a) field
+
+  val opt_compose : ('b option, 'a) field -> ('c, 'b) field -> ('c, 'a) field
+
+  val name_of_ref : 'a ref -> string
+
+  val cls_of_ref : 'a ref -> 'a cls
+
+  val eq_field :
+    ('a, 'b) field -> ('c, 'd) field -> ('a * 'b, 'c * 'd) eq option
 
   val int : int def
 

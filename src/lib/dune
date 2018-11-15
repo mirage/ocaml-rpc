@@ -8,7 +8,7 @@
 (library
  (name rpclib_core)
  (public_name rpclib.core)
- (modules rpc idl rpcmarshal pythongen codegen rpc_genfake)
+ (modules rpc idl rpcmarshal refmap stat pythongen codegen rpc_genfake)
  (libraries result rresult)
  (wrapped false)
 )

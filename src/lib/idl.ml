@@ -431,12 +431,15 @@ module DefaultError = struct
 
   exception InternalErrorExn of string
 
+  type 'a Rpc.Types.cls += GenError : 'a Rpc.Types.cls
+
   let internalerror : (string, t) Rpc.Types.tag =
     let open Rpc.Types in
     { tname= "InternalError"
     ; tdescription= ["Internal Error"]
     ; tversion= Some (1, 0, 0)
     ; tcontents= Basic String
+    ; tcls= GenError
     ; tpreview= (function InternalError s -> Some s)
     ; treview= (fun s -> InternalError s) }
 

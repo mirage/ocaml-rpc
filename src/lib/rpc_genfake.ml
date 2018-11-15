@@ -99,6 +99,13 @@ let rec gentest : type a. a typ -> a list =
                 v.treview content)
         variants
   | Abstract {test_data; _} -> test_data
+  | Refv (cls,typ) ->
+    [NullRef cls; make_ref cls typ "ref"]
+  | Refmap typ ->
+    let next = gentest typ in
+    let numbered = List.fold_left (fun (acc,i) x -> ((string_of_int i,x)::acc, i+1)) ([],0) next in
+    let res = List.fold_left (fun acc (ref,x) -> Refmap.add ref x acc) Refmap.empty (fst numbered) in
+    [Refmap.empty; res]
 
 let thin d result = if d < 0 then [List.hd result] else result
 
@@ -164,7 +171,7 @@ let rec genall : type a. int -> string -> a typ -> a list =
           (function
               | BoxedField f ->
                   let n = List.length (genall (depth - 1) strhint f.field) in
-                  (f.fname, n))
+                  (String.concat "." f.fname, n))
           fields
       in
       let all_combinations =
@@ -201,6 +208,13 @@ let rec genall : type a. int -> string -> a typ -> a list =
         variants
       |> List.flatten |> thin depth
   | Abstract {test_data; _} -> test_data
+  | Refv (cls,typ) ->
+    List.init depth (fun i -> make_ref cls typ (Printf.sprintf "%d" i))
+  | Refmap typ ->
+    let next = genall (depth - 1) strhint typ in
+    let numbered = List.fold_left (fun (acc,i) x -> ((string_of_int i,x)::acc, i+1)) ([],0) next in
+    let res = List.fold_left (fun acc (ref,x) -> Refmap.add ref x acc) Refmap.empty (fst numbered) in
+    [res]
 
 let rec gen_nice : type a. a typ -> string -> a =
  fun ty hint ->
@@ -248,3 +262,8 @@ let rec gen_nice : type a. a typ -> string -> a =
             let content = gen_nice v.tcontents v.tname in
             v.treview content )
   | Abstract {test_data; _} -> List.hd test_data
+  | Refv (cls,typ) ->
+    make_ref cls typ "ref"
+  | Refmap typ ->
+    let next = gen_nice typ hint in
+    Refmap.add "ref0" next Refmap.empty

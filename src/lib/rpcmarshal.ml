@@ -143,6 +143,18 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result =
       let constr = {tget= (fun typ -> unmarshal typ contents)} in
       vconstructor name constr
   | Abstract {of_rpc; _} -> of_rpc v
+  | Refv (cls,typ) -> begin
+    match v with
+    | Rpc.String x -> Ok (make_ref cls typ x)
+    | _ -> error_msg (Printf.sprintf "Expecting Rpc.String when unmarshalling a reference of typ: %s" (Rpc.Types.string_of_typ {pr=fun _ -> None} typ))
+    end
+  | Refmap ty -> begin
+    match v with
+    | Rpc.Dict xs ->
+      List.fold_left (fun refmap (ref,v) -> refmap >>= fun r -> unmarshal ty v >>= fun record -> Ok (Refmap.add ref record r))
+        (Ok Refmap.empty) xs
+    | _ -> error_msg "Expecting Rpc.Dict when unmarshalling a refmap"
+    end  
 
 let rec marshal : type a. a typ -> a -> Rpc.t =
  fun t v ->
@@ -190,11 +202,12 @@ let rec marshal : type a. a typ -> a -> Rpc.t =
         List.fold_left
           (fun acc f ->
             match f with BoxedField f ->
+              let key = String.concat "." f.fname in
               let value = marshal f.field (f.fget v) in
               match (f.field, value) with
               | Option _, Rpc.Enum [] -> acc
-              | Option _, Rpc.Enum [x] -> (f.fname, x) :: acc
-              | _, _ -> (f.fname, value) :: acc )
+              | Option _, Rpc.Enum [x] -> (key, x) :: acc
+              | _, _ -> (key, value) :: acc )
           [] fields
       in
       Rpc.Dict fields
@@ -210,6 +223,12 @@ let rec marshal : type a. a typ -> a -> Rpc.t =
             | None -> acc )
         Rpc.Null variants
   | Abstract {rpc_of; _} -> rpc_of v
+  | Refv (_cls,_typ) ->
+      rpc_of_string (name_of_ref v)
+  | Refmap typ -> begin
+      let keys = Refmap.keys v |> List.sort String.compare in
+      Rpc.Dict (List.map (fun key -> (key, marshal typ (Refmap.find key v))) keys)
+    end
 
 let ocaml_of_basic : type a. a basic -> string = function
   | Int64 -> "int64"
@@ -241,7 +260,7 @@ let rec ocaml_of_t : type a. a typ -> string = function
         List.map
           (function
               | BoxedField f ->
-                  Printf.sprintf "%s: %s;" f.fname (ocaml_of_t f.field))
+                  Printf.sprintf "%s: %s;" (String.concat "." f.fname) (ocaml_of_t f.field))
           fields
       in
       Printf.sprintf "{ %s }" (String.concat " " fields)
@@ -257,3 +276,6 @@ let rec ocaml_of_t : type a. a typ -> string = function
       in
       String.concat " " tags
   | Abstract _ -> "<abstract>"
+  | Refv (_cls,_typ) -> "ref"
+  | Refmap _typ -> "Refmap.empty"
+

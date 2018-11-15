@@ -163,10 +163,10 @@ let rec typecheck : type a. a typ -> string -> t list =
   | Struct {fields; _} ->
       let check boxedfield =
         let (BoxedField f) = boxedfield in
-        let member = sprintf "%s['%s']" v f.fname in
+        let member = sprintf "%s['%s']" v (String.concat "." f.fname) in
         match f.field with
         | Option ty ->
-            [ Line (sprintf "if '%s' in %s:" f.fname v)
+            [ Line (sprintf "if '%s' in %s:" (String.concat "." f.fname) v)
             ; Block (typecheck ty member) ]
         | _ -> typecheck f.field member
       in
@@ -246,6 +246,10 @@ let rec typecheck : type a. a typ -> string -> t list =
       @ typecheck c (Printf.sprintf "v3")
       @ typecheck d (Printf.sprintf "v4")
   | Abstract _ -> failwith "Abstract types cannot be typechecked by pythongen"
+  | Refv _ ->
+    failwith "Refv types cannot be typechecked by pythongen"
+  | Refmap _ ->
+    failwith "Refmap types cannot be typechecked by pythongen"
 
 let rec value_of : type a. a typ -> string =
   let open Printf in
@@ -261,7 +265,7 @@ let rec value_of : type a. a typ -> string =
     | Struct {fields; _} ->
         let member boxed_field =
           let (BoxedField f) = boxed_field in
-          sprintf {|"%s": %s|} f.fname (value_of f.field)
+          sprintf {|"%s": %s|} (String.concat "." f.fname) (value_of f.field)
         in
         sprintf "{%s}" (String.concat ", " (List.map member fields))
     | Variant _ -> "None"
@@ -274,6 +278,8 @@ let rec value_of : type a. a typ -> string =
     | Tuple3 _ -> "[]"
     | Tuple4 _ -> "[]"
     | Abstract _ -> failwith "Cannot get default value for abstract types"
+    | Refv _ -> failwith "Cannot get default value for Refv type"
+    | Refmap _ -> failwith "Cannot get default value for Refmap type"
 
 let exn_var myarg =
   let open Printf in

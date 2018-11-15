@@ -49,6 +49,8 @@ let rec string_of_t : type a. a typ -> string list =
         string_of_t a @ print " * " @ string_of_t b @ print " * "
         @ string_of_t c @ print " * " @ string_of_t d
     | Abstract _ -> print "<abstract>"
+    | Refv (_cls,t) -> (string_of_t t) @ (print " ref")
+    | Refmap _ -> print "<refmap>"
 
 let definition_of_t : type a. a typ -> string list = function
   | Struct _ -> ["struct { ... }"]
@@ -85,6 +87,8 @@ let rec ocaml_patt_of_t : type a. a typ -> string =
       Printf.sprintf "(%s,%s,%s,%s)" (ocaml_patt_of_t a) (ocaml_patt_of_t b)
         (ocaml_patt_of_t c) (ocaml_patt_of_t d)
   | Abstract _ -> "abstract"
+  | Refv (_cls,_typ) -> "r"
+  | Refmap (_typ) -> "refmap"
 
 let rpc_of : type a. a typ -> string -> Rpc.t =
  fun ty hint -> Rpcmarshal.marshal ty (Rpc_genfake.gen_nice ty hint)
@@ -164,7 +168,7 @@ let of_struct_fields : 'a boxed_field list -> string list =
  fun all ->
   let of_row (BoxedField f) =
     let ty = string_of_t f.field in
-    [f.fname; String.concat "" ty; get_description f.fdescription]
+    [String.concat "." f.fname; String.concat "" ty; get_description f.fdescription]
   in
   table ["Name"; "Type"; "Description"] (List.map of_row all)
 

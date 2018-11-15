@@ -34,6 +34,8 @@ let rec html_of_t : type a. a typ -> string list =
         html_of_t a @ print " * " @ html_of_t b @ print " * " @ html_of_t c
         @ print " * " @ html_of_t d
     | Abstract _ -> print "<abstract>"
+    | Refv _ -> print "<ref>"
+    | Refmap _ -> print "<refmap>"
 
 (* Function inputs and outputs in a table *)
 let of_args args =
@@ -93,7 +95,7 @@ let of_struct_fields : 'a boxed_field list -> Cow.Html.t =
     let ty = html_of_t f.field in
     tag "tr"
       (list
-         [ tag "td" (tag "pre" (string f.fname))
+         [ tag "td" (tag "pre" (string (String.concat "." f.fname)))
          ; tag "td" (tag "pre" (string (String.concat "" ty)))
          ; tag "td" (string (String.concat " " f.fdescription)) ])
   in

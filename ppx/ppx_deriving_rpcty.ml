@@ -103,10 +103,12 @@ module Typ_of = struct
             let fset = [%expr fun v _s -> [%e pexp_record
                 [Located.mk (lident f_name), [%expr v]]
                 (if one_field then None else Some [%expr _s])]] in
+            let fcls = pexp_construct (Located.mk (lident (String.uppercase name))) None in
             let expr = pexp_record
                 (List.map ~f:(fun (x,y) -> Located.mk (Ldot (Ldot (Lident "Rpc", "Types"), x)), y)
-                   [ "fname", estring rpc_name
+                   [ "fname", elist [estring rpc_name]
                    ; "field", expr_of_typ ~loc pld_type
+                   ; "fcls", fcls
                    ; "fdefault", expr_of_option ~loc default
                    ; "fdescription", doc
                    ; "fversion", expr_of_option ~loc version
@@ -236,6 +238,10 @@ module Typ_of = struct
             pexp_function
               [case ~lhs:(pat') ~guard:None ~rhs:constr]
           in
+          let tcls =
+            pexp_construct (Located.mk (lident (String.uppercase name))) None
+          in
+
           let variant =
             [%expr
               BoxedTag
@@ -245,6 +251,7 @@ module Typ_of = struct
                        [ "tname", estring rpc_name
                        ; "tcontents", contents
                        ; "tversion", version
+                       ; "tcls", tcls
                        ; "tdescription", doc
                        ; "tpreview", vpreview
                        ; "treview", vreview ]) None ]]
@@ -307,8 +314,48 @@ module Typ_of = struct
                        (pexp_ident (Located.mk (lident typ_of_lid))) ]) None)) ]
 end
 
+
+let cls_decl ~loc td =
+  let module Ast_builder = (val Ast_builder.make loc) in
+  let open Ast_builder in
+  let core_type = core_type_of_type_declaration td in
+  let name = td.ptype_name.txt in
+  match td.ptype_kind, td.ptype_manifest with
+  | Ptype_abstract, Some _ -> []
+  | Ptype_record _, _
+  | Ptype_variant _, _ ->
+    let clsval = ppat_construct (Located.mk (lident (String.uppercase name))) None in
+    let matchval =
+      [%expr
+        match (x,y) with
+        | ([%p clsval], [%p clsval]) -> Some Rpc.Types.Eq
+        | _ -> None]
+    in
+    let typext = pstr_typext (Ast_helper.Te.mk ~params:[(ptyp_any, Invariant)] (Located.mk (Ldot (Ldot (lident "Rpc", "Types"), "cls")))
+      [Ast_helper.Te.decl ~loc ~res:[%type: ([%t core_type ]) Rpc.Types.cls]  {txt=String.uppercase name; loc}]) in
+    let register_eq =
+      [%expr
+        let eq : type a b. a Rpc.Types.cls -> b Rpc.Types.cls -> (a,b) Rpc.Types.eq option = fun x y ->
+        [%e matchval] in Rpc.Types.register_eq {Rpc.Types.eq} ] in
+    let register_pr =
+      [%expr
+        let pr : type a. a Rpc.Types.cls -> string option = fun x ->
+        match x with
+          | [%p clsval] ->
+            Some [%e pexp_constant (Pconst_string (String.capitalize name, None))]
+          | _ ->
+            None
+        in Rpc.Types.register_pr {Rpc.Types.pr}] in
+    [ typext
+    ; pstr_value Nonrecursive [ value_binding ~pat:ppat_any ~expr:register_eq ]
+    ; pstr_value Nonrecursive [ value_binding ~pat:ppat_any ~expr:register_pr ]
+    ]
+  | _ -> []
+
 let my_str_type_decl ~loc ~path:_ (rec_flag, tds) =
-  pstr_value_list ~loc rec_flag (List.concat (List.map ~f:(Typ_of.str_of_type loc) tds))
+  let cls_decls = List.concat (List.map ~f:(cls_decl ~loc) tds) in
+  let typ_and_def_decls = pstr_value_list ~loc rec_flag (List.concat (List.map ~f:(Typ_of.str_of_type loc) tds)) in
+  cls_decls @ typ_and_def_decls
 
 let str_type_decl =
   Deriving.Generator.make_noarg my_str_type_decl

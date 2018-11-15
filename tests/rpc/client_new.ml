@@ -26,6 +26,8 @@ module AbstractMod : ABSMOD = struct
   let init = "hello"
 end
 
+type _ Rpc.Types.cls += ABSTRACTMOD : AbstractMod.t Rpc.Types.cls
+
 module API (R : Idl.RPC) = struct
   open R
   open Idl
@@ -43,6 +45,7 @@ module API (R : Idl.RPC) = struct
     ; ty=
         Abstract
           { aname= "abstr"
+          ; acls= ABSTRACTMOD
           ; test_data= [AbstractMod.init]
           ; rpc_of= (fun t -> Rpc.String (AbstractMod.string_of t))
           ; of_rpc=

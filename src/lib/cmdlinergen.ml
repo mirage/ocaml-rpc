@@ -126,6 +126,10 @@ module Gen () = struct
                | Ok _ -> x
                | Error _ -> failwith "Type error" ))
           Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo)
+    | Refv (_cls,_typ) ->
+      failwith "Refv unhandled"
+    | Refmap (_typ) ->
+      failwith "Refmap unhandled"
 
   let declare name desc_list ty =
     let generate rpc =
