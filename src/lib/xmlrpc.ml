@@ -37,9 +37,9 @@ let encode =
 let rec add_value f = function
   | Null -> f "<value><nil/></value>"
   | Int i ->
-      f "<value>" ;
+      f "<value><int>" ;
       f (Int64.to_string i) ;
-      f "</value>"
+      f "</int></value>"
   | Int32 i ->
       f "<value><i4>" ;
       f (Int32.to_string i) ;
