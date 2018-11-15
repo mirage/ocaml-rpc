@@ -7,7 +7,6 @@ let tailrec_map f l = List.rev_map f l |> List.rev
 
 let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result =
  fun t v ->
-  let open Rpc in
   let open Result in
   let open Rresult.R in
   let open Rpc.ResultUnmarshallers in
@@ -157,11 +156,11 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result =
     end  
 
 let rec marshal : type a. a typ -> a -> Rpc.t =
- fun t v ->
+ fun ty v ->
   let open Rpc in
   let rpc_of_basic : type a. a basic -> a -> Rpc.t =
-   fun t v ->
-    match t with
+   fun ty v ->
+    match ty with
     | Int -> rpc_of_int v
     | Int32 -> rpc_of_int32 v
     | Int64 -> rpc_of_int64 v
@@ -170,7 +169,7 @@ let rec marshal : type a. a typ -> a -> Rpc.t =
     | String -> rpc_of_string v
     | Char -> rpc_of_int (Char.code v)
   in
-  match t with
+  match ty with
   | Basic t -> rpc_of_basic t v
   | DateTime -> rpc_of_dateTime v
   | Array typ -> Enum (tailrec_map (marshal typ) (Array.to_list v))

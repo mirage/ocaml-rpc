@@ -516,6 +516,20 @@ module ResultUnmarshallers = struct
   let t_of_rpc t = R.ok t
 end
 
+type _ Types.cls += Rpc : t Types.cls
+
+let typ_of = Types.Abstract 
+    { aname = "Rpc.t"
+    ; acls = Rpc
+    ; rpc_of = (fun x -> x)
+    ; of_rpc = (fun x -> Ok x)
+    ; test_data = [] }
+
+let t = 
+  { Types.name = "Rpc.t"
+  ; ty = typ_of
+  ; description = ["Intermediate type used for marshalling"] }
+
 let struct_extend rpc default_rpc =
   match (rpc, default_rpc) with
   | Dict real, Dict default_fields ->

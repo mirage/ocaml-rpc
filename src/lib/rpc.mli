@@ -240,6 +240,9 @@ module ResultUnmarshallers : sig
   val char_of_rpc : t -> (char, Rresult.R.msg) Result.result
 end
 
+val typ_of : t Types.typ
+val t : t Types.def
+
 (** {2 Calls} *)
 
 type callback = string list -> t -> unit
