@@ -175,7 +175,7 @@ module Typ_of = struct
                          | Some s -> s
                          | None -> label'
                        in
-                       analyse_variant_case ~loc true tcls true label'
+                       analyse_variant_case ~loc true tcls true label.txt
                          (Pcstr_tuple []) version doc name
                    | Rtag
                        (label, _attrs, false, [{ptyp_desc= Ptyp_tuple typs; _}])

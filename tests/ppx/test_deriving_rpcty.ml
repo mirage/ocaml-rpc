@@ -1,6 +1,6 @@
 let string_of_err = function `Msg x -> x
 
-type test = [`foo | `bar] [@@deriving rpcty]
+type test = [`Foo | `bar] [@@deriving rpcty]
 
 let rec canonicalise r =
   match r with
