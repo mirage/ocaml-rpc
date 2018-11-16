@@ -17,6 +17,8 @@ module type DB = sig
 
   val typ_of : t Rpc.Types.typ
 
+  val typ_of_cls : 'a Rpc.Types.cls -> 'a Rpc.Types.typ
+
   val rels : relation list
 
   val find_objs : 'a Rpc.Types.cls -> ('a Rpc.Refmap.t, t) Rpc.Types.field
@@ -203,5 +205,21 @@ module Make (DB : DB) = struct
         (* Should really do something here *) )
       DB.rels
 
+  let update_obj : type a. a Rpc.Types.ref -> a -> unit =
+    fun ref v ->
+      match get_obj ref with
+      | None -> add ref v
+      | Some cur -> begin
+        let typ = DB.typ_of_cls (Rpc.Types.cls_of_ref ref) in
+        match typ with
+        | Rpc.Types.Struct s ->
+          List.iter (function | Rpc.Types.BoxedField f ->
+            if Rpc.Types.(f.fget cur = f.fget v)
+            then ()
+            else set ref f (f.fget v)
+          ) s.Rpc.Types.fields
+        | _ -> ()
+      end
+  
   let dump_since gen = (db.gen, Stat.dump_since gen db.db db.st)
 end
