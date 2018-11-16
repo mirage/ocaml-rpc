@@ -136,6 +136,8 @@ module Typ_of = struct
           failwith "Tuples with arity > 4 are not supported"
       | [%type: [%t? typ] option] ->
           [%expr Rpc.Types.Option [%e expr_of_typ ~loc typ]]
+      | [%type: [%t? { ptyp_desc = Ptyp_constr ( { txt = Lident lid; _ } as id, _ ); _ } ] Rpc.Types.ref] ->
+          [%expr Rpc.Types.Refv ([%e pexp_construct ~loc (Located.mk ~loc (lident (String.uppercase lid))) None ],[%e type_constr_conv id ~loc ~f:typ_of_f [] ])]
       | {ptyp_desc= Ptyp_constr (lid, _); _} ->
           type_constr_conv lid ~loc ~f:typ_of_f []
       | {ptyp_desc= Ptyp_variant (fields, _, _); _} ->
