@@ -30,6 +30,14 @@
 )
 
 (library
+ (name dbgen)
+ (public_name rpclib.dbgen)
+ (modules dbgen)
+ (libraries rpclib.core threads)
+ (wrapped false)
+)
+
+(library
  (name cmdlinergen)
  (public_name rpclib.cmdliner)
  (modules cmdlinergen)

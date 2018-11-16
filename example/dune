@@ -17,6 +17,15 @@
 )
 
 (executable
+ (name xapi_example)
+ (modules aPI xapi_example)
+ (libraries rpclib rpclib.cmdliner rpclib.markdown unix uuidm rpclib.dbgen)
+ (preprocess
+  (pps ppx_deriving_rpc)
+ )
+)
+
+(executable
  (name example3_client)
  (modules example3_idl example3_client)
  (libraries rpclib rpclib.cmdliner rpclib.markdown unix)

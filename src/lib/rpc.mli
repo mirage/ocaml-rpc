@@ -46,13 +46,15 @@ module Types : sig
 
   type eqcls = {eq: 'a 'b. 'a cls -> 'b cls -> ('a, 'b) eq option}
 
-  val eqcls : eqcls ref
-
   type prcls = {pr: 'a. 'a cls -> string option}
 
   val register_eq : eqcls -> unit
 
   val register_pr : prcls -> unit
+
+  val prcls : 'a cls -> string option
+
+  val eqcls : 'a cls -> 'b cls -> ('a, 'b) eq option
 
   type _ basic =
     | Int : int basic
@@ -135,25 +137,9 @@ module Types : sig
 
   and 'a abstract =
     { aname: string
-    ; acls: 'a cls
     ; test_data: 'a list
     ; rpc_of: 'a -> t
     ; of_rpc: t -> ('a, Rresult.R.msg) Result.result }
-
-  module Refmap : sig
-    type 'a inner = 'a Refmap.inner
-    type 'a t = 'a Refmap.t
-
-    val mem : string -> 'a t -> bool
-    val add : string -> 'a -> 'a t -> 'a t
-    val remove : string -> 'a t -> 'a t
-    val update : string -> 'a -> 'a t -> 'a t
-    val find : string -> 'a t -> 'a
-    val keys : 'a t -> string list
-    val empty : 'a t
-
-    val typ_of : 'a typ -> 'a t typ
-  end
 
   val string_of_typ : prcls -> 'a typ -> string
 
@@ -297,3 +283,19 @@ val struct_extend : t -> t -> t
  *  dictionaries. If this is the case then [struct_extend] will create a new
  *  [Rpc.t] which contains all key-value pairs from [rpc1], as well as all
  *  key-value pairs from [rpc2] for which the key does not exist in [rpc1]. *)
+
+
+  module Refmap : sig
+    type 'a inner = 'a Refmap.inner
+    type 'a t = 'a Refmap.t
+
+    val mem : string -> 'a t -> bool
+    val add : string -> 'a -> 'a t -> 'a t
+    val remove : string -> 'a t -> 'a t
+    val update : string -> 'a -> 'a t -> 'a t
+    val find : string -> 'a t -> 'a
+    val keys : 'a t -> string list
+    val empty : 'a t
+
+    val typ_of : 'a Types.typ -> 'a t Types.typ
+  end

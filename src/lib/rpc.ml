@@ -54,29 +54,33 @@ module Types = struct
 
   type prcls = {pr: 'a. 'a cls -> string option}
 
-  let eqcls =
+  let _eqcls =
     let eq : type a b. a cls -> b cls -> (a, b) eq option =
      fun _x _y -> None
     in
     ref {eq}
 
-  let prcls =
+  let _prcls =
     let pr : type a. a cls -> string option = fun _x -> None in
     ref {pr}
 
+  let prcls cls = (! _prcls).pr cls
+
+  let eqcls cls = (! _eqcls).eq cls
+
   let register_eq {eq} =
-    let oldeq = !eqcls in
+    let oldeq = !_eqcls in
     let eq : type a b. a cls -> b cls -> (a, b) eq option =
      fun x y -> match eq x y with Some Eq -> Some Eq | None -> oldeq.eq x y
     in
-    eqcls := {eq}
+    _eqcls := {eq}
 
   let register_pr {pr} =
-    let oldpr = !prcls in
+    let oldpr = !_prcls in
     let pr : type a. a cls -> string option =
      fun x -> match pr x with Some s -> Some s | None -> oldpr.pr x
     in
-    prcls := {pr}
+    _prcls := {pr}
 
   type _ basic =
     | Int : int basic
@@ -153,7 +157,6 @@ module Types = struct
 
   and 'a abstract =
     { aname: string
-    ; acls: 'a cls
     ; test_data: 'a list
     ; rpc_of: 'a -> t
     ; of_rpc: t -> ('a, Rresult.R.msg) Result.result }
@@ -164,11 +167,6 @@ module Types = struct
     | Ref : ('a option, 'a Refmap.t) field -> 'a ref
     | NullRef : 'a cls -> 'a ref
 
-  module Refmap = struct
-    include Refmap
-
-    let typ_of x = Refmap x
-  end
 
   type _ cls += RefMapCls : 'a cls -> 'a Refmap.t cls
   type _ cls += PolyType : 'a cls
@@ -225,10 +223,7 @@ module Types = struct
     Ref
       { fget=
           (fun r ->
-            try Some (Refmap.find name r) with Not_found ->
-              Printf.printf "No ref for %s (refs are: [%s])\n%!" name
-                (String.concat ";" (Refmap.keys r)) ;
-              None )
+            try Some (Refmap.find name r) with Not_found -> None )
       ; fset=
           (fun v r ->
             match v with
@@ -298,7 +293,7 @@ module Types = struct
     | List x, List y -> (
       match eq_ty x y with Some Eq -> Some Eq | _ -> None )
     | Refv (x, _), Refv (x', _) -> (
-      match !eqcls.eq x x' with Some Eq -> Some Eq | _ -> None )
+      match !_eqcls.eq x x' with Some Eq -> Some Eq | _ -> None )
     | Dict (basic1, ty1), Dict (basic2, ty2) -> (
       match (eq_ty (Basic basic1) (Basic basic2), eq_ty ty1 ty2) with
       | Some Eq, Some Eq -> Some Eq
@@ -321,13 +316,12 @@ module Types = struct
     | Struct s1, Struct s2 -> (
       match (List.hd s1.fields, List.hd s2.fields)
       with BoxedField f1, BoxedField f2 -> (
-        match !eqcls.eq f1.fcls f2.fcls with Some Eq -> Some Eq | _ -> None ) )
+        match !_eqcls.eq f1.fcls f2.fcls with Some Eq -> Some Eq | _ -> None ) )
     | Variant v1, Variant v2 -> (
       match (List.hd v1.variants, List.hd v2.variants)
       with BoxedTag t1, BoxedTag t2 -> (
-        match !eqcls.eq t1.tcls t2.tcls with Some Eq -> Some Eq | _ -> None ) )
-    | Abstract a1, Abstract a2 -> (
-      match !eqcls.eq a1.acls a2.acls with Some Eq -> Some Eq | None -> None )
+        match !_eqcls.eq t1.tcls t2.tcls with Some Eq -> Some Eq | _ -> None ) )
+    | Abstract _a1, Abstract _a2 -> None
     | Refmap a1, Refmap a2 -> (
       match eq_ty a1 a2 with Some Eq -> Some Eq | None -> None )
     | _, _ -> None
@@ -335,7 +329,7 @@ module Types = struct
   let eq_field : type a b c d.
       (a, b) field -> (c, d) field -> (a * b, c * d) eq option =
    fun f1 f2 ->
-    match (!eqcls.eq f1.fcls f2.fcls, eq_ty f1.field f2.field) with
+    match (!_eqcls.eq f1.fcls f2.fcls, eq_ty f1.field f2.field) with
     | Some Eq, Some Eq -> Some Eq
     | _, _ -> None
 
@@ -522,11 +516,8 @@ module ResultUnmarshallers = struct
   let t_of_rpc t = R.ok t
 end
 
-type _ Types.cls += Rpc : t Types.cls
-
 let typ_of = Types.Abstract 
     { aname = "Rpc.t"
-    ; acls = Rpc
     ; rpc_of = (fun x -> x)
     ; of_rpc = (fun x -> Ok x)
     ; test_data = [] }
@@ -566,3 +557,9 @@ let string_of_response response =
 let success v = {success= true; contents= v}
 
 let failure v = {success= false; contents= v}
+
+  module Refmap = struct
+    include Refmap
+
+    let typ_of x = Types.Refmap x
+  end
