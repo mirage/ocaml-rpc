@@ -159,8 +159,8 @@ let rec marshal : type a. a typ -> a -> Rpc.t =
  fun ty v ->
   let open Rpc in
   let rpc_of_basic : type a. a basic -> a -> Rpc.t =
-   fun ty v ->
-    match ty with
+   fun t v ->
+    match t with
     | Int -> rpc_of_int v
     | Int32 -> rpc_of_int32 v
     | Int64 -> rpc_of_int64 v

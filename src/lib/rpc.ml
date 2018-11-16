@@ -164,6 +164,12 @@ module Types = struct
     | Ref : ('a option, 'a Refmap.t) field -> 'a ref
     | NullRef : 'a cls -> 'a ref
 
+  module Refmap = struct
+    include Refmap
+
+    let typ_of x = Refmap x
+  end
+
   type _ cls += RefMapCls : 'a cls -> 'a Refmap.t cls
   type _ cls += PolyType : 'a cls
 

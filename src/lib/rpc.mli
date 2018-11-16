@@ -140,6 +140,21 @@ module Types : sig
     ; rpc_of: 'a -> t
     ; of_rpc: t -> ('a, Rresult.R.msg) Result.result }
 
+  module Refmap : sig
+    type 'a inner = 'a Refmap.inner
+    type 'a t = 'a Refmap.t
+
+    val mem : string -> 'a t -> bool
+    val add : string -> 'a -> 'a t -> 'a t
+    val remove : string -> 'a t -> 'a t
+    val update : string -> 'a -> 'a t -> 'a t
+    val find : string -> 'a t -> 'a
+    val keys : 'a t -> string list
+    val empty : 'a t
+
+    val typ_of : 'a typ -> 'a t typ
+  end
+
   val string_of_typ : prcls -> 'a typ -> string
 
   val make_ref : 'a cls -> 'a typ -> string -> 'a ref
