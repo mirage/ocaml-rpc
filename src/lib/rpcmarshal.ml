@@ -155,6 +155,28 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result =
     | _ -> error_msg "Expecting Rpc.Dict when unmarshalling a refmap"
     end  
 
+let rec unmarshal_partial : type a. a typ -> a -> Rpc.t -> (a, err) Result.result = fun t cur v ->
+  let open Rresult.R in
+  match t,v with
+  | Struct { fields; _ }, Dict d ->
+    List.fold_left (fun acc f -> match f with | BoxedField fld ->
+      match fld.fname with
+      | [fname] -> acc >>= fun a -> (try unmarshal_partial fld.field (fld.fget a) (List.assoc fname d) >>= fun x -> Ok (fld.fset x a) with _ -> Ok a)
+      | _ -> Rresult.R.error_msg (Printf.sprintf "Expecting single path fields in unmarshal_partial (got %s)" (String.concat "," fld.fname))
+    ) (Ok cur) fields
+  | Refmap typ, Dict d ->
+    List.fold_left (fun acc r ->
+      acc >>= fun a ->
+      let rpc = List.assoc r d in
+      let obj =
+        try
+          unmarshal_partial typ (Refmap.find r a) rpc
+        with _ ->
+          unmarshal typ rpc
+      in
+      obj >>= fun o -> Ok (Refmap.add r o a)) (Ok cur) (List.map fst d)
+  | _ -> unmarshal t v
+
 let rec marshal : type a. a typ -> a -> Rpc.t =
  fun ty v ->
   let open Rpc in
