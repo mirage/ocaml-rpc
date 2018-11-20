@@ -233,5 +233,7 @@ module Make (DB : DB) = struct
         | _ -> db
       end
   
+  let inject db = {db with gen = Int64.add db.gen 1L}
+  
   let dump_since gen db = (db.gen, Stat.dump_since gen db.db db.st)
 end
