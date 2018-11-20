@@ -20,6 +20,9 @@ include Stat
  * replicate the data structure elsewhere
  *)
 module StatTree = struct
+  (* Each node has a 'Stat.t' with creation/modification information,
+     optional data, and a list of children, stored as a (string, 'a t)
+     association list *)
   type 'a t = Node of Stat.t * 'a option * (string * 'a t) list
 
   let empty = Node (Stat.make 0L, None, [])
@@ -36,24 +39,40 @@ module StatTree = struct
     | s::ss, None ->
       Node (Stat.make g, None, [s, update_stat g ss a None])
     | s::ss, Some (Node (st, thisa, xs)) ->
-      let mine,others = List.partition (fun (x,_n) -> x=s) xs in
+      let mine,others = (* List.partition (fun (x,_n) -> x=s) xs in *)
+        let rec inner notmine l =
+          match l with
+          | (((x,_n) as f) ::xs) ->
+            if x=s then (Some f,List.fold_left (fun acc x -> x::acc) xs notmine) else inner (f::notmine) xs
+          | [] -> None, xs
+        in
+        inner [] xs
+      in  
       let new_mine =
         match mine with
-        | [] -> (s, update_stat g ss a None)
-        | [(_,n)] -> (s, update_stat g ss a (Some n))
-        | _ -> failwith "Multiple keys in update_stat"
+        | None -> (s, update_stat g ss a None)
+        | Some (_, n) -> (s, update_stat g ss a (Some n))
       in
       Node (Stat.update g st, thisa, new_mine::others)
 
-  let rec fold_over_recent : int64 -> ('a -> 'b -> 'b) -> 'b -> 'a t -> 'b = fun g f acc t ->
-    match t with
-    | Node (st, v, children) ->
-      if st.Stat.modified > g then
-        match v,children with
-        | Some x , [] -> List.fold_right (fun (_,x) acc -> fold_over_recent g f acc x) children (f x acc)
-        | Some x , _children when st.Stat.created > g -> f x acc
-        | _, _ -> List.fold_right (fun (_,x) acc -> fold_over_recent g f acc x) children acc
-      else acc
+  let fold_over_recent : int64 -> (string list -> 'a -> 'b -> 'a) -> 'a -> 'b t -> 'a = fun g f acc t ->
+    let rec inner path acc t =
+      match t with
+      | Node (st, v, children) ->
+        if st.Stat.modified > g then
+          match v,children with
+          | Some x , [] -> f path acc x
+          | Some x , _children when st.Stat.created > g -> f path acc x
+          | _ , _ ->
+            let rec fold_left_recent f accu l =
+              match l with
+              | [] -> accu
+              | (_, Node (st, _v, _children))::_l when st.modified <= g -> accu
+              | a::l -> fold_left_recent f (f accu a) l
+            in
+            fold_left_recent (fun acc (p,x) -> inner (p::path) acc x) acc children
+        else acc
+    in inner [] acc t
 end
 
 type 'a wrapped_field = Fld : (_, 'a) Rpc.Types.field -> 'a wrapped_field
@@ -91,4 +110,4 @@ let dump_since : int64 -> 'b -> 'b wrapped_field StatTree.t -> Rpc.t = fun g db 
     in
     update_dict acc fld.fname
   in
-  (StatTree.fold_over_recent g (fun fld acc -> match fld with Fld f -> update_acc f acc) (Rpc.Dict []) st)
+  (StatTree.fold_over_recent g (fun _path acc fld -> match fld with Fld f -> update_acc f acc) (Rpc.Dict []) st)
