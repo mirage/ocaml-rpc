@@ -32,6 +32,11 @@ module Make (DB : DB) = struct
     ; gen: int64
     ; st: DB.t Stat.wrapped_field Stat.StatTree.t }
 
+  let empty =
+    { db= DB.empty_db
+    ; gen= 0L
+    ; st= Stat.StatTree.empty}
+
   let operate :
          'a Rpc.Types.ref
       -> (   ('a Refmap.t, DB.t) Rpc.Types.field
