@@ -64,6 +64,7 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result =
     match v with
     | Enum [x] -> unmarshal t x >>= fun x -> return (Some x)
     | Enum [] -> return None
+    
     | y ->
         Rresult.R.error_msg
           (Printf.sprintf "Expecting an Enum value, got '%s'" (Rpc.to_string y))
@@ -239,8 +240,6 @@ let rec marshal : type a. a typ -> a -> Rpc.t =
               let key = String.concat "." f.fname in
               let value = marshal f.field (f.fget v) in
               match (f.field, value) with
-              | Option _, Rpc.Enum [] -> acc
-              | Option _, Rpc.Enum [x] -> (key, x) :: acc
               | _, _ -> (key, value) :: acc )
           [] fields
       in
