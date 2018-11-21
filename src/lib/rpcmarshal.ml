@@ -120,7 +120,11 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result =
                      let rpc = List.assoc s keys in
                      match unmarshal x rpc with
                      | Ok v -> return (Some v)
-                     | Error (`Msg m) -> unmarshal (Option x) rpc
+                     | Error (`Msg m) ->
+                        match unmarshal (Option x) rpc with
+                        | Ok v -> return v
+                        | Error (`Msg m') -> Error (`Msg (Printf.sprintf "Tried hard, got '%s' once and '%s' the second time" m m')) 
+                        
                    with _ -> return None )
                  | y ->
                    try List.assoc s keys |> unmarshal y with Not_found ->
