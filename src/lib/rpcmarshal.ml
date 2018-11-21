@@ -132,7 +132,7 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result =
                x) }
     | _ ->
         error_msg
-          (Printf.sprintf "Expecting Rpc.Dict when unmarshalling a '%s'" sname)
+          (Printf.sprintf "Expecting Rpc.Dict when unmarshalling a '%s' (got %s)" sname (Rpc.to_string v))
     )
   | Variant {vconstructor; _} ->
       ( match v with
@@ -169,7 +169,7 @@ let rec unmarshal_partial : type a. a typ -> a -> Rpc.t -> (a, err) Result.resul
   | Refmap typ, Dict d ->
     List.fold_left (fun acc r ->
       acc >>= fun a ->
-      let rpc = List.assoc r d in
+      let rpc = match List.assoc r d with Rpc.Enum [x] -> x | y -> y in
       let obj =
         try
           unmarshal_partial typ (Refmap.find r a) rpc
