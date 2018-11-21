@@ -100,12 +100,7 @@ let dump_since : int64 -> 'b -> 'b wrapped_field StatTree.t -> Rpc.t = fun g db 
         let cur,others = List.partition (fun (x',_) -> x=x') dict in
         let subdict = match cur with | [] -> Rpc.Dict [] | [(_,r)] -> r | _ -> failwith "Multiple bindings" in
         let new_binding = update_dict subdict xs in
-        begin
-          match fld.field, new_binding with
-          | Rpc.Types.Option _, Rpc.Enum [y] -> Rpc.Dict ((x,y)::others)
-          | Rpc.Types.Option _, Rpc.Enum [] -> Rpc.Dict others
-          | _,e -> Rpc.Dict ((x,e)::others)
-        end
+        Rpc.Dict ((x,new_binding)::others)
       | _, _ -> failwith "Can't update non-dict with sub-fields"
     in
     update_dict acc fld.fname

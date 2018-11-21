@@ -117,8 +117,10 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result =
                  match ty with
                  | Option x -> (
                    try
-                     List.assoc s keys |> unmarshal x
-                     >>= fun o -> return (Some o)
+                     let rpc = List.assoc s keys in
+                     match unmarshal x rpc with
+                     | Ok v -> return (Some v)
+                     | Error (`Msg m) -> unmarshal (Option x) rpc
                    with _ -> return None )
                  | y ->
                    try List.assoc s keys |> unmarshal y with Not_found ->
