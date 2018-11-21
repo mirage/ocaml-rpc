@@ -181,7 +181,7 @@ let rec unmarshal_partial : type a. a typ -> a -> Rpc.t -> (a, err) Result.resul
       | Rpc.Enum [] ->
         Ok None
       | x ->
-        Error (`Msg (Printf.sprintf "Excpecting enum values when unmarshalling a Refmap")))
+        Error (`Msg (Printf.sprintf "Excpecting enum values when unmarshalling a Refmap (got %s)" (Rpc.to_string x))))
       >>= function Some x -> Ok (Refmap.add r x a) | None -> Ok (Refmap.remove r a)
       ) (Ok cur) d
   | _ -> unmarshal t v

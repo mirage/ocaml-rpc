@@ -73,6 +73,9 @@ module StatTree = struct
             fold_left_recent (fun acc (p,x) -> inner (p::path) acc x) acc children
         else acc
     in inner [] acc t
+
+(*  let map_recent_layer : int64 -> (string -> 'a t -> 'b) -> nodemap:('b list -> 'c) -> 'a t - *)
+
 end
 
 type 'a wrapped_field = Fld : (_, 'a) Rpc.Types.field -> 'a wrapped_field
@@ -105,4 +108,11 @@ let dump_since : int64 -> 'b -> 'b wrapped_field StatTree.t -> Rpc.t = fun g db 
     in
     update_dict acc fld.fname
   in
-  (StatTree.fold_over_recent g (fun _path acc fld -> match fld with Fld f -> update_acc f acc) (Rpc.Dict []) st)
+  let open Rpc in
+  (StatTree.fold_over_recent g (fun _path acc fld -> match fld with Fld f -> update_acc f acc) (Rpc.Dict []) st) |>
+  function
+  | Dict xs -> 
+    Dict (List.map (function 
+      | (n',Dict ys) -> (n',Rpc.Dict (List.map (function | (n,Rpc.Enum [y]) -> (n,Rpc.Enum [y]) | (n, z) -> (n,Rpc.Enum [z])) ys))
+      | z -> z) xs)
+  | a -> a
