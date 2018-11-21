@@ -167,16 +167,23 @@ let rec unmarshal_partial : type a. a typ -> a -> Rpc.t -> (a, err) Result.resul
       | _ -> Rresult.R.error_msg (Printf.sprintf "Expecting single path fields in unmarshal_partial (got %s)" (String.concat "," fld.fname))
     ) (Ok cur) fields
   | Refmap typ, Dict d ->
-    List.fold_left (fun acc r ->
+    List.fold_left (fun acc (r,rpc) ->
       acc >>= fun a ->
-      let rpc = match List.assoc r d with Rpc.Enum [x] -> x | y -> y in
-      let obj =
-        try
-          unmarshal_partial typ (Refmap.find r a) rpc
-        with _ ->
-          unmarshal typ rpc
-      in
-      obj >>= fun o -> Ok (Refmap.add r o a)) (Ok cur) (List.map fst d)
+      (match rpc with
+      | Rpc.Enum [x] -> 
+        let obj =
+          try
+            unmarshal_partial typ (Refmap.find r a) x
+          with _ ->
+            unmarshal typ x
+        in 
+        obj >>= fun x -> Ok (Some x)
+      | Rpc.Enum [] ->
+        Ok None
+      | x ->
+        Error (`Msg (Printf.sprintf "Excpecting enum values when unmarshalling a Refmap")))
+      >>= function Some x -> Ok (Refmap.add r x a) | None -> Ok (Refmap.remove r a)
+      ) (Ok cur) d
   | _ -> unmarshal t v
 
 let rec marshal : type a. a typ -> a -> Rpc.t =
@@ -250,7 +257,7 @@ let rec marshal : type a. a typ -> a -> Rpc.t =
       rpc_of_string (name_of_ref v)
   | Refmap typ -> begin
       let keys = Refmap.keys v |> List.sort String.compare in
-      Rpc.Dict (List.map (fun key -> (key, marshal typ (Refmap.find key v))) keys)
+      Rpc.Dict (List.map (fun key -> (key, marshal (Option typ) (Some (Refmap.find key v)))) keys)
     end
 
 let ocaml_of_basic : type a. a basic -> string = function
