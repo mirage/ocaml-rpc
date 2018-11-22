@@ -171,8 +171,8 @@ module Types = struct
   type _ cls += RefMapCls : 'a cls -> 'a Refmap.t cls
   type _ cls += PolyType : 'a cls
 
-  let rec string_of_typ : type a. prcls -> a typ -> string =
-   fun {pr} t ->
+  let rec string_of_typ : type a. a typ -> string =
+   fun t ->
     match t with
     | Basic Int -> "int"
     | Basic Int32 -> "int32"
@@ -182,42 +182,42 @@ module Types = struct
     | Basic String -> "string"
     | Basic Char -> "char"
     | DateTime -> "datetime"
-    | Array t -> Printf.sprintf "array(%s)" (string_of_typ {pr} t)
-    | List x -> Printf.sprintf "list(%s)" (string_of_typ {pr} x)
+    | Array t -> Printf.sprintf "%s list (* Array *)" (string_of_typ t)
+    | List x -> Printf.sprintf "%s list" (string_of_typ x)
     | Refv (cls, _typ) ->
-        Printf.sprintf "refv(%s)"
-          (match pr cls with Some x -> x | None -> "<unknown>")
+        Printf.sprintf "%s Rpc.Types.ref"
+          (match prcls cls with Some x -> x | None -> "<unknown>")
     | Dict (basic, ty) ->
-        Printf.sprintf "dict(%s,%s)"
-          (string_of_typ {pr} (Basic basic))
-          (string_of_typ {pr} ty)
+        Printf.sprintf "(%s * %s) list (* Dictionary *)"
+          (string_of_typ (Basic basic))
+          (string_of_typ ty)
     | Unit -> Printf.sprintf "unit"
-    | Option x -> Printf.sprintf "option(%s)" (string_of_typ {pr} x)
+    | Option x -> Printf.sprintf "%s option" (string_of_typ x)
     | Tuple (t1, t2) ->
         Printf.sprintf "(%s * %s)"
-          (string_of_typ {pr} t1)
-          (string_of_typ {pr} t2)
+          (string_of_typ t1)
+          (string_of_typ t2)
     | Tuple3 (t1, t2, t3) ->
         Printf.sprintf "(%s * %s * %s)"
-          (string_of_typ {pr} t1)
-          (string_of_typ {pr} t2)
-          (string_of_typ {pr} t3)
+          (string_of_typ t1)
+          (string_of_typ t2)
+          (string_of_typ t3)
     | Tuple4 (t1, t2, t3, t4) ->
         Printf.sprintf "(%s * %s * %s * %s)"
-          (string_of_typ {pr} t1)
-          (string_of_typ {pr} t2)
-          (string_of_typ {pr} t3)
-          (string_of_typ {pr} t4)
+          (string_of_typ t1)
+          (string_of_typ t2)
+          (string_of_typ t3)
+          (string_of_typ t4)
     | Struct s ->
-        Printf.sprintf "struct(%s)"
+        Printf.sprintf "%s (* struct *)"
           ( match List.hd s.fields with BoxedField fld -> (
-              match pr fld.fcls with Some x -> x | None -> "<unknown>" ) )
+              match prcls fld.fcls with Some x -> x | None -> "<unknown>" ) )
     | Variant v ->
-        Printf.sprintf "variant(%s)"
+        Printf.sprintf "%s (* variant *)"
           ( match List.hd v.variants with BoxedTag t -> (
-              match pr t.tcls with Some x -> x | None -> "<unknown>" ) )
-    | Abstract a -> Printf.sprintf "abstract(%s)" a.aname
-    | Refmap ty -> Printf.sprintf "refmap(%s)" (string_of_typ {pr} ty)
+              match prcls t.tcls with Some x -> x | None -> "<unknown>" ) )
+    | Abstract a -> Printf.sprintf "%s (* Abstract *)" a.aname
+    | Refmap ty -> Printf.sprintf "%s Refmap.t" (string_of_typ ty)
 
   let make_ref cls ty name =
     Ref

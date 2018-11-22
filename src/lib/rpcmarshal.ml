@@ -3,6 +3,8 @@ open Rpc.Types
 
 type err = [`Msg of string]
 
+type marshalty = Complete | Partial of (string * marshalty) list
+
 let tailrec_map f l = List.rev_map f l |> List.rev
 
 let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result =
@@ -152,7 +154,7 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result =
   | Refv (cls,typ) -> begin
     match v with
     | Rpc.String x -> Ok (make_ref cls typ x)
-    | _ -> error_msg (Printf.sprintf "Expecting Rpc.String when unmarshalling a reference of typ: %s" (Rpc.Types.string_of_typ {pr=fun _ -> None} typ))
+    | _ -> error_msg (Printf.sprintf "Expecting Rpc.String when unmarshalling a reference of typ: %s" (Rpc.Types.string_of_typ typ))
     end
   | Refmap ty -> begin
     match v with
@@ -191,8 +193,8 @@ let rec unmarshal_partial : type a. a typ -> a -> Rpc.t -> (a, err) Result.resul
       ) (Ok cur) d
   | _ -> unmarshal t v
 
-let rec marshal : type a. a typ -> a -> Rpc.t =
- fun ty v ->
+let rec marshal_partial : type a. a typ -> marshalty -> a -> Rpc.t =
+ fun ty marshalty v ->
   let open Rpc in
   let rpc_of_basic : type a. a basic -> a -> Rpc.t =
    fun t v ->
@@ -205,110 +207,86 @@ let rec marshal : type a. a typ -> a -> Rpc.t =
     | String -> rpc_of_string v
     | Char -> rpc_of_int (Char.code v)
   in
-  match ty with
-  | Basic t -> rpc_of_basic t v
-  | DateTime -> rpc_of_dateTime v
-  | Array typ -> Enum (tailrec_map (marshal typ) (Array.to_list v))
-  | List (Tuple (Basic String, typ)) ->
-      Dict (tailrec_map (fun (x, y) -> (x, marshal typ y)) v)
-  | List typ -> Enum (tailrec_map (marshal typ) v)
-  | Dict (String, typ) ->
-      Rpc.Dict (tailrec_map (fun (k, v) -> (k, marshal typ v)) v)
-  | Dict (basic, typ) ->
+  match ty, marshalty with
+  | Basic t, Complete -> rpc_of_basic t v
+  | DateTime, Complete -> rpc_of_dateTime v
+  | Array typ, Complete -> Enum (tailrec_map (marshal_partial typ Complete) (Array.to_list v))
+  | List (Tuple (Basic String, typ)), Complete ->
+      Dict (tailrec_map (fun (x, y) -> (x, marshal_partial typ Complete y)) v)
+  | List typ, Complete -> Enum (tailrec_map (marshal_partial typ Complete) v)
+  | Dict (String, typ), Complete ->
+      Rpc.Dict (tailrec_map (fun (k, v) -> (k, marshal_partial typ Complete v)) v)
+  | Dict (basic, typ), Complete ->
       Rpc.Enum
         (tailrec_map
-           (fun (k, v) -> Rpc.Enum [rpc_of_basic basic k; marshal typ v])
+           (fun (k, v) -> Rpc.Enum [rpc_of_basic basic k; marshal_partial typ Complete v])
            v)
-  | Unit -> rpc_of_unit v
-  | Option ty -> Rpc.Enum (match v with Some x -> [marshal ty x] | None -> [])
-  | Tuple (x, (Tuple (_, _) as y)) -> (
-    match marshal y (snd v) with
-    | Rpc.Enum xs -> Rpc.Enum (marshal x (fst v) :: xs)
+  | Unit, Complete -> rpc_of_unit v
+  | Option ty, Complete -> Rpc.Enum (match v with Some x -> [marshal_partial ty Complete x] | None -> [])
+  | Tuple (x, (Tuple (_, _) as y)), Complete -> (
+    match marshal_partial y Complete (snd v) with
+    | Rpc.Enum xs -> Rpc.Enum (marshal_partial x Complete (fst v) :: xs)
     | _ -> failwith "Marshalling a tuple should always give an Enum" )
-  | Tuple (x, y) -> Rpc.Enum [marshal x (fst v); marshal y (snd v)]
-  | Tuple3 (x, y, z) ->
+  | Tuple (x, y), Complete -> Rpc.Enum [marshal_partial x Complete (fst v); marshal_partial y Complete (snd v)]
+  | Tuple3 (x, y, z), Complete ->
       let vx, vy, vz = v in
-      Rpc.Enum [marshal x vx; marshal y vy; marshal z vz]
-  | Tuple4 (x, y, z, a) ->
+      Rpc.Enum [marshal_partial x Complete vx; marshal_partial y Complete vy; marshal_partial z Complete vz]
+  | Tuple4 (x, y, z, a), Complete ->
       let vx, vy, vz, va = v in
-      Rpc.Enum [marshal x vx; marshal y vy; marshal z vz; marshal a va]
-  | Struct {fields; _} ->
+      Rpc.Enum [marshal_partial x Complete vx; marshal_partial y Complete vy; marshal_partial z Complete vz; marshal_partial a Complete va]
+  | Struct {fields; _}, Complete ->
       let fields =
         List.fold_left
           (fun acc f ->
             match f with BoxedField f ->
               let key = String.concat "." f.fname in
-              let value = marshal f.field (f.fget v) in
+              let value = marshal_partial f.field Complete (f.fget v) in
               match (f.field, value) with
               | _, _ -> (key, value) :: acc )
           [] fields
       in
       Rpc.Dict fields
-  | Variant {variants; _} ->
+  | Struct {fields; _}, Partial keys ->
+      let fields =
+        List.fold_left
+          (fun acc f ->
+            match f with BoxedField f ->
+              let key = String.concat "." f.fname in
+              match List.assoc_opt key keys with
+              | Some c -> (key, marshal_partial f.field c (f.fget v)) :: acc
+              | None -> acc)
+          [] fields
+      in
+      Rpc.Dict (("__p",Rpc.Bool true) :: fields)
+  | Variant {variants; _}, Complete ->
       List.fold_left
         (fun acc t ->
           match t with BoxedTag t ->
             match t.tpreview v with
             | Some x -> (
-              match marshal t.tcontents x with
+              match marshal_partial t.tcontents Complete x with
               | Rpc.Null -> Rpc.String t.tname
               | y -> Rpc.Enum [Rpc.String t.tname; y] )
             | None -> acc )
         Rpc.Null variants
-  | Abstract {rpc_of; _} -> rpc_of v
-  | Refv (_cls,_typ) ->
+  | Abstract {rpc_of; _}, Complete -> rpc_of v
+  | Refv (_cls,_typ), Complete ->
       rpc_of_string (name_of_ref v)
-  | Refmap typ -> begin
+  | Refmap typ, Complete -> begin
       let keys = Refmap.keys v |> List.sort String.compare in
-      Rpc.Dict (List.map (fun key -> (key, marshal (Option typ) (Some (Refmap.find key v)))) keys)
+      Rpc.Dict (List.map (fun key -> (key, marshal_partial (Option typ) Complete (Some (Refmap.find key v)))) keys)
     end
+  | Refmap typ, Partial keys -> begin
+      Rpc.Dict (List.map (fun (key,subkeys) ->
+        let v =
+          if Refmap.mem key v
+          then Rpc.Enum [marshal_partial typ subkeys (Refmap.find key v)]
+          else Rpc.Enum []
+        in (key,v)) keys)
+      end
+  | typ, Partial _ ->
+    failwith (Printf.sprintf "Can't marshal_partial a typ %s" (Rpc.Types.string_of_typ typ))
 
-let ocaml_of_basic : type a. a basic -> string = function
-  | Int64 -> "int64"
-  | Int32 -> "int32"
-  | Int -> "int"
-  | String -> "string"
-  | Float -> "float"
-  | Bool -> "bool"
-  | Char -> "char"
-
-let rec ocaml_of_t : type a. a typ -> string = function
-  | Basic b -> ocaml_of_basic b
-  | DateTime -> "string"
-  | Array t -> ocaml_of_t t ^ " list"
-  | List t -> ocaml_of_t t ^ " list"
-  | Dict (b, t) ->
-      Printf.sprintf "(%s * %s) list" (ocaml_of_basic b) (ocaml_of_t t)
-  | Unit -> "unit"
-  | Option t -> ocaml_of_t t ^ " option"
-  | Tuple (a, b) -> Printf.sprintf "(%s * %s)" (ocaml_of_t a) (ocaml_of_t b)
-  | Tuple3 (a, b, c) ->
-      Printf.sprintf "(%s * %s * %s)" (ocaml_of_t a) (ocaml_of_t b)
-        (ocaml_of_t c)
-  | Tuple4 (a, b, c, d) ->
-      Printf.sprintf "(%s * %s * %s * %s)" (ocaml_of_t a) (ocaml_of_t b)
-        (ocaml_of_t c) (ocaml_of_t d)
-  | Struct {fields; _} ->
-      let fields =
-        List.map
-          (function
-              | BoxedField f ->
-                  Printf.sprintf "%s: %s;" (String.concat "." f.fname) (ocaml_of_t f.field))
-          fields
-      in
-      Printf.sprintf "{ %s }" (String.concat " " fields)
-  | Variant {variants; _} ->
-      let tags =
-        List.map
-          (function
-              | BoxedTag t ->
-                  Printf.sprintf "| %s (%s) (** %s *)" t.tname
-                    (ocaml_of_t t.tcontents)
-                    (String.concat " " t.tdescription))
-          variants
-      in
-      String.concat " " tags
-  | Abstract _ -> "<abstract>"
-  | Refv (_cls,_typ) -> "ref"
-  | Refmap _typ -> "Refmap.empty"
-
+let marshal : type a. a typ -> a -> Rpc.t = fun ty v -> marshal_partial ty Complete v
+ 
+let ocaml_of_t = Rpc.Types.string_of_typ

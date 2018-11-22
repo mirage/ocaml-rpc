@@ -6,4 +6,5 @@ let () =
     ; ("Dict", Dict.tests)
     ; ("Option", Option.tests)
     ; ("Phantom", Phantom.tests)
-    ; ("Variants", Variants.tests) ]
+    ; ("Variants", Variants.tests)
+    ; ("Deltas", Test_deltas.tests)]

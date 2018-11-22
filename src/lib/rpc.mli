@@ -141,7 +141,7 @@ module Types : sig
     ; rpc_of: 'a -> t
     ; of_rpc: t -> ('a, Rresult.R.msg) Result.result }
 
-  val string_of_typ : prcls -> 'a typ -> string
+  val string_of_typ : 'a typ -> string
 
   val make_ref : 'a cls -> 'a typ -> string -> 'a ref
 

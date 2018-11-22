@@ -9,6 +9,8 @@ end
 
 include Stat
 
+type 'a wrapped_field = Fld : (_, 'a) Rpc.Types.field -> 'a wrapped_field
+
 (** StatTree - a data structure that keeps track of modification times
  *
  * Essentially a mapping from string list -> 'a, but keeping track of
@@ -19,6 +21,7 @@ include Stat
  * allows this to be used to track modifications to tree-like data and
  * replicate the data structure elsewhere
  *)
+
 module StatTree = struct
   (* Each node has a 'Stat.t' with creation/modification information,
      optional data, and a list of children, stored as a (string, 'a t)
@@ -74,11 +77,51 @@ module StatTree = struct
         else acc
     in inner [] acc t
 
-(*  let map_recent_layer : int64 -> (string -> 'a t -> 'b) -> nodemap:('b list -> 'c) -> 'a t - *)
+  let to_partial gen t =
+    let rec inner t =
+      match t with
+      | Node (st, _v, children) ->
+          if st.Stat.created > gen
+          then Some Rpcmarshal.Complete
+          else if st.Stat.modified > gen then begin
+            if List.length children = 0
+            then Some Complete
+            else 
+              let modified_children = List.fold_left (fun acc (p, t) -> match inner t with Some t' -> (p,t')::acc | None -> acc) [] children in
+              if List.length modified_children = 0
+              then None
+              else Some (Rpcmarshal.Partial modified_children)
+            end
+          else None
+    in inner t
 
+  let print st =
+    let vprinter = function
+    | Fld f -> String.concat "." f.fname
+    in
+    let rec inner name indent t =
+      match t with
+      | Node (st,v,cs) ->
+        Printf.printf "%s===%s===\n" indent name;
+        Printf.printf "%s: Node(gen=(%Ld,%Ld)\n" indent st.Stat.created st.Stat.modified; 
+        Printf.printf "%s     v=%s\n" indent (match v with Some v -> vprinter v | None -> "<none>");
+        Printf.printf "%s     children={\n" indent;
+        List.iter (fun (n,t) -> inner n (Printf.sprintf "%s  " indent) t) cs;
+        Printf.printf "%s     }\n" indent
+    in inner "ROOT" "" st
+
+  let print_partials t =
+    let rec inner name indent t =
+      Printf.printf "%s===%s===\n" indent name;
+      match t with
+      | Rpcmarshal.Complete -> Printf.printf "%sComplete\n" indent
+      | Rpcmarshal.Partial cs ->
+        Printf.printf "%sPartial {\n" indent;
+        List.iter (fun (n,t) -> inner n (Printf.sprintf "%s  " indent) t) cs;
+        Printf.printf "%s}\n" indent
+    in inner "ROOT" "" t
 end
 
-type 'a wrapped_field = Fld : (_, 'a) Rpc.Types.field -> 'a wrapped_field
 
 type 'a Rpc.Types.cls += Stats : 'a wrapped_field StatTree.t Rpc.Types.cls
 
@@ -94,25 +137,8 @@ let map_fld : type b. (b, 'a) Rpc.Types.field -> (int64, 'a wrapped_field StatTr
     fdefault = None;
     }
 
-let dump_since : int64 -> 'b -> 'b wrapped_field StatTree.t -> Rpc.t = fun g db st ->
-  let update_acc : type a. (a, 'b) Rpc.Types.field -> Rpc.t -> Rpc.t = fun fld acc ->
-    let rec update_dict d p =
-      match p,d with
-      | [], _ -> Rpcmarshal.marshal fld.field (fld.fget db)
-      | x::xs, Rpc.Dict dict ->
-        let cur,others = List.partition (fun (x',_) -> x=x') dict in
-        let subdict = match cur with | [] -> Rpc.Dict [] | [(_,r)] -> r | _ -> failwith "Multiple bindings" in
-        let new_binding = update_dict subdict xs in
-        Rpc.Dict ((x,new_binding)::others)
-      | _, _ -> failwith "Can't update non-dict with sub-fields"
-    in
-    update_dict acc fld.fname
-  in
-  let open Rpc in
-  (StatTree.fold_over_recent g (fun _path acc fld -> match fld with Fld f -> update_acc f acc) (Rpc.Dict []) st) |>
-  function
-  | Dict xs -> 
-    Dict (List.map (function 
-      | (n',Dict ys) -> (n',Rpc.Dict (List.map (function | (n,Rpc.Enum [y]) -> (n,Rpc.Enum [y]) | (n, z) -> (n,Rpc.Enum [z])) ys))
-      | z -> z) xs)
-  | a -> a
+let dump_since : int64 -> 'b Rpc.Types.typ -> 'b -> 'b wrapped_field StatTree.t -> Rpc.t option = fun g typ db st ->
+  let partial = StatTree.to_partial g st in
+  match partial with
+  | Some p -> Some (Rpcmarshal.marshal_partial typ p db)
+  | None -> None

@@ -54,8 +54,10 @@ module Make (DB : DB) = struct
    fun fld f db ->
     let gen = Int64.add db.gen 1L in
     let otherfld = Stat.map_fld fld in
+    let newdb = fld.fset (f (fld.fget db.db)) db.db in 
+    if newdb == db.db then db else
     { gen
-    ; db = fld.fset (f (fld.fget db.db)) db.db
+    ; db = newdb
     ; st = otherfld.fset gen db.st }
 
   let add : 'a Rpc.Types.ref -> 'a -> db -> db =
@@ -235,5 +237,5 @@ module Make (DB : DB) = struct
   
   let inject db = {db with gen = Int64.add db.gen 1L}
   
-  let dump_since gen db = (db.gen, Stat.dump_since gen db.db db.st)
+  let dump_since gen db = (db.gen, Stat.dump_since gen DB.typ_of db.db db.st)
 end

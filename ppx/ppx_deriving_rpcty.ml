@@ -311,6 +311,7 @@ module Typ_of = struct
             let fset =
               [%expr
                 fun v _s ->
+                  if [%e fget] _s == v then _s else
                   [%e
                     pexp_record
                       [(Located.mk (lident f_name), [%expr v])]
