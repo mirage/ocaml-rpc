@@ -51,3 +51,4 @@
  (libraries rpclib.core rpclib.xml)
  (modules rpclib)
 )
+

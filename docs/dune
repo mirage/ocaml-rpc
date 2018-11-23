@@ -1,0 +1,14 @@
+(rule
+ (targets index.mld)
+ (deps ../README.md)
+ (action
+  (with-stdout-to
+   %{targets}
+   (run %{bin:md2mld} -min-header 3 %{deps})
+  )
+ )
+)
+
+(documentation
+ (package rpc)
+)
