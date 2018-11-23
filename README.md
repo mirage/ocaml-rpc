@@ -3,7 +3,8 @@
 `ocaml-rpc` is a library that provides remote procedure calls (RPC)
 using XML or JSON as transport encodings. The transport mechanism itself
 is outside the scope of this library as all conversions are from and to
-strings.
+strings. The `odoc` generated documentation is available at
+[mirage.github.io/ocaml-rpc/rpclib](http://mirage.github.io/ocaml-rpc/rpclib/index.html).
 
 [![Build Status](https://travis-ci.org/mirage/ocaml-rpc.svg?branch=master)](https://travis-ci.org/mirage/ocaml-rpc)
 
