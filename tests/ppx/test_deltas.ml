@@ -141,7 +141,7 @@ let test_deltas () =
   Printf.printf "Put in %d and %d objects" (List.length r1s) (List.length r2s);
   let rec do_delta db replicated_db n =
     match n with
-    | 0 -> ()
+    | 0 -> Printf.printf "final generation count: %Ld\n" db.M.gen
     | n -> begin
       let db = set_random db in
       (* Printf.printf "db.gen=%Ld\n" db.M.gen; *)
@@ -188,5 +188,5 @@ let test_deltas () =
 
 
 let tests = [
-  "Deltas", `Quick, test_delta_specific
+  "Deltas", `Quick, test_deltas
 ]
