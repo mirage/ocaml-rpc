@@ -26,6 +26,7 @@ module StatTree = struct
   (* Each node has a 'Stat.t' with creation/modification information,
      optional data, and a list of children, stored as a (string, 'a t)
      association list *)
+  
   type 'a t = Node of Stat.t * (string * 'a t) list
 
   let empty = Node (Stat.make 0L, [])
@@ -58,8 +59,9 @@ module StatTree = struct
       in
       Node (Stat.update g st, new_mine::others)
 
+  exception Test of (string * Rpcmarshal.marshalty) list
   let to_partial gen t =
-    let rec inner t =
+    let rec partial_inner t =
       match t with
       | Node (st, children) ->
           if st.Stat.created > gen
@@ -68,11 +70,14 @@ module StatTree = struct
             if List.length children = 0
             then Some Complete
             else 
-              let modified_children = List.fold_left (fun acc (p, t) -> match inner t with Some t' -> (p,t')::acc | None -> acc) [] children in
+              let modified_children =
+                try
+                  List.fold_left (fun acc (p, t) -> match partial_inner t with Some t' -> (p,t')::acc | None -> raise (Test acc)) [] children 
+                with Test acc -> acc in
               Some (Rpcmarshal.Partial modified_children)
             end
           else None
-    in inner t
+    in partial_inner t
 
   let print st =
     let vprinter = function
