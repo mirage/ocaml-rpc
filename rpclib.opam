@@ -9,7 +9,7 @@ bug-reports: "https://github.com/mirage/ocaml-rpc/issues"
 depends: [
   "ocaml" {>= "4.04.0"}
   "alcotest" {with-test}
-  "jbuilder" {build}
+  "dune" {build & >= "1.1.0"}
   "cmdliner"
   "rresult"
   "xmlm"
@@ -17,7 +17,7 @@ depends: [
 ]
 flags: light-uninstall
 build: [
-  ["jbuilder" "build" "-p" name "-j" jobs]
-  ["jbuilder" "runtest" "-p" name] {with-test}
+  ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "runtest" "-p" name] {with-test}
 ]
 dev-repo: "git://github.com/mirage/ocaml-rpc"
