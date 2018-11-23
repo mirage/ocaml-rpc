@@ -18,7 +18,7 @@ let check_marshal_unmarshal :
 
 let check_unmarshal_error : (Rpc.t -> 'a) -> Rpc.t -> unit =
  fun unmarshal t ->
-  let u = try Some (unmarshal t) with e -> None in
+  let u = try Some (unmarshal t) with _e -> None in
   match u with
   | Some _ -> Alcotest.fail "Expecting an error when unmarshalling"
   | None -> ()

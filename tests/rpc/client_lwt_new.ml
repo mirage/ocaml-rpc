@@ -116,7 +116,7 @@ module ImplM = struct
   let rpc4 abs =
     return (Printf.sprintf "Abs: %s\n" (AbstractMod.string_of abs))
 
-  let rpc5 str_opt () =
+  let rpc5 _str_opt () =
     return "good"
 end
 
