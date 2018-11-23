@@ -8,6 +8,7 @@ let remove key m = {m = M.remove key m.m}
 let update key v m =
   let key' = key in
   {m = M.add key' v (M.remove key' m.m)}
+let mem key m = M.mem key m.m 
 let find key m = M.find key m.m
 let keys m = M.fold (fun k _ acc -> k::acc) m.m []
 let empty = {m=M.empty}

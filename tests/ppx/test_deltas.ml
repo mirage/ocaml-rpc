@@ -77,33 +77,47 @@ let mkobj cls db =
 type fld = Fld : 'a Rpc.Types.cls * ('b, 'a) Rpc.Types.field -> fld
 
 
+
 let rndelt l =
   List.nth l (Random.int (List.length l))
 
+let rndref db t =
+  Rpc.Types.make_ref t (DB.typ_of_cls t) (rndelt (Refmap.keys ((DB.find_objs t).fget db.M.db)))
+
+type boxed_cls = BCls : 'a Rpc.Types.cls -> boxed_cls
+
+let all_classes = [BCls TY1; BCls TY2]
+
 let set_random db =
-  let fld =
-    match Random.int 6 with
-    | 0 -> Fld (TY1, ty1_f1)
-    | 1 -> Fld (TY1, ty1_f2)
-    | 2 -> Fld (TY1, ty1_f3)
-    | 3 -> Fld (TY1, ty1_f4)
-    | 4 -> Fld (TY2, ty2_t2_f1)
-    | 5 -> Fld (TY2, ty2_t2_f2)
+  Printf.printf "ty1s: %d ty2s: %d\n" (Refmap.keys db.M.db.DB.ty1 |> List.length) (Refmap.keys db.M.db.DB.ty2 |> List.length);
+  let db =
+    match Random.int 10 with
+    | 0 ->
+      (let cls = rndelt all_classes in match cls with BCls x -> 
+        let ref = rndref db x in
+        Printf.printf "deleting obj: %s\n%!" Rpc.Types.(name_of_ref ref);
+        M.remove ref db)
+    | _ -> db 
   in
-  let rndref : type a. a Rpc.Types.cls -> a Rpc.Types.ref = function
-  | TY1 -> Rpc.Types.make_ref TY1 typ_of_ty1 (rndelt (Refmap.keys db.M.db.ty1))
-  | TY2 -> Rpc.Types.make_ref TY2 typ_of_ty2 (rndelt (Refmap.keys db.M.db.ty2))
+  let db =
+    match Random.int 10 with
+    | 0 ->
+      (let cls = rndelt all_classes in match cls with BCls x -> let (db,_) = mkobj x db in db)
+    | _ -> db
   in
+  let fld t =
+    let typ = DB.typ_of_cls t in
+    let fields =
+      let open Rpc.Types in
+      match typ with Struct s -> List.map (fun (BoxedField f) -> Fld (t,f)) s.Rpc.Types.fields | _ -> [] in
+    rndelt fields
+  in
+  let fld = let cls = rndelt all_classes in match cls with BCls x -> fld x in
   match fld with
-  | Fld (TY1, f) ->
-    let ref = rndref TY1 in
+  | Fld (cls, f) ->
+    let ref = rndref db cls in
     let v = Rpc_genfake.genall 5 "foo" f.Rpc.Types.field |> rndelt in 
-(*    Printf.printf "setting ty1 ref %s field %s to %s" (Rpc.Types.name_of_ref ref) (String.concat "." (f.Rpc.Types.fname)) (Rpc.to_string (Rpcmarshal.marshal f.Rpc.Types.field v)); *)
-    M.set ref f v db
-  | Fld (TY2, f) ->
-    let ref = rndref TY2 in
-    let v = Rpc_genfake.genall 5 "foo" f.Rpc.Types.field |> rndelt in
-(*    Printf.printf "setting ty1 ref %s field %s to %s" (Rpc.Types.name_of_ref ref) (String.concat "." (f.Rpc.Types.fname)) (Rpc.to_string (Rpcmarshal.marshal f.Rpc.Types.field v)); *)
+    Printf.printf "setting ty1 ref %s field %s to %s\n" (Rpc.Types.name_of_ref ref) (String.concat "." (f.Rpc.Types.fname)) (Rpc.to_string (Rpcmarshal.marshal f.Rpc.Types.field v));
     M.set ref f v db
 
 let test_delta_specific () =
@@ -137,7 +151,7 @@ let test_deltas () =
   let r1 = List.hd r1s in
   let (gen,_) = M.dump_since 0L db in
   let db = M.set r1 ty1_f3 (Some (Two 4)) db in
-  let _,rpc = M.dump_since gen db in
+  let _,_rpc = M.dump_since gen db in
   Printf.printf "Put in %d and %d objects" (List.length r1s) (List.length r2s);
   let rec do_delta db replicated_db n =
     match n with
@@ -146,22 +160,24 @@ let test_deltas () =
       let db = set_random db in
       (* Printf.printf "db.gen=%Ld\n" db.M.gen; *)
       let next =
-        if Random.int 10 = 0
+        if Random.int 1 = 0
         then begin
           let (new_gen, deltas) = M.dump_since replicated_db.M.gen db in
           let new_replicated_db =
             match deltas with
             | Some rpc -> begin
-              (*Printf.printf "since=%Ld new_gen=%Ld deltas: %s \n%!" (replicated_db.M.gen) new_gen (Jsonrpc.to_string rpc);*)
+              Printf.printf "since=%Ld new_gen=%Ld deltas: %s \n%!" (replicated_db.M.gen) new_gen (Jsonrpc.to_string rpc);
               match Rpcmarshal.unmarshal_partial DB.typ_of replicated_db.db rpc with
               | Ok db ->
                 M.{gen=new_gen; db=db; st=Stat.StatTree.empty}
               | Error (`Msg m) ->
                 failwith (Printf.sprintf "Failure: %s" m)
               end
-            | None -> M.{gen=new_gen; db=replicated_db.db; st=Stat.StatTree.empty}
+            | None ->
+              Printf.printf "since=%Ld new_gen=%Ld deltas: None\n%!" (replicated_db.M.gen) new_gen;
+              M.{gen=new_gen; db=replicated_db.db; st=Stat.StatTree.empty}
           in
-          let rpc1 = Rpcmarshal.marshal DB.typ_of db.M.db in
+(*          let rpc1 = Rpcmarshal.marshal DB.typ_of db.M.db in
           let rpc2 = Rpcmarshal.marshal DB.typ_of new_replicated_db.M.db in
           if not (rpc1 = rpc2) then begin
             Printf.printf "ERROR: difference detected!\n%!";
@@ -173,16 +189,16 @@ let test_deltas () =
             (match partials with
             | Some p -> Stat.StatTree.print_partials p
             | None -> Printf.printf "No partial!");
-            failwith "error"
-          end;
-          new_replicated_db
+            failwith "error" 
+          end;*)
+          new_replicated_db 
         end else
           replicated_db
       in
       
       do_delta db next (n-1)
     end
-  in do_delta db M.{gen=(-1L); db=DB.empty_db; st=Stat.StatTree.empty} 1000000
+  in do_delta db M.{gen=(-1L); db=DB.empty_db; st=Stat.StatTree.empty} 10000
 
 
 

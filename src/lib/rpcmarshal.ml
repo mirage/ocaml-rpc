@@ -66,7 +66,6 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result =
     match v with
     | Enum [x] -> unmarshal t x >>= fun x -> return (Some x)
     | Enum [] -> return None
-    
     | y ->
         Rresult.R.error_msg
           (Printf.sprintf "Expecting an Enum value, got '%s'" (Rpc.to_string y))
@@ -108,6 +107,7 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result =
   | Struct {constructor; sname; _} -> (
     match v with
     | Rpc.Dict keys' ->
+        (if List.mem_assoc "__p" keys' then failwith "Found partial structure in unmarshal");
         let keys =
           List.map (fun (s, v) -> (String.lowercase_ascii s, v)) keys'
         in
@@ -120,14 +120,8 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result =
                  match ty with
                  | Option x -> (
                    try
-                     let rpc = List.assoc s keys in
-                     match unmarshal x rpc with
-                     | Ok v -> return (Some v)
-                     | Error (`Msg m) ->
-                        match unmarshal (Option x) rpc with
-                        | Ok v -> return v
-                        | Error (`Msg m') -> Error (`Msg (Printf.sprintf "Tried hard, got '%s' once and '%s' the second time" m m')) 
-                        
+                     List.assoc s keys |> unmarshal x
+                     >>= fun o -> return (Some o)
                    with _ -> return None )
                  | y ->
                    try List.assoc s keys |> unmarshal y with Not_found ->
@@ -136,7 +130,7 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result =
                           "No value found for key: '%s' when unmarshalling '%s'"
                           s sname)
                in
-               x) }
+               x)  }
     | _ ->
         error_msg
           (Printf.sprintf "Expecting Rpc.Dict when unmarshalling a '%s' (got %s)" sname (Rpc.to_string v))
@@ -159,7 +153,8 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result =
   | Refmap ty -> begin
     match v with
     | Rpc.Dict xs ->
-      List.fold_left (fun refmap (ref,v) -> refmap >>= fun r -> unmarshal ty v >>= fun record -> Ok (Refmap.add ref record r))
+      if List.mem_assoc "__p" xs then failwith "Not expecting partial!";
+      List.fold_left (fun refmap (ref,v) -> refmap >>= fun r -> unmarshal (Option ty) v >>= function | Some record -> Ok (Refmap.add ref record r) | None -> Error (`Msg ("Expecting non-optional values when unmarshalling a complete refmap")) )
         (Ok Refmap.empty) xs
     | _ -> error_msg "Expecting Rpc.Dict when unmarshalling a refmap"
     end  
@@ -168,12 +163,24 @@ let rec unmarshal_partial : type a. a typ -> a -> Rpc.t -> (a, err) Result.resul
   let open Rresult.R in
   match t,v with
   | Struct { fields; _ }, Dict d ->
+    if not (List.mem_assoc "__p" d) then unmarshal t v else
     List.fold_left (fun acc f -> match f with | BoxedField fld ->
       match fld.fname with
       | [fname] -> acc >>= fun a -> (try unmarshal_partial fld.field (fld.fget a) (List.assoc fname d) >>= fun x -> Ok (fld.fset x a) with _ -> Ok a)
       | _ -> Rresult.R.error_msg (Printf.sprintf "Expecting single path fields in unmarshal_partial (got %s)" (String.concat "," fld.fname))
     ) (Ok cur) fields
   | Refmap typ, Dict d ->
+    let is_partial, others =
+      let rec inner = function
+      | [] -> false, []
+      | (x,_)::xs when x="__p" ->
+        (true, xs)
+      | x::xs -> let (res,others) = inner xs in (res,x::others)
+      in inner d 
+    in
+    if not is_partial
+    then (unmarshal t v)
+    else
     List.fold_left (fun acc (r,rpc) ->
       acc >>= fun a ->
       (match rpc with
@@ -188,9 +195,9 @@ let rec unmarshal_partial : type a. a typ -> a -> Rpc.t -> (a, err) Result.resul
       | Rpc.Enum [] ->
         Ok None
       | x ->
-        Error (`Msg (Printf.sprintf "Excpecting enum values when unmarshalling a Refmap (got %s)" (Rpc.to_string x))))
+        Error (`Msg (Printf.sprintf "Expecting enum values when unmarshalling a Refmap (got %s)" (Rpc.to_string x))))
       >>= function Some x -> Ok (Refmap.add r x a) | None -> Ok (Refmap.remove r a)
-      ) (Ok cur) d
+      ) (Ok cur) others
   | _ -> unmarshal t v
 
 let rec marshal_partial : type a. a typ -> marshalty -> a -> Rpc.t =
@@ -242,7 +249,9 @@ let rec marshal_partial : type a. a typ -> marshalty -> a -> Rpc.t =
               let key = String.concat "." f.fname in
               let value = marshal_partial f.field Complete (f.fget v) in
               match (f.field, value) with
-              | _, _ -> (key, value) :: acc )
+              | Option _, Rpc.Enum [] -> acc
+              | Option _, Rpc.Enum [x] -> (key, x) :: acc
+              | _, _ -> (key,value)::acc )
           [] fields
       in
       Rpc.Dict fields
@@ -277,12 +286,12 @@ let rec marshal_partial : type a. a typ -> marshalty -> a -> Rpc.t =
       Rpc.Dict (List.map (fun key -> (key, marshal_partial (Option typ) Complete (Some (Refmap.find key v)))) keys)
     end
   | Refmap typ, Partial keys -> begin
-      Rpc.Dict (List.map (fun (key,subkeys) ->
+      Rpc.Dict (("__p",Rpc.Bool true) :: (List.map (fun (key,subkeys) ->
         let v =
           if Refmap.mem key v
           then Rpc.Enum [marshal_partial typ subkeys (Refmap.find key v)]
           else Rpc.Enum []
-        in (key,v)) keys)
+        in (key,v)) keys))
       end
   | typ, Partial _ ->
     failwith (Printf.sprintf "Can't marshal_partial a typ %s" (Rpc.Types.string_of_typ typ))
