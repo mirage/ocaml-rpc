@@ -8,12 +8,12 @@ doc: "https://mirage.github.io/ocaml-rpc/rpclib-js"
 bug-reports: "https://github.com/mirage/ocaml-rpc/issues"
 depends: [
   "ocaml"
-  "jbuilder" {build}
+  "dune" {build & >= "1.1.0"}
   "rpclib" {>= "5.0.0"}
   "js_of_ocaml"
   "js_of_ocaml-ppx"
   "lwt"
 ]
 flags: light-uninstall
-build: ["jbuilder" "build" "-p" name "-j" jobs]
+build: ["dune" "build" "-p" name "-j" jobs]
 dev-repo: "git://github.com/mirage/ocaml-rpc"
