@@ -18,7 +18,6 @@ depends: [
   "async" {with-test}
   "alcotest" {with-test}
 ]
-flags: light-uninstall
 build: [
   ["jbuilder" "build" "-p" name "-j" jobs]
   ["jbuilder" "runtest" "-p" name "-j" jobs] {with-test}
