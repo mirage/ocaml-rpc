@@ -16,7 +16,6 @@ depends: [
 conflicts: [
   "core" {< "v0.9.0"}
 ]
-flags: light-uninstall
 build: [
   ["dune" "build" "-p" name "-j" jobs]
   ["dune" "runtest" "-p" name] {with-test}
