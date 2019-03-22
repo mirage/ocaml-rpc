@@ -48,7 +48,7 @@ let rec rpc_to_json t =
   | Dict a ->
       `Assoc (Rpcmarshal.tailrec_map (fun (k, v) -> (k, rpc_to_json v)) a)
 
-exception JsonToRpcError of Y.json
+exception JsonToRpcError of Y.t
 
 let rec json_to_rpc t =
   match t with

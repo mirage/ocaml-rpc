@@ -20,16 +20,16 @@ let do_rpc enc dec content_type ~url call =
   let method_ = "POST" in
   let contents = enc call in
   let res, w = Lwt.task () in
-  let req = XmlHttpRequest.create () in
-  req ## _open (Js.string method_) (Js.string url) Js._true ;
-  req ## setRequestHeader (Js.string "Content-type") (Js.string content_type) ;
+  let req = Js_of_ocaml.XmlHttpRequest.create () in
+  req ## _open (Js_of_ocaml.Js.string method_) (Js_of_ocaml.Js.string url) Js_of_ocaml.Js._true ;
+  req ## setRequestHeader (Js_of_ocaml.Js.string "Content-type") (Js_of_ocaml.Js.string content_type) ;
   req ##. onreadystatechange :=
-    Js.wrap_callback (fun _ ->
+    Js_of_ocaml.Js.wrap_callback (fun _ ->
         match req ##. readyState with
-        | XmlHttpRequest.DONE ->
-            Lwt.wakeup w (dec (Js.to_string req ##. responseText))
+        | Js_of_ocaml.XmlHttpRequest.DONE ->
+            Lwt.wakeup w (dec (Js_of_ocaml.Js.to_string req ##. responseText))
         | _ -> () ) ;
-  req ## send (Js.some (Js.string contents)) ;
+  req ## send (Js_of_ocaml.Js.some (Js_of_ocaml.Js.string contents)) ;
   Lwt.on_cancel res (fun () -> req ## abort) ;
   res
 
