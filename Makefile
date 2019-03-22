@@ -1,22 +1,22 @@
 .PHONY: build release install uninstall clean test reindent reformat
 
 build:
-	jbuilder build @install --dev
+	dune build @install
 
 release:
-	jbuilder build @install
+	dune build @install --profile=release
 
 install:
-	jbuilder install
+	dune install
 
 uninstall:
-	jbuilder uninstall
+	dune uninstall
 
 clean:
-	jbuilder clean
+	dune clean
 
 test:
-	jbuilder runtest
+	dune runtest
 
 reindent:
 	git ls-files '*.ml*' | xargs ocp-indent -i
