@@ -39,7 +39,7 @@ val get : string -> (string * 'a) list -> 'a
 
 val call_of_string : string -> Rpc.call
 
-val version_id_and_call_of_string : string -> version * Rpc.t * Rpc.call
+val version_id_and_call_of_string : string -> version * (Rpc.t option) * Rpc.call
 
 val response_of_string : ?strict:bool -> string -> Rpc.response
 

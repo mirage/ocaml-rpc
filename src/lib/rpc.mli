@@ -200,15 +200,17 @@ end
 
 type callback = string list -> t -> unit
 
-type call = {name: string; params: t list}
+type call = {name: string; params: t list; notif: bool}
 
 val call : string -> t list -> call
+
+val notif : string -> t list -> call
 
 val string_of_call : call -> string
 
 (** {2 Responses} *)
 
-type response = {success: bool; contents: t}
+type response = {success: bool; contents: t; notif: bool}
 
 val string_of_response : response -> string
 

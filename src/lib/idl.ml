@@ -1,5 +1,5 @@
 module Param = struct
-  type 'a t =
+ type 'a t =
     { name: string option
     ; description: string list
     ; typedef: 'a Rpc.Types.def

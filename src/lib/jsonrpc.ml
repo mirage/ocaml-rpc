@@ -82,24 +82,20 @@ let new_id =
     !count
 
 let string_of_call ?(version= V1) call =
-  let json =
+  let jsontmp =
     match version with
     | V1 ->
-        Dict
           [ ("method", String call.name)
-          ; ("params", Enum call.params)
-          ; ("id", Int (new_id ())) ]
+          ; ("params", Enum call.params) ]
     | V2 ->
         let params =
           match call.params with [Dict x] -> Dict x | _ -> Enum call.params
         in
-        Dict
           [ ("jsonrpc", String "2.0")
           ; ("method", String call.name)
-          ; ("params", params)
-          ; ("id", Int (new_id ())) ]
-  in
-  to_string json
+          ; ("params", params) ]
+  in let json = if not call.notif then jsontmp @ [ ("id", Int (new_id ())) ] else jsontmp in
+  to_string (Dict json)
 
 let json_of_response ?(id= Int 0L) version response =
   if response.Rpc.success then
@@ -203,13 +199,12 @@ let version_id_and_call_of_string str =
         in
         let id =
           match get "id" d with
-          | Int _ as x -> x
-          | String _ as y -> y
-          | _ ->
-              raise
-                (Malformed_method_request "Invalid field 'id' in request body")
+          | Int _ as x -> Some x
+          | String _ as y -> Some y
+          | _ -> None (* is a notification *)
         in
-        (version, id, call name params)
+        let c = call name params in
+        (version, id, {c with notif = id == None})
     | _ -> raise (Malformed_method_request "Invalid request body")
   with
   | Missing_field field ->
