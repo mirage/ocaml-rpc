@@ -619,8 +619,8 @@ module Exn = struct
         match t.Param.name with Some _ -> true | None -> has_named_args f )
       | Returning (_, _) -> false
 
-    let declare : string -> string list -> 'a fn -> 'a res =
-     fun name _ ty ->
+    let declare_ : bool -> string -> string list -> 'a fn -> 'a res =
+     fun notif name _ ty ->
       (* We do not know the wire name yet as the description may still be unset *)
       Hashtbl.add funcs name None ;
       fun impl ->
@@ -658,8 +658,9 @@ module Exn = struct
                   in
                   inner f (impl arg) call'
               | Returning (t, _) ->
-                  Rpc.success
-                    (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty impl)
+                  let call = Rpc.success
+                      (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty impl) in
+                  { call with notif = notif }
             with e ->
               let (BoxedError error_ty) = get_error_ty f in
               match error_ty.Error.matcher e with
@@ -675,6 +676,8 @@ module Exn = struct
         let wire_name = get_wire_name !description name in
         Hashtbl.add funcs wire_name (Some rpcfn)
 
-    let declareNotification = declare
+    let declare name a ty = declare_ true name a ty
+
+    let declareNotification name a ty = declare_ false name a ty
   end
 end
