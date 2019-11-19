@@ -105,6 +105,8 @@ module type RPC = sig
   (** [declare name description typ] is how an RPC is declared to the
       module implementing the functionality. The return type is dependent
       upon the module being used *)
+
+  val declareNotification : string -> string list -> 'a fn -> 'a res
 end
 
 module type MONAD = sig
