@@ -175,4 +175,6 @@ module Gen () = struct
       , Cmdliner.Term.info wire_name ~doc )
     in
     terms := generate :: !terms
+
+  let declareNotification = declare
 end
