@@ -343,8 +343,8 @@ module Make (M : MONAD) = struct
         match t.Param.name with Some _ -> true | None -> has_named_args f )
       | Returning (_, _) -> false
 
-    let declare : string -> string list -> 'a fn -> 'a res =
-     fun name _ ty ->
+    let declare_ : bool -> string -> string list -> 'a fn -> 'a res =
+     fun notif name _ ty ->
       let ( >>= ) = M.bind in
       (* We do not know the wire name yet as the description may still be unset *)
       Hashtbl.add funcs name None ;
@@ -380,14 +380,14 @@ module Make (M : MONAD) = struct
             | Returning (t, e) ->
                 T.bind impl (function
                   | Result.Ok x ->
-                      M.return
-                        (Rpc.success
-                           (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty x))
+                    let res = (Rpc.success
+                                 (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty x)) in
+                    M.return { res with notif = notif }
                   | Result.Error y ->
-                      M.return
-                        (Rpc.failure
-                           (Rpcmarshal.marshal e.Error.def.Rpc.Types.ty y)) )
-                |> T.get
+                    let res = (Rpc.failure
+                                 (Rpcmarshal.marshal e.Error.def.Rpc.Types.ty y)) in
+                    M.return { res with notif = notif })
+                    |> T.get
           in
           inner ty impl
         in
@@ -396,7 +396,9 @@ module Make (M : MONAD) = struct
         let wire_name = get_wire_name !description name in
         Hashtbl.add funcs wire_name (Some rpcfn)
 
-    let declareNotification = declare
+    let declareNotification name a ty = declare_ true name a ty
+
+    let declare name a ty = declare_ false name a ty
   end
 end
 
