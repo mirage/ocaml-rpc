@@ -198,10 +198,13 @@ let version_id_and_call_of_string str =
                      "Invalid field 'params' in request body")
         in
         let id =
-          match get "id" d with
-          | Int _ as x -> Some x
-          | String _ as y -> Some y
-          | _ -> None (* is a notification *)
+          match get' "id" d with
+          | Some (Int a) -> Some (Int a)
+          | Some (String a) -> Some (String a)
+          | Some _ -> 
+            raise
+              (Malformed_method_request "Invalid field 'id' in request body")
+          | None -> None (* is a notification *)
         in
         let c = call name params in
         (version, id, {c with notif = id == None})
