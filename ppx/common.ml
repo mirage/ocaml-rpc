@@ -159,7 +159,8 @@ let convert_doc x = split x |> List.map ~f:(String.strip ~drop:(function | '\n' 
     ocamldoc docstrings and return them instead. In both cases, the result is an expression of
     type list *)
 let get_doc ~loc rpcdoc (attrs : attributes) =
-  let ocamldoc = attr loc "ocaml.doc" attrs in
+  let attr_list = List.map attrs ~f:(fun a -> (a.attr_name, a.attr_payload)) in
+  let ocamldoc = attr loc "ocaml.doc" attr_list in
   match rpcdoc, ocamldoc with
   | Some e, _ -> e
   | _, Some s -> elist ~loc (convert_doc s |> List.map ~f:(estring ~loc))

@@ -93,7 +93,9 @@ module Of_rpc = struct
       [%expr [%e evar ("poly_"^name)]]
 
     | { ptyp_desc = Ptyp_variant (fields, _, _); _ } ->
-      let inherits, tags = List.partition_tf ~f:(function Rinherit _ -> true | _ -> false) fields in
+      let inherits, tags =
+        List.partition_tf 
+          ~f:(function a -> match a.prf_desc with Rinherit _ -> true | _ -> false) fields in
       let bad = [%expr failwith "Unknown tag/contents"] in
       let default_expr =
         match Attribute.get Attrs.ct_default typ with
@@ -101,12 +103,12 @@ module Of_rpc = struct
         | Some expr -> [%expr match rpc' with | String _ | Enum ((String _) :: _) -> [%e expr ] | _ -> [%e bad]] in
       let tag_cases =
         tags |> List.map ~f:(fun field ->
-            match field with
-            | Rtag (label, _attrs, true, []) ->
+            match field.prf_desc with
+            | Rtag (label, true, []) ->
               let label' = String.lowercase label.txt in
               let name = match Attribute.get Attrs.rt_name field with Some s -> s | None -> label' in
               case ~lhs:[%pat? Rpc.String [%p pstring name]] ~guard:None ~rhs:(pexp_variant label.txt None)
-            | Rtag (label, _attrs, false, [ { ptyp_desc = Ptyp_tuple typs; _ }]) ->
+            | Rtag (label, false, [ { ptyp_desc = Ptyp_tuple typs; _ }]) ->
               let label' = String.lowercase label.txt in
               let name = match Attribute.get Attrs.rt_name field with Some s -> s | None -> label' in
               let exprs = List.mapi ~f:(fun i typ -> [%expr [%e expr_of_typ ~loc typ] [%e evar (argn i) ] ] ) typs in
@@ -114,7 +116,7 @@ module Of_rpc = struct
                                           Rpc.Enum [%p plist (List.mapi ~f:(fun i _ -> pvar (argn i)) typs)]]])
                 ~guard:None
                 ~rhs:(pexp_variant label.txt (Some (pexp_tuple exprs)))
-            | Rtag (label, _attrs, false, [typ]) ->
+            | Rtag (label, false, [typ]) ->
               let label' = String.lowercase label.txt in
               let name = match Attribute.get Attrs.rt_name field with Some s -> s | None -> label' in
               case ~lhs:[%pat? Rpc.Enum [Rpc.String [%p pstring name]; y]]
@@ -126,7 +128,9 @@ module Of_rpc = struct
       and inherits_case =
         (*let toplevel_typ = typ in*)
         let expr = 
-          List.map ~f:(function Rinherit typ -> typ | _ -> assert false) inherits |>
+          List.map 
+            ~f:(function Rinherit typ -> typ | _ -> assert false) 
+            (List.map ~f:(fun a -> a.prf_desc) inherits) |>
           List.fold_left ~f:(fun expr typ ->
               [%expr
                 try [%e expr_of_typ ~loc typ] rpc (*  :> [%t toplevel_typ]*)
@@ -292,13 +296,13 @@ module Rpc_of = struct
     | { ptyp_desc = Ptyp_variant (fields, _, _); _ } ->
       let cases =
         fields |> List.map ~f:(fun field ->
-            match field with
-            | Rtag (label, _, true, []) ->
+            match field.prf_desc with
+            | Rtag (label, true, []) ->
               let l = match Attribute.get Attrs.rt_name field with | Some x -> x | None -> label.txt in
               case
                 ~lhs:(ppat_variant label.txt None) ~guard:None
                 ~rhs:[%expr Rpc.String [%e estring l]]
-            | Rtag (label, _, false, [{ ptyp_desc = Ptyp_tuple typs; _ }]) ->
+            | Rtag (label, false, [{ ptyp_desc = Ptyp_tuple typs; _ }]) ->
               let l = elist (List.mapi ~f:(fun i typ -> pexp_apply (expr_of_typ ~loc typ) [Nolabel,evar (argn i)]) typs) in
               let label = match Attribute.get Attrs.rt_name field with | Some x -> x | None -> label.txt in
               case
@@ -306,7 +310,7 @@ module Rpc_of = struct
                 ~guard:None
                 ~rhs:[%expr Rpc.Enum ( Rpc.String ([%e estring label]) ::
                                        [Rpc.Enum [%e l]])]
-            | Rtag (label, _, false, [typ]) ->
+            | Rtag (label, false, [typ]) ->
               let label = match Attribute.get Attrs.rt_name field with | Some x -> x | None -> label.txt in
               case
                 ~lhs:(ppat_variant label (Some [%pat? x]))
