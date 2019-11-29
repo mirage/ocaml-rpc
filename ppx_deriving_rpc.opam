@@ -7,7 +7,7 @@ homepage: "https://github.com/mirage/ocaml-rpc"
 doc: "https://mirage.github.io/ocaml-rpc/ppx_deriving_rpc"
 bug-reports: "https://github.com/mirage/ocaml-rpc/issues"
 depends: [
-  "ocaml" {>= "4.09.0"}
+  "ocaml" {>= "4.08.0"}
   "jbuilder" {build}
   "rpclib" {>= "5.0.0"}
   "rresult"
