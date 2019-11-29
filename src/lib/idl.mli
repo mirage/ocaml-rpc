@@ -107,6 +107,8 @@ module type RPC = sig
       upon the module being used *)
 
   val declareNotification : string -> string list -> 'a fn -> 'a res
+  (** [declareNotification name description typ] is mostly the same as 
+      declare, only that it allows support from JSON-RPC notifications. *)
 end
 
 module type MONAD = sig
