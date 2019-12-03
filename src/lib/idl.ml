@@ -70,7 +70,7 @@ module type RPC = sig
 
   val declare : string -> string list -> 'a fn -> 'a res
 
-  val declareNotification : string -> string list -> 'a fn -> 'a res
+  val declare_notification : string -> string list -> 'a fn -> 'a res
 end
 
 module type MONAD = sig
@@ -287,7 +287,7 @@ module Make (M : MONAD) = struct
       in
       inner (None, []) ty
 
-    let declareNotification name a ty (rpc: T.rpcfn) = declare_ true name a ty rpc
+    let declare_notification name a ty (rpc: T.rpcfn) = declare_ true name a ty rpc
 
     let declare name a ty (rpc: T.rpcfn) = declare_ false name a ty rpc
   end
@@ -396,7 +396,7 @@ module Make (M : MONAD) = struct
         let wire_name = get_wire_name !description name in
         Hashtbl.add funcs wire_name (Some rpcfn)
 
-    let declareNotification name a ty = declare_ true name a ty
+    let declare_notification name a ty = declare_ true name a ty
 
     let declare name a ty = declare_ false name a ty
   end
@@ -561,7 +561,7 @@ module Exn = struct
       inner (None, []) ty
 
     let declare name a ty = declare_ false name a ty
-    let declareNotification name a ty = declare_ true name a ty
+    let declare_notification name a ty = declare_ true name a ty
   end
 
   let server hashtbl =
@@ -680,6 +680,6 @@ module Exn = struct
 
     let declare name a ty = declare_ true name a ty
 
-    let declareNotification name a ty = declare_ false name a ty
+    let declare_notification name a ty = declare_ false name a ty
   end
 end

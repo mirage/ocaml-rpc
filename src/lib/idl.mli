@@ -106,8 +106,8 @@ module type RPC = sig
       module implementing the functionality. The return type is dependent
       upon the module being used *)
 
-  val declareNotification : string -> string list -> 'a fn -> 'a res
-  (** [declareNotification name description typ] is mostly the same as 
+  val declare_notification : string -> string list -> 'a fn -> 'a res
+  (** [declare_notification name description typ] is mostly the same as
       declare, only that it allows support from JSON-RPC notifications. *)
 end
 

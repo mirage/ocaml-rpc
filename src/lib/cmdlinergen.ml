@@ -178,5 +178,5 @@ module Gen () = struct
     terms := generate :: !terms
 
   let declare name desc_list ty = declare_ true name desc_list ty
-  let declareNotification name desc_list ty = declare_ false name desc_list ty
+  let declare_notification name desc_list ty = declare_ false name desc_list ty
 end
