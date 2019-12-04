@@ -10,6 +10,8 @@
 * opam: remove the 'build' directive on dune dependency
 * opam: remove unnecessary flag
 * port to dune
+
+## 6.0.0 (November 2018)
 * Fix ppx_deriving_rpc for newer ppxlib
 * test_pythongen: ignore W504, it's breaking the internet and is pointless
 * Add more tests and documentation
