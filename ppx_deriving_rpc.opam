@@ -8,7 +8,7 @@ doc: "https://mirage.github.io/ocaml-rpc/ppx_deriving_rpc"
 bug-reports: "https://github.com/mirage/ocaml-rpc/issues"
 depends: [
   "ocaml" {>= "4.03.0"}
-  "jbuilder" {build}
+  "dune" {>= "1.5.0"}
   "rpclib" {>= "5.0.0"}
   "rresult"
   "ppxlib"
@@ -19,7 +19,7 @@ depends: [
   "alcotest" {with-test}
 ]
 build: [
-  ["jbuilder" "build" "-p" name "-j" jobs]
-  ["jbuilder" "runtest" "-p" name "-j" jobs] {with-test}
+  ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
 dev-repo: "git://github.com/mirage/ocaml-rpc"
