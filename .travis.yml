@@ -10,10 +10,13 @@ env:
         - PINS="rpclib.master:. rpclib-js.master:. rpclib-html.master:. rpclib-lwt.master:. rpclib-async.master:. ppx_deriving_rpc.master:."
         - PACKAGE=rpc
     matrix:
-        - OCAML_VERSION=4.06.0 PRE_INSTALL_HOOK="sudo apt-get update -y; sudo apt-get install -y pylint pycodestyle"
+        - OCAML_VERSION=4.08.1 PRE_INSTALL_HOOK="sudo apt-get update -y; sudo apt-get install -y pylint pycodestyle"
         # We install the packages required by the unit test for linting the generated Python code in PRE_INSTALL_HOOK:
-        - PACKAGE=rpclib OCAML_VERSION=4.06.0
-        - PACKAGE=ppx_deriving_rpc OCAML_VERSION=4.06.0
+        - PACKAGE=rpclib OCAML_VERSION=4.08.1
+        - PACKAGE=ppx_deriving_rpc OCAML_VERSION=4.08.1
+        - OCAML_VERSION=4.09.0 PRE_INSTALL_HOOK="sudo apt-get update -y; sudo apt-get install -y pylint pycodestyle"
+        - OCAML_VERSION=4.07.1 PRE_INSTALL_HOOK="sudo apt-get update -y; sudo apt-get install -y pylint pycodestyle"
+        - OCAML_VERSION=4.06.0 PRE_INSTALL_HOOK="sudo apt-get update -y; sudo apt-get install -y pylint pycodestyle"
         - OCAML_VERSION=4.05.0 PRE_INSTALL_HOOK="sudo apt-get update -y; sudo apt-get install -y pylint pycodestyle"
         - OCAML_VERSION=4.04.2 PRE_INSTALL_HOOK="sudo apt-get update -y; sudo apt-get install -y pylint pycodestyle"
 matrix:
