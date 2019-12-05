@@ -1,3 +1,25 @@
+## dev
+* opam: updated bounds on a more conservative basis
+* travis: tests more compilers
+* tests: disable useless-object-inheritance on pylint checks
+* pythongen: generate python2-3 compatible bindings
+* Add ISC license
+* Incremented the upper bound for async's version.
+* Added lower bound for js_of_ocaml in related .opam file.
+* Fixed compilation issue with js_of_ocaml 3.5.0 and 3.5.1.
+* opam: remove the 'build' directive on dune dependency
+* opam: remove unnecessary flag
+* port to dune
+
+## 6.0.0 (November 2018)
+* Fix ppx_deriving_rpc for newer ppxlib
+* test_pythongen: ignore W504, it's breaking the internet and is pointless
+* Add more tests and documentation
+* ppx_deriving_rpc: Switch to ppxlib from ppx_deriving
+* Fix marshalling of optional named parameters
+* Add failing test of optional/unnamed args for rpcs
+* CA-291118: Register an exception printer for IDL errors
+
 ## 5.8.0 (June 2018)
 * rpclib:
   - New `Rpc.Types` variants for 3- and 4-tuples

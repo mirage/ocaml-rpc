@@ -93,6 +93,14 @@ class ListAction(argparse.Action):
         else:
             setattr(namespace, self.dest, {key: value})|}
 
+let compat_block = [
+  Line "if sys.version_info[0] > 2:"
+  ; Block [
+      Line "long = int"
+    ; Line "unicode = str"
+    ; Line "str = bytes"]
+  ; Line "" ]
+
 let reserved_exns =
   [ "Rpc_light_failure"
   ; "Unimplemented"
@@ -250,8 +258,8 @@ let rec typecheck : type a. a typ -> string -> t list =
 let rec value_of : type a. a typ -> string =
   let open Printf in
   function
-    | Basic Int64 -> "0L"
-    | Basic Int -> "0L"
+    | Basic Int64 -> "long(0)"
+    | Basic Int -> "long(0)"
     | Basic Int32 -> "0"
     | Basic Char -> "'c'"
     | Basic String -> {|"string"|}
@@ -386,7 +394,7 @@ let example_stub_user i (BoxedFunction m) =
                                 m.Method.name) )
                        (value_of a.Idl.Param.typedef.ty) )
                    Method.(find_inputs m.ty))))
-      ; Line "print (repr(results))" ] ]
+      ; Line "print(repr(results))" ] ]
 
 let example_skeleton_user i m =
   let open Printf in
@@ -619,7 +627,7 @@ let commandline_run _ (BoxedFunction m) =
             ; Line "use_json = 'json' in request and request['json']"
             ; Line
                 (sprintf "results = self.dispatcher.%s(request)" m.Method.name)
-            ; Line "print json.dumps(results)" ]
+            ; Line "print(json.dumps(results))" ]
         ; Line "except Exception as exn:"
         ; Block
             [ Line "if use_json:"
@@ -664,16 +672,19 @@ let of_interfaces ?(helpers= inline_defaults) i =
     in
     [Line "self._dispatcher_dict = {"] @ intersperse_commas methods @ [Line "}"]
   in
-  [ Line
-      (sprintf {|"""Bindings generated for interface %s by rpclib"""|}
+  [ Line (sprintf {|"""Bindings generated for interface %s by rpclib"""|}
          i.Interfaces.name)
+  ; Line ""
+  ; Line "from __future__ import print_function, division"
   ; Line ""
   ; Line "import argparse"
   ; Line "import json"
   ; Line "import logging"
   ; Line "import sys"
   ; Line "import traceback"
-  ; Line "" ]
+  ; Line ""
+  ]
+  @ compat_block
   @ (helpers |> String.split_on_char '\n' |> List.map (fun line -> Line line))
   @ ( try List.map exn_var i.Interfaces.error_decls |> List.flatten with e ->
         Printf.fprintf stderr "Error while generating exceptions of %s"
