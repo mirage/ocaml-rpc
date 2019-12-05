@@ -157,7 +157,7 @@ let get name dict =
       raise (Missing_field name)
   | Some v -> v
 
-let version_id_and_call_of_string str =
+let version_id_and_call_of_string_option str =
   try
     match of_string str with
     | Dict d ->
@@ -218,6 +218,12 @@ let version_id_and_call_of_string str =
       raise
         (Malformed_method_request
            (Printf.sprintf "Unable to parse %s" (Y.to_string json)))
+
+let version_id_and_call_of_string s =
+  let (version, id_, call) = version_id_and_call_of_string_option s in
+  match id_ with
+  | Some id -> (version, id, call)
+  | None    -> raise (Malformed_method_request "Invalid field 'id' in request body")
 
 let call_of_string str =
   let _, _, call = version_id_and_call_of_string str in
