@@ -5,7 +5,7 @@ type _ outerfn =
       -> ('a, 'b) Result.result outerfn
 
 module Method : sig
-  type 'a t = {name: string; description: string list; ty: 'a outerfn}
+  type 'a t = {name: string; description: string list; ty: 'a outerfn; notif: bool}
 
   val find_inputs : 'a outerfn -> Idl.Param.boxed list
 
@@ -72,4 +72,6 @@ module Gen () : sig
   val ( @-> ) : 'a Idl.Param.t -> 'b outerfn -> ('a -> 'b) outerfn
 
   val declare : string -> string list -> 'a fn -> 'a res
+
+  val declare_notification : string -> string list -> 'a fn -> 'a res
 end

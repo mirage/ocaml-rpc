@@ -7,7 +7,7 @@ type _ outerfn =
       -> ('a, 'b) Result.result outerfn
 
 module Method = struct
-  type 'a t = {name: string; description: string list; ty: 'a outerfn}
+  type 'a t = {name: string; description: string list; ty: 'a outerfn; notif : bool}
 
   let rec find_inputs : type a. a outerfn -> Idl.Param.boxed list =
    fun m ->
@@ -46,7 +46,7 @@ module Interface = struct
           (fun (BoxedFunction m) ->
             BoxedFunction
               Method.
-                {name= m.name; description= m.description; ty= prepend m.ty} )
+                {name= m.name; description= m.description; ty= prepend m.ty; notif=m.notif} )
           interface.methods }
 
   let setify l =
@@ -132,8 +132,13 @@ module Gen () = struct
 
   let ( @-> ) t f = Function (t, f)
 
-  let declare : string -> string list -> 'a fn -> 'a res =
-   fun name description ty ->
-    let m = BoxedFunction Method.{name; description; ty} in
+  let declare_ b name description ty =
+    let m = BoxedFunction Method.{name; description; ty; notif = b} in
     methods := m :: !methods
+
+  let declare : string -> string list -> 'a fn -> 'a res =
+    fun name description ty -> declare_ false name description ty
+
+  let declare_notification =
+    fun name description ty -> declare_ true name description ty
 end
