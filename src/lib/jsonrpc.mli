@@ -41,6 +41,8 @@ val call_of_string : string -> Rpc.call
 
 val version_id_and_call_of_string : string -> version * Rpc.t * Rpc.call
 
+val version_id_and_call_of_string_option : string -> version * (Rpc.t option) * Rpc.call
+
 val response_of_string : ?strict:bool -> string -> Rpc.response
 
 val response_of_in_channel : in_channel -> Rpc.response

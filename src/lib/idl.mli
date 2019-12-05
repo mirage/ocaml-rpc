@@ -105,6 +105,10 @@ module type RPC = sig
   (** [declare name description typ] is how an RPC is declared to the
       module implementing the functionality. The return type is dependent
       upon the module being used *)
+
+  val declare_notification : string -> string list -> 'a fn -> 'a res
+  (** [declare_notification name description typ] is mostly the same as
+      declare, only that it allows support from JSON-RPC notifications. *)
 end
 
 module type MONAD = sig

@@ -85,21 +85,17 @@ let string_of_call ?(version= V1) call =
   let json =
     match version with
     | V1 ->
-        Dict
           [ ("method", String call.name)
-          ; ("params", Enum call.params)
-          ; ("id", Int (new_id ())) ]
+          ; ("params", Enum call.params) ]
     | V2 ->
         let params =
           match call.params with [Dict x] -> Dict x | _ -> Enum call.params
         in
-        Dict
           [ ("jsonrpc", String "2.0")
           ; ("method", String call.name)
-          ; ("params", params)
-          ; ("id", Int (new_id ())) ]
-  in
-  to_string json
+          ; ("params", params) ]
+  in let json = if not call.notif then json @ [ ("id", Int (new_id ())) ] else json in
+  to_string (Dict json)
 
 let json_of_response ?(id= Int 0L) version response =
   if response.Rpc.success then
@@ -161,7 +157,7 @@ let get name dict =
       raise (Missing_field name)
   | Some v -> v
 
-let version_id_and_call_of_string str =
+let version_id_and_call_of_string_option str =
   try
     match of_string str with
     | Dict d ->
@@ -202,14 +198,16 @@ let version_id_and_call_of_string str =
                      "Invalid field 'params' in request body")
         in
         let id =
-          match get "id" d with
-          | Int _ as x -> x
-          | String _ as y -> y
-          | _ ->
-              raise
-                (Malformed_method_request "Invalid field 'id' in request body")
+          match get' "id" d with
+          | Some (Int a) -> Some (Int a)
+          | Some (String a) -> Some (String a)
+          | Some _ -> 
+            raise
+              (Malformed_method_request "Invalid field 'id' in request body")
+          | None -> None (* is a notification *)
         in
-        (version, id, call name params)
+        let c = call name params in
+        (version, id, {c with notif = id == None})
     | _ -> raise (Malformed_method_request "Invalid request body")
   with
   | Missing_field field ->
@@ -220,6 +218,12 @@ let version_id_and_call_of_string str =
       raise
         (Malformed_method_request
            (Printf.sprintf "Unable to parse %s" (Y.to_string json)))
+
+let version_id_and_call_of_string s =
+  let (version, id_, call) = version_id_and_call_of_string_option s in
+  match id_ with
+  | Some id -> (version, id, call)
+  | None    -> raise (Malformed_method_request "Invalid field 'id' in request body")
 
 let call_of_string str =
   let _, _, call = version_id_and_call_of_string str in

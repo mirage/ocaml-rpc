@@ -315,21 +315,25 @@ let struct_extend rpc default_rpc =
 
 type callback = string list -> t -> unit
 
-type call = {name: string; params: t list}
+type call = {name: string; params: t list; notif: bool}
 
-let call name params = {name; params}
+let call name params = {name; params; notif = false}
+
+let notif name params = {name; params; notif = true}
 
 let string_of_call call =
   Printf.sprintf "-> %s(%s)" call.name
     (String.concat "," (List.map to_string call.params))
 
-type response = {success: bool; contents: t}
+type response = {success: bool; contents: t; notif: bool}
 
 let string_of_response response =
   Printf.sprintf "<- %s(%s)"
     (if response.success then "success" else "failure")
     (to_string response.contents)
 
-let success v = {success= true; contents= v}
+(* notif is to be set as true only if the call was a notification *)
 
-let failure v = {success= false; contents= v}
+let success v = {success= true; contents= v; notif=false}
+
+let failure v = {success= false; contents= v; notif=false}

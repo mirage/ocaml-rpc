@@ -1,5 +1,5 @@
 module Param = struct
-  type 'a t =
+ type 'a t =
     { name: string option
     ; description: string list
     ; typedef: 'a Rpc.Types.def
@@ -69,6 +69,8 @@ module type RPC = sig
   val returning : 'a Param.t -> 'b Error.t -> ('a, 'b) comp fn
 
   val declare : string -> string list -> 'a fn -> 'a res
+
+  val declare_notification : string -> string list -> 'a fn -> 'a res
 end
 
 module type MONAD = sig
@@ -230,7 +232,7 @@ module Make (M : MONAD) = struct
 
     let ( @-> ) t f = Function (t, f)
 
-    let declare name _ ty (rpc: T.rpcfn) =
+    let declare_ notif name _ ty (rpc: T.rpcfn) =
       let open Result in
       let rec inner : type b. (string * Rpc.t) list option * Rpc.t list -> b fn -> b =
        fun (named, unnamed) -> function
@@ -259,7 +261,8 @@ module Make (M : MONAD) = struct
               | None -> List.rev unnamed
               | Some l -> Rpc.Dict l :: List.rev unnamed
             in
-            let call = Rpc.call wire_name args in
+            let call' = Rpc.call wire_name args in
+            let call = { call' with notif = notif } in
             let rpc = T.put (rpc call) in
             let res =
               T.bind rpc (fun r ->
@@ -283,6 +286,10 @@ module Make (M : MONAD) = struct
             res
       in
       inner (None, []) ty
+
+    let declare_notification name a ty (rpc: T.rpcfn) = declare_ true name a ty rpc
+
+    let declare name a ty (rpc: T.rpcfn) = declare_ false name a ty rpc
   end
 
   let server hashtbl =
@@ -336,8 +343,8 @@ module Make (M : MONAD) = struct
         match t.Param.name with Some _ -> true | None -> has_named_args f )
       | Returning (_, _) -> false
 
-    let declare : string -> string list -> 'a fn -> 'a res =
-     fun name _ ty ->
+    let declare_ : bool -> string -> string list -> 'a fn -> 'a res =
+     fun notif name _ ty ->
       let ( >>= ) = M.bind in
       (* We do not know the wire name yet as the description may still be unset *)
       Hashtbl.add funcs name None ;
@@ -373,14 +380,14 @@ module Make (M : MONAD) = struct
             | Returning (t, e) ->
                 T.bind impl (function
                   | Result.Ok x ->
-                      M.return
-                        (Rpc.success
-                           (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty x))
+                    let res = (Rpc.success
+                                 (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty x)) in
+                    M.return { res with notif = notif }
                   | Result.Error y ->
-                      M.return
-                        (Rpc.failure
-                           (Rpcmarshal.marshal e.Error.def.Rpc.Types.ty y)) )
-                |> T.get
+                    let res = (Rpc.failure
+                                 (Rpcmarshal.marshal e.Error.def.Rpc.Types.ty y)) in
+                    M.return { res with notif = notif })
+                    |> T.get
           in
           inner ty impl
         in
@@ -388,6 +395,10 @@ module Make (M : MONAD) = struct
         (* The wire name might be different from the name *)
         let wire_name = get_wire_name !description name in
         Hashtbl.add funcs wire_name (Some rpcfn)
+
+    let declare_notification name a ty = declare_ true name a ty
+
+    let declare name a ty = declare_ false name a ty
   end
 end
 
@@ -501,7 +512,7 @@ module Exn = struct
 
     let ( @-> ) t f = Function (t, f)
 
-    let declare name _ ty =
+    let declare_ notif name _ ty =
       let open Result in
       let rec inner : type b. (string * Rpc.t) list option * Rpc.t list -> b fn -> b =
        fun (named, unnamed) -> function
@@ -530,7 +541,8 @@ module Exn = struct
               | None -> List.rev unnamed
               | Some l -> Rpc.Dict l :: List.rev unnamed
             in
-            let call = Rpc.call wire_name args in
+            let call' = Rpc.call wire_name args in
+            let call = { call' with notif = notif } in
             let r = R.rpc call in
             if r.Rpc.success then
               match
@@ -547,6 +559,9 @@ module Exn = struct
               | Error (`Msg x) -> raise (MarshalError x)
       in
       inner (None, []) ty
+
+    let declare name a ty = declare_ false name a ty
+    let declare_notification name a ty = declare_ true name a ty
   end
 
   let server hashtbl =
@@ -606,8 +621,8 @@ module Exn = struct
         match t.Param.name with Some _ -> true | None -> has_named_args f )
       | Returning (_, _) -> false
 
-    let declare : string -> string list -> 'a fn -> 'a res =
-     fun name _ ty ->
+    let declare_ : bool -> string -> string list -> 'a fn -> 'a res =
+     fun notif name _ ty ->
       (* We do not know the wire name yet as the description may still be unset *)
       Hashtbl.add funcs name None ;
       fun impl ->
@@ -645,8 +660,9 @@ module Exn = struct
                   in
                   inner f (impl arg) call'
               | Returning (t, _) ->
-                  Rpc.success
-                    (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty impl)
+                  let call = Rpc.success
+                      (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty impl) in
+                  { call with notif = notif }
             with e ->
               let (BoxedError error_ty) = get_error_ty f in
               match error_ty.Error.matcher e with
@@ -661,5 +677,9 @@ module Exn = struct
         (* The wire name might be different from the name *)
         let wire_name = get_wire_name !description name in
         Hashtbl.add funcs wire_name (Some rpcfn)
+
+    let declare name a ty = declare_ true name a ty
+
+    let declare_notification name a ty = declare_ false name a ty
   end
 end
