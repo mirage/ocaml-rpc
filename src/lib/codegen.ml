@@ -132,8 +132,8 @@ module Gen () = struct
 
   let ( @-> ) t f = Function (t, f)
 
-  let declare_ b name description ty =
-    let m = BoxedFunction Method.{name; description; ty; notif = b} in
+  let declare_ notif name description ty =
+    let m = BoxedFunction Method.{name; description; ty; notif = notif} in
     methods := m :: !methods
 
   let declare : string -> string list -> 'a fn -> 'a res =

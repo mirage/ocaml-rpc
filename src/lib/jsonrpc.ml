@@ -82,7 +82,7 @@ let new_id =
     !count
 
 let string_of_call ?(version= V1) call =
-  let jsontmp =
+  let json =
     match version with
     | V1 ->
           [ ("method", String call.name)
@@ -94,7 +94,7 @@ let string_of_call ?(version= V1) call =
           [ ("jsonrpc", String "2.0")
           ; ("method", String call.name)
           ; ("params", params) ]
-  in let json = if not call.notif then jsontmp @ [ ("id", Int (new_id ())) ] else jsontmp in
+  in let json = if not call.notif then json @ [ ("id", Int (new_id ())) ] else json in
   to_string (Dict json)
 
 let json_of_response ?(id= Int 0L) version response =
