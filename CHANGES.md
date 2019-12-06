@@ -1,4 +1,4 @@
-## dev
+## 6.1.0 (December 2019)
 * opam: updated bounds on a more conservative basis
 * travis: tests more compilers
 * tests: disable useless-object-inheritance on pylint checks
