@@ -1,3 +1,6 @@
+## 7.0.0 (December 2019)
+* Add basic support for JSON-RPC notifications
+
 ## 6.1.0 (December 2019)
 * opam: updated bounds on a more conservative basis
 * travis: tests more compilers
