@@ -189,7 +189,7 @@ let version_id_and_call_of_string_option str =
                      "Invalid field 'params' in request body") )
           | V2 ->
             match get' "params" d with
-            | None -> []
+            | None | Some Null -> []
             | Some (Enum l) -> l
             | Some (Dict l) -> [Dict l]
             | _ ->
@@ -199,12 +199,12 @@ let version_id_and_call_of_string_option str =
         in
         let id =
           match get' "id" d with
+          | None | Some Null -> None (* is a notification *)
           | Some (Int a) -> Some (Int a)
           | Some (String a) -> Some (String a)
           | Some _ -> 
             raise
               (Malformed_method_request "Invalid field 'id' in request body")
-          | None -> None (* is a notification *)
         in
         let c = call name params in
         (version, id, {c with notif = id == None})
