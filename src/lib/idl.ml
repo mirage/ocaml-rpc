@@ -118,7 +118,7 @@ let get_arg call has_named name is_opt =
     match unnamed with
     | head :: tail ->
         Result.Ok (head, {call with Rpc.params= Rpc.Dict named :: tail})
-    | _ -> Result.Error (`Msg "Incorrect number of argumentss") )
+    | _ -> Result.Error (`Msg "Incorrect number of arguments") )
   | true, _, _ ->
       Result.Error
         (`Msg
@@ -126,7 +126,6 @@ let get_arg call has_named name is_opt =
            parameters exist")
   | false, None, head :: tail -> Result.Ok (head, {call with Rpc.params= tail})
   | false, None, [] -> Result.Ok (Null, call)
-    (* don't understand this one : Result.Error (`Msg "Incorrect number of arguments") *)
   | false, Some _, _ -> failwith "Can't happen by construction"
 
 module Make (M : MONAD) = struct
