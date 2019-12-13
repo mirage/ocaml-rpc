@@ -226,7 +226,7 @@ let version_id_and_call_of_string s =
   | None    -> raise (Malformed_method_request "Invalid field 'id' in request body")
 
 let call_of_string str =
-  let _, _, call = version_id_and_call_of_string_option str in
+  let _, _, call = version_id_and_call_of_string str in
   call
 
 (* This functions parses the json and tries to extract a valid jsonrpc response
