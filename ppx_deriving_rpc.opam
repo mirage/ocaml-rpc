@@ -8,7 +8,7 @@ doc: "https://mirage.github.io/ocaml-rpc/ppx_deriving_rpc"
 bug-reports: "https://github.com/mirage/ocaml-rpc/issues"
 depends: [
   "ocaml" {>= "4.04.0"}
-  "dune" {>= "1.5.0"}
+  "dune" {>= "2.0.0"}
   "rpclib" {>= "5.0.0"}
   "rresult"
   "ppxlib" {< "0.9.0"}
