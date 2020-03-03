@@ -1,15 +1,11 @@
 (executable
  (name suite)
- (libraries rpclib rpclib-async alcotest test_common)
-)
+ (libraries rpclib rpclib-async alcotest test_common))
 
-(alias
- (name runtest)
+(rule
+ (alias runtest)
  (package rpclib-async)
  (deps
-  (:s suite.exe)
- )
+  (:s suite.exe))
  (action
-  (run %{s})
- )
-)
+  (run %{s})))

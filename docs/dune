@@ -1,14 +1,15 @@
 (rule
- (targets index.mld)
+ (targets index.mld.expected)
  (deps ../README.md)
  (action
   (with-stdout-to
    %{targets}
-   (run %{bin:md2mld} -min-header 3 %{deps})
-  )
- )
-)
+   (run %{bin:md2mld} -min-header 3 %{deps}))))
+
+(rule
+ (alias runtest)
+ (action
+  (diff? index.mld index.mld.expected)))
 
 (documentation
- (package rpc)
-)
+ (package rpc))
