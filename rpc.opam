@@ -17,7 +17,7 @@ depends: [
   "lwt"
   "alcotest" {with-test}
   "alcotest-lwt" {with-test}
-  "md2mld" {(with-doc | with-test) & >= "0.3.0"}
+  # "md2mld" {(with-doc | with-test) & >= "0.3.0"}
   "odoc" {with-doc}
 ]
 conflicts: [
