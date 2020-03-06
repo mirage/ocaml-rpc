@@ -9,7 +9,7 @@ bug-reports: "https://github.com/mirage/ocaml-rpc/issues"
 depends: [
   "ocaml"
   "alcotest" {with-test}
-  "dune" {>= "1.5.0"}
+  "dune" {>= "2.0.0"}
   "rpclib" {=version}
   "lwt" {>= "3.0.0"}
   "alcotest-lwt" {with-test}

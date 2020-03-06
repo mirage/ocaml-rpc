@@ -9,7 +9,7 @@ bug-reports: "https://github.com/mirage/ocaml-rpc/issues"
 depends: [
   "ocaml" {>= "4.04.0"}
   "alcotest" {with-test}
-  "dune" {>= "1.5.0"}
+  "dune" {>= "2.0.0"}
   "cmdliner"
   "rresult"
   "xmlm"

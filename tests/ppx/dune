@@ -3,17 +3,12 @@
  (flags :standard -warn-error +a -w -27-33-39)
  (libraries alcotest result rpclib rpclib.core rpclib.json rresult)
  (preprocess
-  (pps ppx_deriving_rpc)
- )
-)
+  (pps ppx_deriving_rpc)))
 
-(alias
- (name runtest)
+(rule
+ (alias runtest)
  (deps
-  (:s suite.exe)
- )
+  (:s suite.exe))
  (package ppx_deriving_rpc)
  (action
-  (run %{s})
- )
-)
+  (run %{s})))

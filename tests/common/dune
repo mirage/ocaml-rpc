@@ -1,4 +1,3 @@
 (library
  (name test_common)
- (libraries rpclib.core)
-)
+ (libraries rpclib.core))

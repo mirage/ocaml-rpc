@@ -1,19 +1,15 @@
 (executable
  (name suite)
- (libraries alcotest alcotest-lwt async lwt.unix rpclib rpclib-async rpclib-lwt rpclib.json threads)
+ (libraries alcotest alcotest-lwt async lwt.unix rpclib rpclib-async
+   rpclib-lwt rpclib.json threads)
  (preprocess
-  (pps ppx_deriving_rpc)
- )
-)
+  (pps ppx_deriving_rpc)))
 
-(alias
- (name runtest)
+(rule
+ (alias runtest)
  (package rpc)
  (deps
   (:s suite.exe)
-  (source_tree .)
- )
+  (source_tree .))
  (action
-  (run %{s})
- )
-)
+  (run %{s})))

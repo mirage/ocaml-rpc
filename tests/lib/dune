@@ -1,15 +1,11 @@
 (executable
  (name suite)
- (libraries rpclib.core rpclib.json rpclib.xml alcotest test_common)
-)
+ (libraries rpclib.core rpclib.json rpclib.xml alcotest test_common))
 
-(alias
- (name runtest)
+(rule
+ (alias runtest)
  (package rpclib)
  (deps
-  (:s suite.exe)
- )
+  (:s suite.exe))
  (action
-  (run %{s})
- )
-)
+  (run %{s})))

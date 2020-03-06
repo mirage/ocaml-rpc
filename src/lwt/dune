@@ -3,5 +3,4 @@
  (public_name rpclib-lwt)
  (modules rpc_lwt)
  (libraries lwt rpclib.core)
- (wrapped false)
-)
+ (wrapped false))

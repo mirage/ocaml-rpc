@@ -8,7 +8,7 @@ doc: "https://mirage.github.io/ocaml-rpc/rpc"
 bug-reports: "https://github.com/mirage/ocaml-rpc/issues"
 depends: [
   "ocaml" {>= "4.04.0"}
-  "dune" {>= "1.5.0"}
+  "dune" {>= "2.0.0"}
   "rpclib" {=version}
   "rpclib-async" {=version}
   "rpclib-lwt" {=version}
@@ -17,7 +17,7 @@ depends: [
   "lwt"
   "alcotest" {with-test}
   "alcotest-lwt" {with-test}
-  "md2mld" {with-doc & >= "0.3.0"}
+  # "md2mld" {(with-doc | with-test) & >= "0.3.0"}
   "odoc" {with-doc}
 ]
 conflicts: [
