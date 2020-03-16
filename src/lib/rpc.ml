@@ -230,7 +230,7 @@ let dateTime_of_rpc = function
   | x -> failwith (Printf.sprintf "Expected DateTime, got '%s'" (to_string x))
 
 let base64_of_rpc = function
-  | Base64 s -> s
+  | Base64 s -> Base64.decode_exn s
   | x -> failwith (Printf.sprintf "Expected base64, got '%s'" (to_string x))
 
 let unit_of_rpc = function

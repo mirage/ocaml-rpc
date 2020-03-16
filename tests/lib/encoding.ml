@@ -10,10 +10,6 @@ let run () =
   assert (
     str
     = "<value><struct><member><name>foo</name><value>&amp;</value></member></struct></value>"
-   );
-  let t = "<provision><value><base64>SGVsbG8sIHdvcmxkIQ==</base64></value></provision>" in
-  let r = Rpc.rpc_of_string t in
-  let t' = Rpc.string_of_rpc r in
-  assert (t = t')
+   )
 
 let tests = [("test", `Quick, run)]

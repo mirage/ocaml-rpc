@@ -288,7 +288,7 @@ generates a GUI for a given interface.
 To build, first install the dependencies:
 
 ```sh
-opam install dune ppxlib async js_of_ocaml-ppx lwt cow cmdliner rresult yojson xmlm
+opam install dune base64 ppxlib async js_of_ocaml-ppx lwt cow cmdliner rresult yojson xmlm
 ```
 For tests:
 

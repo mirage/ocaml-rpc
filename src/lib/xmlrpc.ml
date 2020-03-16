@@ -63,7 +63,7 @@ let rec add_value f = function
       f "</dateTime.iso8601></value>"
   | Base64 s ->
       f "<value><base64>" ;
-      f s ;
+      f (Base64.encode_exn s) ;
       f "</base64></value>"
   | Enum l ->
       f "<value><array><data>" ;
@@ -290,6 +290,8 @@ module Parser = struct
 
   let make_dateTime = make (fun data -> DateTime data)
 
+  let make_base64 = make (fun data -> Base64 (Base64.decode_exn data))
+
   let make_enum = make (fun data -> Enum data)
 
   let make_dict = make (fun data -> Dict data)
@@ -310,6 +312,7 @@ module Parser = struct
     | "double" -> make_float ?callback accu (get_data input)
     | "string" -> make_string ?callback accu (get_data input)
     | "dateTime.iso8601" -> make_dateTime ?callback accu (get_data input)
+    | "base64" -> make_base64 ?callback accu (get_data input)
     | "array" -> make_enum ?callback accu (data (of_xmls ?callback accu) input)
     | "struct" ->
         make_dict ?callback accu
