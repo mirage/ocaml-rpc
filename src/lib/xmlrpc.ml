@@ -61,6 +61,10 @@ let rec add_value f = function
       f "<value><dateTime.iso8601>" ;
       f s ;
       f "</dateTime.iso8601></value>"
+  | Base64 s ->
+      f "<value><base64>" ;
+      f s ;
+      f "</base64></value>"
   | Enum l ->
       f "<value><array><data>" ;
       List.iter (add_value f) l ;

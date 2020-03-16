@@ -35,6 +35,7 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result =
   | Basic String -> string_of_rpc v
   | Basic Char -> int_of_rpc v >>| Char.chr
   | DateTime -> dateTime_of_rpc v
+  | Base64 -> base64_of_rpc v
   | Array typ -> (
     match v with
     | Enum xs -> list_helper typ xs >>| Array.of_list
@@ -161,6 +162,7 @@ let rec marshal : type a. a typ -> a -> Rpc.t =
   match t with
   | Basic t -> rpc_of_basic t v
   | DateTime -> rpc_of_dateTime v
+  | Base64 -> rpc_of_base64 v
   | Array typ -> Enum (tailrec_map (marshal typ) (Array.to_list v))
   | List (Tuple (Basic String, typ)) ->
       Dict (tailrec_map (fun (x, y) -> (x, marshal typ y)) v)
@@ -223,6 +225,7 @@ let ocaml_of_basic : type a. a basic -> string = function
 let rec ocaml_of_t : type a. a typ -> string = function
   | Basic b -> ocaml_of_basic b
   | DateTime -> "string"
+  | Base64 -> "base64"
   | Array t -> ocaml_of_t t ^ " list"
   | List t -> ocaml_of_t t ^ " list"
   | Dict (b, t) ->

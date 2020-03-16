@@ -18,6 +18,7 @@ let rec html_of_t : type a. a typ -> string list =
   function
     | Basic b -> print (of_basic b)
     | DateTime -> print (of_basic String)
+    | Base64 -> print (of_basic String)
     | Struct _ -> print "struct  { ... }"
     | Variant _ -> print "variant { ... }"
     | Array t -> html_of_t t @ print " list"

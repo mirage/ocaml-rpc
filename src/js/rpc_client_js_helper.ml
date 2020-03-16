@@ -70,6 +70,7 @@ let to_string rpc =
     | Rpc.String x -> Obj.magic (Js_of_ocaml.Js.string x)
     | Rpc.Bool x -> Obj.magic (if x then Js_of_ocaml.Js._true else Js_of_ocaml.Js._false)
     | Rpc.DateTime x -> Obj.magic (Js_of_ocaml.Js.string x)
+    | Rpc.Base64 x -> Obj.magic (Js_of_ocaml.Js.string x)
     | Rpc.Enum l -> Obj.magic (Js_of_ocaml.Js.array (Array.of_list (List.map inner l)))
     | Rpc.Null -> Obj.magic Js_of_ocaml.Js.null
   in

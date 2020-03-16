@@ -30,6 +30,7 @@ type t =
   | DateTime of string
   | Enum of t list
   | Dict of (string * t) list
+  | Base64 of string
   | Null
 
 module Version = struct
@@ -56,6 +57,7 @@ module Types = struct
   type _ typ =
     | Basic: 'a basic -> 'a typ
     | DateTime : string typ
+    | Base64 : string typ
     | Array: 'a typ -> 'a array typ
     | List: 'a typ -> 'a list typ
     | Dict: 'a basic * 'b typ -> ('a * 'b) list typ
@@ -167,6 +169,8 @@ let rec to_string t =
   | Dict ts ->
       sprintf "{%s}"
         (map_strings ";" (fun (s, t) -> sprintf "%s:%s" s (to_string t)) ts)
+  | Base64 s ->
+      sprintf "S(%s)" s
   | Null -> "N"
 
 let rpc_of_t x = x
@@ -184,6 +188,8 @@ let rpc_of_float f = Float f
 let rpc_of_string s = String s
 
 let rpc_of_dateTime s = DateTime s
+
+let rpc_of_base64 s = Base64 s
 
 let rpc_of_unit () = Null
 
@@ -222,6 +228,10 @@ let string_of_rpc = function
 let dateTime_of_rpc = function
   | DateTime s -> s
   | x -> failwith (Printf.sprintf "Expected DateTime, got '%s'" (to_string x))
+
+let base64_of_rpc = function
+  | Base64 s -> s
+  | x -> failwith (Printf.sprintf "Expected base64, got '%s'" (to_string x))
 
 let unit_of_rpc = function
   | Null -> ()
@@ -289,6 +299,11 @@ module ResultUnmarshallers = struct
     | x ->
         R.error_msg
           (Printf.sprintf "Expected DateTime, got '%s'" (to_string x))
+
+  let base64_of_rpc = function
+    | Base64 s -> R.ok s
+    | x ->
+        R.error_msg (Printf.sprintf "Expected base64, got '%s'" (to_string x))
 
   let unit_of_rpc = function
     | Null -> R.ok ()

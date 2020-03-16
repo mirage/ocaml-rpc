@@ -26,6 +26,7 @@ type t =
   | DateTime of string
   | Enum of t list
   | Dict of (string * t) list
+  | Base64 of string
   | Null
 
 val to_string : t -> string
@@ -50,6 +51,7 @@ module Types : sig
   type _ typ =
     | Basic: 'a basic -> 'a typ
     | DateTime : string typ
+    | Base64: string typ
     | Array: 'a typ -> 'a array typ
     | List: 'a typ -> 'a list typ
     | Dict: 'a basic * 'b typ -> ('a * 'b) list typ
@@ -148,6 +150,8 @@ val rpc_of_string : string -> t
 
 val rpc_of_dateTime : string -> t
 
+val rpc_of_base64 : string -> t
+
 val rpc_of_t : t -> t
 
 val rpc_of_unit : unit -> t
@@ -167,6 +171,8 @@ val float_of_rpc : t -> float
 val string_of_rpc : t -> string
 
 val dateTime_of_rpc : t -> string
+
+val base64_of_rpc : t -> string
 
 val t_of_rpc : t -> t
 
@@ -188,6 +194,8 @@ module ResultUnmarshallers : sig
   val string_of_rpc : t -> (string, Rresult.R.msg) Result.result
 
   val dateTime_of_rpc : t -> (string, Rresult.R.msg) Result.result
+
+  val base64_of_rpc : t -> (string, Rresult.R.msg) Result.result
 
   val t_of_rpc : t -> (t, Rresult.R.msg) Result.result
 

@@ -32,6 +32,7 @@ let rec string_of_t : type a. a typ -> string list =
   function
     | Basic b -> print (of_basic b)
     | DateTime -> print (of_basic String)
+    | Base64 -> print (of_basic String)
     | Struct {sname; _} -> print sname
     | Variant {vname; _} -> print vname
     | Array t -> string_of_t t @ print " list"
@@ -69,6 +70,7 @@ let rec ocaml_patt_of_t : type a. a typ -> string =
   match ty with
   | Basic b -> of_basic b
   | DateTime -> "datetime"
+  | Base64 -> "base64"
   | Struct s -> s.Rpc.Types.sname
   | Variant _ -> "v"
   | Array t -> Printf.sprintf "%s_list" (ocaml_patt_of_t t)

@@ -24,6 +24,9 @@ let rec gentest : type a. a typ -> a list =
       ; "\000foo" ]
   | Basic Char -> ['\000'; 'a'; 'z'; '\255']
   | DateTime -> ["19700101T00:00:00Z"]
+  | Base64 ->
+      [ "SGVsbG8sIHdvcmxkIQ=="  (* "Hello, world!" *)
+      ]
   | Array typ -> [gentest typ |> Array.of_list; [||]]
   | List typ -> [gentest typ; []]
   | Dict (basic, typ) ->
@@ -113,6 +116,9 @@ let rec genall : type a. int -> string -> a typ -> a list =
   | Basic String -> [strhint]
   | Basic Char -> ['a']
   | DateTime -> ["19700101T00:00:00Z"]
+  | Base64 ->
+      [ "SGVsbG8sIHdvcmxkIQ=="  (* "Hello, world!" *)
+      ]
   | Array typ ->
       thin depth [genall (depth - 1) strhint typ |> Array.of_list; [||]]
   | List typ -> thin depth [genall (depth - 1) strhint typ; []]
@@ -214,6 +220,7 @@ let rec gen_nice : type a. a typ -> string -> a =
   | Basic String -> hint
   | Basic Char -> 'a'
   | DateTime -> "19700101T00:00:00Z"
+  | Base64 -> "SGVsbG8sIHdvcmxkIQ=="  (* "Hello, world!" *)
   | Array typ -> [|gen_nice typ (narg 1); gen_nice typ (narg 2)|]
   | List (Tuple (Basic String, typ)) ->
       [("field_1", gen_nice typ "value_1"); ("field_2", gen_nice typ "value_2")]

@@ -168,6 +168,7 @@ let rec typecheck : type a. a typ -> string -> t list =
   | Basic Float -> handle_basic Float
   | Basic Char -> handle_basic Char
   | DateTime -> handle_basic String
+  | Base64 -> handle_basic String
   | Struct {fields; _} ->
       let check boxedfield =
         let (BoxedField f) = boxedfield in
@@ -266,6 +267,7 @@ let rec value_of : type a. a typ -> string =
     | Basic Float -> "1.1"
     | Basic Bool -> "True"
     | DateTime -> {|"19700101T00:00:00Z"|}
+    | Base64 -> {|"SGVsbG8sIHdvcmxkIQ=="|}
     | Struct {fields; _} ->
         let member boxed_field =
           let (BoxedField f) = boxed_field in

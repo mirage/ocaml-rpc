@@ -43,6 +43,7 @@ let rec rpc_to_json t =
   | Float r -> `Float r
   | String s -> `String s
   | DateTime d -> `String d
+  | Base64 b -> `String b
   | Null -> `Null
   | Enum a -> `List (Rpcmarshal.tailrec_map rpc_to_json a)
   | Dict a ->
