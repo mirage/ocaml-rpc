@@ -59,6 +59,7 @@ let rec json_to_rpc t =
   | `Float r -> Float r
   | `String s -> (* TODO: check if it is a DateTime *) String s
   (* | DateTime d -> `String d *)
+  (* | Base64 b -> `String b *)
   | `Null -> Null
   | `List a -> Enum (Rpcmarshal.tailrec_map json_to_rpc a)
   | `Assoc a ->

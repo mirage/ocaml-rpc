@@ -170,7 +170,7 @@ let rec to_string t =
       sprintf "{%s}"
         (map_strings ";" (fun (s, t) -> sprintf "%s:%s" s (to_string t)) ts)
   | Base64 s ->
-      sprintf "S(%s)" s
+      sprintf "B64(%s)" s
   | Null -> "N"
 
 let rpc_of_t x = x
