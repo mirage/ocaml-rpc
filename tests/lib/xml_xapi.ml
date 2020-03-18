@@ -117,6 +117,28 @@ let sm =
    </params>\n\
    </methodResponse>\n"
 
+let base64 = "
+  <methodResponse>\n\
+  <params>\n\
+  <param>\n\
+  <value><base64>SGVsbG8sIHdvcmxkIQ==</base64></value>\n\
+  </param>\n\
+  </params>\n\
+  </methodResponse>\n
+"
+
+let base64_call =
+  "<methodCall>\n  \
+   <methodName>send_file</methodName>\n  \
+   <params>\n    \
+   <param>\n      \
+   <value>\n   \
+   <base64>SGVsbG8sIHdvcmxkIQ==</base64> \
+   </value>\n    \
+   </param>\n  \
+   </params>\n\
+   </methodCall>\n"
+
 let empty = "<value></value>"
 
 let run () =
@@ -130,6 +152,12 @@ let run () =
   let _ = Xmlrpc.call_of_string simple_call in
   Printf.printf "OK\nParsing array call ... %!" ;
   let _ = Xmlrpc.call_of_string array_call in
-  Printf.printf "OK\n%!"
+  Printf.printf "OK\n%!";
+  let b64 = Xmlrpc.response_of_string base64 in
+  Printf.printf "Base64 response: %s\n" (Rpc.to_string b64.contents);
+  assert (b64.contents = Rpc.Base64 "Hello, world!");
+  let b64_req = Xmlrpc.call_of_string base64_call in
+  Printf.printf "Base64 request: %s\n" (Rpc.string_of_call b64_req);
+  assert (List.hd b64_req.params = Rpc.Base64 "Hello, world!")
 
 let tests = [("Xapi XML tests", `Quick, run)]

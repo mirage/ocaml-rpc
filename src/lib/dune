@@ -8,14 +8,14 @@
  (name rpclib_core)
  (public_name rpclib.core)
  (modules rpc idl rpcmarshal pythongen codegen rpc_genfake)
- (libraries result rresult)
+ (libraries result base64 rresult)
  (wrapped false))
 
 (library
  (name xml)
  (public_name rpclib.xml)
  (modules xmlrpc)
- (libraries internals rpclib.core xmlm)
+ (libraries internals base64 rpclib.core xmlm)
  (wrapped false))
 
 (library

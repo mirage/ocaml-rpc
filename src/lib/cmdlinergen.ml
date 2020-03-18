@@ -82,6 +82,10 @@ module Gen () = struct
         Term.app
           (Term.pure Rpc.rpc_of_dateTime)
           Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo)
+    | Base64 ->
+        Term.app
+          (Term.pure Rpc.rpc_of_base64)
+          Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo)
     | Array _ ->
         Term.app
           (Term.pure (fun x ->

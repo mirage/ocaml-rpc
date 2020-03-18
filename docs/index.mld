@@ -22,6 +22,7 @@ type t =
   | DateTime of string
   | Enum of t list
   | Dict of (string * t) list
+  | Base64 of string
   | Null
 ]}
 

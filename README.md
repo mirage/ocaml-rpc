@@ -22,6 +22,7 @@ type t =
   | DateTime of string
   | Enum of t list
   | Dict of (string * t) list
+  | Base64 of string
   | Null
 ```
 
@@ -281,3 +282,20 @@ The possibilities are not limited to the above generators provided by
 used to generate something from an interface defined following the above
 pattern. For example, it is possible to write an `RPC` implementation that
 generates a GUI for a given interface.
+
+## Building
+
+To build, first install the dependencies:
+
+```sh
+opam install dune base64 ppxlib async js_of_ocaml-ppx lwt cow cmdliner rresult yojson xmlm
+```
+For tests:
+
+``` ocamlsh
+opam install alcotest alcotest-lwt
+```
+
+`
+
+`

@@ -11,7 +11,8 @@ let core_types loc =
     ; ("int64", [%expr Rpc.Types.(Basic Int64)])
     ; ("string", [%expr Rpc.Types.(Basic String)])
     ; ("float", [%expr Rpc.Types.(Basic Float)])
-    ; ("bool", [%expr Rpc.Types.(Basic Bool)]) ]
+    ; ("bool", [%expr Rpc.Types.(Basic Bool)])
+    ]
 
 (** Many of the following functions are lifted from ppx_deriving. It's quite likely that
     there are good alternatives to these somewhere in ppxlib, but I've not yet found them.
