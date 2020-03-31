@@ -64,6 +64,7 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result =
   | Unit -> unit_of_rpc v
   | Option t -> (
     match v with
+    | Enum [Null] -> return None
     | Enum [x] -> unmarshal t x >>= fun x -> return (Some x)
     | Enum [] -> return None
     | y ->
@@ -119,8 +120,9 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result =
                  match ty with
                  | Option x -> (
                    try
-                     List.assoc s keys |> unmarshal x
-                     >>= fun o -> return (Some o)
+                     let z = List.assoc s keys in
+                     if z = Null then return None
+                     else unmarshal x z >>= fun o -> return (Some o)
                    with _ -> return None )
                  | y ->
                    try List.assoc s keys |> unmarshal y with Not_found ->
