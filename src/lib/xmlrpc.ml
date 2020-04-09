@@ -34,12 +34,14 @@ let encode =
   in
   Internals.encode translate
 
-let rec add_value f = function
+let rec add_value ?(strict=false) f = function
   | Null -> f "<value><nil/></value>"
   | Int i ->
-      f "<value><i8>" ;
+      f "<value>" ;
+      if strict then f "<i8>";
       f (Int64.to_string i) ;
-      f "</i8></value>"
+      if strict then f "</i8>";
+      f "</value>"
   | Int32 i ->
       f "<value><i4>" ;
       f (Int32.to_string i) ;
@@ -67,29 +69,29 @@ let rec add_value f = function
       f "</base64></value>"
   | Enum l ->
       f "<value><array><data>" ;
-      List.iter (add_value f) l ;
+      List.iter (add_value ~strict f) l ;
       f "</data></array></value>"
   | Dict d ->
       let add_member (name, value) =
         f "<member><name>" ;
         f name ;
         f "</name>" ;
-        add_value f value ;
+        add_value ~strict f value ;
         f "</member>"
       in
       f "<value><struct>" ; List.iter add_member d ; f "</struct></value>"
 
-let to_string x =
+let to_string ?(strict=false) x =
   let buf = Buffer.create 128 in
-  add_value (Buffer.add_string buf) x ;
+  add_value ~strict (Buffer.add_string buf) x ;
   Buffer.contents buf
 
-let to_a ~empty ~append x =
+let to_a ?(strict=false) ~empty ~append x =
   let buf = empty () in
-  add_value (fun s -> append buf s) x ;
+  add_value ~strict (fun s -> append buf s) x ;
   buf
 
-let string_of_call call =
+let string_of_call ?(strict=false) call =
   let module B = Buffer in
   let buf = B.create 1024 in
   let add = B.add_string buf in
@@ -100,13 +102,13 @@ let string_of_call call =
   List.iter
     (fun p ->
       add "<param>" ;
-      add (to_string p) ;
+      add (to_string ~strict p) ;
       add "</param>" )
     call.params ;
   add "</params></methodCall>" ;
   B.contents buf
 
-let add_response add response =
+let add_response ?(strict=false) add response =
   let v =
     if response.success then
       Dict [("Status", String "Success"); ("Value", response.contents)]
@@ -115,19 +117,19 @@ let add_response add response =
         [("Status", String "Failure"); ("ErrorDescription", response.contents)]
   in
   add "<?xml version=\"1.0\"?><methodResponse><params><param>" ;
-  to_a ~empty:(fun () -> ()) ~append:(fun _ s -> add s) v ;
+  to_a ~strict ~empty:(fun () -> ()) ~append:(fun _ s -> add s) v ;
   add "</param></params></methodResponse>"
 
-let string_of_response response =
+let string_of_response ?(strict=false) response =
   let module B = Buffer in
   let buf = B.create 256 in
   let add = B.add_string buf in
-  add_response add response ; B.contents buf
+  add_response ~strict add response ; B.contents buf
 
-let a_of_response ~empty ~append response =
+let a_of_response ?(strict=false) ~empty ~append response =
   let buf = empty () in
   let add s = append buf s in
-  add_response add response ; buf
+  add_response ~strict add response ; buf
 
 exception Parse_error of string * string * Xmlm.input
 
