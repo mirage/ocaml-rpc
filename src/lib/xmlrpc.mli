@@ -7,7 +7,7 @@ val to_a : ?strict:bool -> empty:(unit -> 'a) -> append:('a -> string -> unit) -
 
 val string_of_call : ?strict:bool -> Rpc.call -> string
 
-val string_of_response : Rpc.response -> string
+val string_of_response : ?strict:bool -> Rpc.response -> string
 
 val a_of_response :
   ?strict:bool -> empty:(unit -> 'a) -> append:('a -> string -> unit) -> Rpc.response -> 'a
