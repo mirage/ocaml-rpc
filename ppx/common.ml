@@ -147,8 +147,8 @@ end
    use the nice `Attributes` module and have to roll our own. *)
 let attr loc name attrs =
   let pat = Ast_pattern.(pstr (pstr_eval (pexp_constant (pconst_string __ none)) __ ^:: nil)) in
-  List.find ~f:(fun ({ txt; _ }, _) -> String.equal txt name) attrs
-  |> Option.map ~f:(snd)
+  List.find ~f:(fun ({attr_name ={ txt; _ }; _}) -> String.equal txt name) attrs
+  |> Option.map ~f:(fun ({attr_payload; _}) -> attr_payload)
   |> Option.bind ~f:(fun str -> Ast_pattern.parse pat loc str ~on_error:(fun _ -> None) (fun str _ -> Some str))
 
 let split = String.split_on_chars ~on:['\n']
