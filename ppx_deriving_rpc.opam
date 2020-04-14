@@ -9,11 +9,11 @@ bug-reports: "https://github.com/mirage/ocaml-rpc/issues"
 depends: [
   "ocaml" {>= "4.04.0"}
   "dune" {>= "2.0.0"}
-  "rpclib" {>= "5.0.0"}
+  "rpclib" {= version}
   "rresult"
   "ppxlib" {>= "0.9.0"}
-  "rpclib-lwt" {with-test & >= "5.0.0"}
-  "rpclib-async" {with-test & >= "5.0.0"}
+  "rpclib-lwt" {with-test & = version}
+  "rpclib-async" {with-test & = version}
   "lwt" {with-test & >= "3.0.0"}
   "async" {with-test}
   "alcotest" {with-test}
