@@ -13,15 +13,10 @@ depends: [
   "rpclib-async" {=version}
   "rpclib-lwt" {=version}
   "ppx_deriving_rpc" {=version}
-  "async" {>= "v0.9.0"}
-  "lwt"
   "alcotest" {with-test}
   "alcotest-lwt" {with-test}
   # "md2mld" {(with-doc | with-test) & >= "0.3.0"}
   "odoc" {with-doc}
-]
-conflicts: [
-  "core" {< "v0.9.0"}
 ]
 build: [
     ["dune" "runtest" "-p" name] {with-test}
