@@ -10,11 +10,9 @@ depends: [
   "ocaml" {>= "4.04.0"}
   "dune" {>= "2.0.0"}
   "rpclib" {=version}
-  "rpclib-async" {=version}
   "rpclib-lwt" {=version}
   "ppx_deriving_rpc" {=version}
   "alcotest" {with-test}
-  "alcotest-lwt" {with-test}
   # "md2mld" {(with-doc | with-test) & >= "0.3.0"}
   "odoc" {with-doc}
 ]
