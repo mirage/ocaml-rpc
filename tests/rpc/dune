@@ -1,8 +1,7 @@
 (executable
  (name suite)
- (libraries alcotest alcotest-lwt lwt.unix rpclib
-   rpclib-lwt rpclib.json threads)
- (modules :standard \ suite_async client_async_new)
+ (libraries alcotest rpclib rpclib.json threads)
+ (modules :standard \ suite_async client_async_new suite_lwt client_lwt_new)
  (preprocess
   (pps ppx_deriving_rpc)))
 
@@ -10,6 +9,14 @@
  (name suite_async)
  (libraries alcotest async rpclib rpclib-async rpclib.json threads)
  (modules suite_async client_async_new)
+ (preprocess
+  (pps ppx_deriving_rpc)))
+
+(executable
+ (name suite_lwt)
+ (libraries alcotest alcotest-lwt lwt.unix rpclib
+   rpclib-lwt rpclib.json threads)
+ (modules suite_lwt client_lwt_new)
  (preprocess
   (pps ppx_deriving_rpc)))
 
@@ -27,6 +34,15 @@
  (package rpclib-async)
  (deps
   (:s suite_async.exe)
+  (source_tree .))
+ (action
+  (run %{s})))
+
+(rule
+ (alias runtest)
+ (package rpclib-lwt)
+ (deps
+  (:s suite_lwt.exe)
   (source_tree .))
  (action
   (run %{s})))
