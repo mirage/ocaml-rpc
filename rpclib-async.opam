@@ -11,7 +11,8 @@ depends: [
   "alcotest" {with-test}
   "dune" {>= "2.0.0"}
   "rpclib" {=version}
-  "async"
+  "async" {>= "v0.9.0"}
+  "ppx_deriving_rpc" {with-test & =version}
 ]
 conflicts: [
   "core" {< "v0.9.0"}

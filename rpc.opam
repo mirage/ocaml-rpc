@@ -2,26 +2,19 @@ opam-version: "2.0"
 synopsis: "A library to deal with RPCs in OCaml - meta-package"
 maintainer: "thomas@gazagnaire.org"
 authors: "Thomas Gazagnaire, Jon Ludlam"
-tags: ["org:mirage" "org:xapi-project"]
+tags: ["org:mirage" "org:xapi-project" "deprecated"]
 homepage: "https://github.com/mirage/ocaml-rpc"
 doc: "https://mirage.github.io/ocaml-rpc/rpc"
 bug-reports: "https://github.com/mirage/ocaml-rpc/issues"
 depends: [
-  "ocaml" {>= "4.04.0"}
+  "ocaml" {>= "4.04.1"}
   "dune" {>= "2.0.0"}
   "rpclib" {=version}
-  "rpclib-async" {=version}
   "rpclib-lwt" {=version}
   "ppx_deriving_rpc" {=version}
-  "async" {>= "v0.9.0"}
-  "lwt"
   "alcotest" {with-test}
-  "alcotest-lwt" {with-test}
   # "md2mld" {(with-doc | with-test) & >= "0.3.0"}
   "odoc" {with-doc}
-]
-conflicts: [
-  "core" {< "v0.9.0"}
 ]
 build: [
     ["dune" "runtest" "-p" name] {with-test}
@@ -39,3 +32,4 @@ as all conversions are from and to strings.
 
 This is a dummy package installing the main library components.
 """
+message: "DEPRECATED. This package is a virtual package and is outdated, you should consider using directly rpclib, rpclib-lwt, rpclib-async and ppx_deriving_rpc instead" {installed}

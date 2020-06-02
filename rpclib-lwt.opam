@@ -13,6 +13,7 @@ depends: [
   "rpclib" {=version}
   "lwt" {>= "3.0.0"}
   "alcotest-lwt" {with-test}
+  "ppx_deriving_rpc" {with-test & =version}
 ]
 build: [
   ["dune" "build" "-p" name "-j" jobs]
