@@ -1,3 +1,11 @@
+## 7.1.0 (June 2020)
+* Test suite refactoring
+* Port to latest ppxlib
+* Add ~strict flag to xmlrpc generation
+* Support encoding/decoding of base64
+* port to dune 2
+* Add the possibility of having null as params in a requests for JSON-RPC
+
 ## 7.0.0 (December 2019)
 * Add basic support for JSON-RPC notifications
 
