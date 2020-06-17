@@ -32,4 +32,4 @@ as all conversions are from and to strings.
 
 This is a dummy package installing the main library components.
 """
-message: "DEPRECATED. This package is a virtual package and is outdated, you should consider using directly rpclib, rpclib-lwt, rpclib-async and ppx_deriving_rpc instead" {installed}
+post-messages: ["DEPRECATED. This package is a virtual package and is outdated, you should consider using directly rpclib, rpclib-lwt, rpclib-async and ppx_deriving_rpc instead"]
