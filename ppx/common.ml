@@ -234,8 +234,8 @@ module Attrs = struct
     Attribute.declare
       "rpc.name"
       context
-      Ast_pattern.(pstr (pstr_eval (pexp_constant (pconst_string __ none)) nil ^:: nil))
-      (fun x -> x)
+      Ast_pattern.(pstr (pstr_eval (pexp_constant (pconst_string __ __ none)) nil ^:: nil))
+      (fun x _loc -> x)
 
 
   let constr_name = name Attribute.Context.constructor_declaration
@@ -245,8 +245,8 @@ module Attrs = struct
     Attribute.declare
       "rpc.key"
       Attribute.Context.label_declaration
-      Ast_pattern.(pstr (pstr_eval (pexp_constant (pconst_string __ none)) nil ^:: nil))
-      (fun x -> x)
+      Ast_pattern.(pstr (pstr_eval (pexp_constant (pconst_string __ __ none)) nil ^:: nil))
+      (fun x _loc -> x)
 
 
   let is_dict =
@@ -259,13 +259,13 @@ end
    use the nice `Attributes` module and have to roll our own. *)
 let attr loc name attrs =
   let pat =
-    Ast_pattern.(pstr (pstr_eval (pexp_constant (pconst_string __ none)) __ ^:: nil))
+    Ast_pattern.(pstr (pstr_eval (pexp_constant (pconst_string __ __ none)) __ ^:: nil))
   in
   List.find_opt (fun { attr_name = { txt; _ }; _ } -> String.equal txt name) attrs
   |> Option.map (fun { attr_payload; _ } -> attr_payload)
   |> fun o ->
   Option.bind o (fun str ->
-      Ast_pattern.parse pat loc str ~on_error:(fun _ -> None) (fun str _ -> Some str))
+      Ast_pattern.parse pat loc str ~on_error:(fun _ -> None) (fun str _loc _ -> Some str))
 
 
 let split = string_split_on_chars ~on:[ '\n' ]
