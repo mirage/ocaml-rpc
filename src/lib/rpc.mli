@@ -208,17 +208,17 @@ end
 
 type callback = string list -> t -> unit
 
-type call = {name: string; params: t list; notif: bool}
+type call = {name: string; params: t list; is_notification: bool}
 
 val call : string -> t list -> call
 
-val notif : string -> t list -> call
+val notification : string -> t list -> call
 
 val string_of_call : call -> string
 
 (** {2 Responses} *)
 
-type response = {success: bool; contents: t; notif: bool}
+type response = {success: bool; contents: t; is_notification: bool}
 
 val string_of_response : response -> string
 

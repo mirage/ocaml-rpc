@@ -96,7 +96,7 @@ let string_of_call ?(version= V1) call =
           [ ("jsonrpc", String "2.0")
           ; ("method", String call.name)
           ; ("params", params) ]
-  in let json = if not call.notif then json @ [ ("id", Int (new_id ())) ] else json in
+  in let json = if not call.is_notification then json @ [ ("id", Int (new_id ())) ] else json in
   to_string (Dict json)
 
 let json_of_response ?(id= Int 0L) version response =
@@ -209,7 +209,7 @@ let version_id_and_call_of_string_option str =
               (Malformed_method_request "Invalid field 'id' in request body")
         in
         let c = call name params in
-        (version, id, {c with notif = id == None})
+        (version, id, {c with is_notification = id == None})
     | _ -> raise (Malformed_method_request "Invalid request body")
   with
   | Missing_field field ->

@@ -131,7 +131,7 @@ module Gen () = struct
                | Error _ -> failwith "Type error" ))
           Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo)
 
-  let declare_ notif name desc_list ty =
+  let declare_ is_notification name desc_list ty =
     let generate rpc =
       let wire_name = Idl.get_wire_name !description name in
       let rec inner : type b.
@@ -166,7 +166,7 @@ module Gen () = struct
                 | _ -> Rpc.Dict named :: List.rev unnamed
               in
               let call' = Rpc.call wire_name args in
-              let call = { call' with notif = notif } in
+              let call = { call' with is_notification = is_notification } in
               let response = rpc call in
               match response.Rpc.contents with x ->
                 Printf.printf "%s\n" (Rpc.to_string x) ;
