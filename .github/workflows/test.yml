@@ -10,7 +10,10 @@ jobs:
         ocaml-version: [ '4.11.1', '4.10.1', '4.09.1', '4.08.1', '4.07.1', '4.06.1', '4.05.0', '4.04.0' ]
     steps:
     - uses: actions/checkout@master
-    - uses: avsm/setup-ocaml@v1.0
+    - name: GitHub Action for pylint
+      uses: cclauss/GitHub-Action-for-pylint@0.7.0
+    - name: OCaml GitHub Action
+      uses: avsm/setup-ocaml@v1.0
       with:
         ocaml-version: ${{ matrix.ocaml-version }}
     - run: opam pin add yaml.dev -n .
