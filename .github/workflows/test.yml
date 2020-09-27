@@ -1,27 +1,48 @@
-name: Yaml
-on: [push]
+name: Rpclib CI
+on:
+  - push
+  - pull_request
 jobs:
   run:
     name: Tests
     runs-on: ${{ matrix.operating-system }}
     strategy:
       matrix:
-        operating-system: [fedora-latest, ubuntu-latest, windows-latest]
-        ocaml-version: [ '4.11.1', '4.10.1', '4.09.1', '4.08.1', '4.07.1', '4.06.1', '4.05.0', '4.04.0' ]
+        # windows-latest async does not support it for now
+        operating-system: [macos-latest, ubuntu-latest]
+        ocaml-version: [ '4.11.1', '4.10.1', '4.09.1', '4.08.1' ]
     steps:
     - uses: actions/checkout@master
-    - name: GitHub Action for pylint
-      uses: cclauss/GitHub-Action-for-pylint@0.7.0
+    - name: Setup Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+    - name: Cache pip
+      uses: actions/cache@v2
+      with:
+        # This path is specific to Ubuntu
+        path: ~/.cache/pip
+        # Look to see if there is a cache hit
+        key: ${{ runner.os }}-pip
+        restore-keys: |
+          ${{ runner.os }}-
+    - name: Install dependencies
+      run: pip install pylint pycodestyle
     - name: OCaml GitHub Action
       uses: avsm/setup-ocaml@v1.0
       with:
         ocaml-version: ${{ matrix.ocaml-version }}
-    - run: opam pin add yaml.dev -n .
-    - name: Packages
-      run: opam depext -yt yaml
+    - name: Pin Packages
+      run: |
+        opam pin add rpclib.dev -n .
+        opam pin add rpclib-js.dev -n .
+        opam pin add rpclib-html.dev -n .
+        opam pin add rpclib-lwt.dev -n .
+        opam pin add rpclib-async.dev -n .
+        opam pin add ppx_deriving_rpc.dev -n .
     - name: Dependencies
-      run: opam install -t . --deps-only
-    - name: Build
-      run: opam exec -- dune build
-    - name: Test
-      run: opam exec -- dune runtest
+      run: opam install -t rpclib rpclib-js rpclib-html rpclib-lwt rpclib-async ppx_deriving_rpc --deps-only
+    - name: Build and test independently
+      run: opam install -t rpclib rpclib-js rpclib-html rpclib-lwt rpclib-async ppx_deriving_rpc
+    - name: Run Rpc Tests
+      run: opam exec -- dune runtest -p rpc
