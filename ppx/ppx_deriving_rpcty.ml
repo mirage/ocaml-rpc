@@ -1,4 +1,3 @@
-open Base
 open Ppxlib
 open Ast_builder.Default
 open Common
@@ -17,8 +16,8 @@ module Typ_of = struct
     let expr =
       match typ with
       | {ptyp_desc= Ptyp_constr ({txt=Lident name; _}, _); _}
-        when List.Assoc.mem (core_types loc) ~equal:String.equal name ->
-        List.Assoc.find_exn (core_types loc) ~equal:String.equal name
+        when list_assoc_mem (core_types loc) ~equal:String.equal name ->
+        list_assoc_find_exn (core_types loc) ~equal:String.equal name
       | {ptyp_desc= Ptyp_constr ({txt= Lident "char"; _}, _); _} ->
         [%expr Rpc.Types.(Basic Char)]
       | [%type : (string * [%t ? typ]) list] ->
@@ -96,7 +95,7 @@ module Typ_of = struct
             let f_name = label_declaration.pld_name.txt in
             let { pld_type; pld_attributes; _} = label_declaration in
             let rpc_name = Option.value (Attribute.get Attrs.key label_declaration) ~default:f_name in
-            let value_name = String.concat ~sep:"_" [name; f_name] in
+            let value_name = string_concat ~sep:"_" [name; f_name] in
             let default = Attribute.get Attrs.label_default label_declaration in
             let version = Attribute.get Attrs.label_version label_declaration in
             let typ = Option.value (Attribute.get Attrs.label_typ label_declaration) ~default:(expr_of_typ ~loc pld_type) in
@@ -106,7 +105,7 @@ module Typ_of = struct
                 [Located.mk (lident f_name), [%expr v]]
                 (if one_field then None else Some [%expr _s])]] in
             let expr = pexp_record
-                (List.map ~f:(fun (x,y) -> Located.mk (Ldot (Ldot (Lident "Rpc", "Types"), x)), y)
+                (list_map ~f:(fun (x,y) -> Located.mk (Ldot (Ldot (Lident "Rpc", "Types"), x)), y)
                    [ "fname", estring rpc_name
                    ; "field", expr_of_typ ~loc pld_type
                    ; "fdefault", expr_of_option ~loc default
@@ -116,9 +115,9 @@ module Typ_of = struct
                    ; "fset", fset]) None in
             { f_name; rpc_name; value_name; expr; default; typ }
         in
-        let fields = List.map ~f:(analyse_field) labels in
+        let fields = list_map ~f:(analyse_field) labels in
         let field_name_bindings =
-          List.map
+          list_map
             ~f:(fun fld ->
                 value_binding
                   ~pat:(ppat_constraint (pvar fld.value_name)
@@ -128,13 +127,13 @@ module Typ_of = struct
         in
         let boxed_fields =
           elist
-            (List.map 
+            (list_map 
                ~f:(fun fld ->
                    [%expr Rpc.Types.BoxedField [%e pexp_ident (Located.mk (lident fld.value_name))]] )
                fields)
         in
         let construct_record =
-          List.fold_left
+          list_fold_left
             ~f:(fun expr fld ->
                 match fld.default with
                 | Some d ->
@@ -155,7 +154,7 @@ module Typ_of = struct
               return
                 [%e
                   pexp_record
-                    (List.map
+                    (list_map
                        ~f:(fun fld -> Located.mk (lident fld.f_name), evar fld.value_name)
                        fields)
                     None]]
@@ -183,7 +182,7 @@ module Typ_of = struct
         let analyse_case constructor =
           let {pcd_name= {txt= cname; _}; pcd_args; _} = constructor in
           let rpc_name = Option.value (Attribute.get Attrs.constr_name constructor) ~default:cname in
-          let lower_rpc_name = String.lowercase rpc_name in
+          let lower_rpc_name = String.lowercase_ascii rpc_name in
           let typs =
             match pcd_args with
             | Pcstr_tuple typs -> typs
@@ -217,8 +216,8 @@ module Typ_of = struct
           in
           let version = expr_of_option ~loc @@ Attribute.get Attrs.constr_version constructor in
           let doc = Common.get_doc ~loc (Attribute.get Attrs.constr_doc constructor) constructor.pcd_attributes in
-          let args = List.mapi ~f:(fun i _ -> evar (argn i)) typs in
-          let pattern = List.mapi ~f:(fun i _ -> pvar (argn i)) typs in
+          let args = list_mapi ~f:(fun i _ -> evar (argn i)) typs in
+          let pattern = list_mapi ~f:(fun i _ -> pvar (argn i)) typs in
           let pat = ppat_tuple_opt pattern in
           let pat' = Option.value pat ~default:punit in
           let opt_args = pexp_tuple_opt args in
@@ -243,7 +242,7 @@ module Typ_of = struct
               BoxedTag
                 [%e
                   pexp_record
-                    (List.map ~f:(fun (x,y) -> Located.mk (Ldot (Ldot (Lident "Rpc", "Types"), x)), y)
+                    (list_map ~f:(fun (x,y) -> Located.mk (Ldot (Ldot (Lident "Rpc", "Types"), x)), y)
                        [ "tname", estring rpc_name
                        ; "tcontents", contents
                        ; "tversion", version
@@ -266,7 +265,7 @@ module Typ_of = struct
           in
           (variant, vconstructor_case)
         in
-        let cases = List.map ~f:analyse_case constrs in
+        let cases = list_map ~f:analyse_case constrs in
         let default =
           [ case ~lhs:ppat_any ~guard:None
               ~rhs:( match default_case with
@@ -280,7 +279,7 @@ module Typ_of = struct
           [%expr
             fun s' t ->
               let s = String.lowercase_ascii s' in
-              [%e pexp_match (evar "s") (List.map ~f:snd cases @ default)]]
+              [%e pexp_match (evar "s") (list_map ~f:snd cases @ default)]]
         in
         [ value_binding ~pat:(pvar typ_of_lid)
             ~expr:(
@@ -288,7 +287,7 @@ module Typ_of = struct
                  [%expr
                    Rpc.Types.Variant
                      ( { Rpc.Types.vname = [%e estring name]
-                       ; Rpc.Types.variants = [%e elist (List.map ~f:fst cases)]
+                       ; Rpc.Types.variants = [%e elist (list_map ~f:fst cases)]
                        ; Rpc.Types.vdefault = [%e expr_of_option ~loc default_case]
                        ; Rpc.Types.vversion = [%e expr_of_option ~loc version]
                        ; Rpc.Types.vconstructor = [%e vconstructor] }
@@ -301,7 +300,7 @@ module Typ_of = struct
         ~expr:
           (polymorphize
              (pexp_record
-                (List.map ~f:(fun (x,y) -> Located.mk (Ldot (Ldot (Lident "Rpc", "Types"), x)), y)
+                (list_map ~f:(fun (x,y) -> Located.mk (Ldot (Ldot (Lident "Rpc", "Types"), x)), y)
                    [ "name", estring name
                    ; "description", doc
                    ; "ty"
@@ -310,7 +309,7 @@ module Typ_of = struct
 end
 
 let my_str_type_decl ~loc ~path:_ (rec_flag, tds) =
-  pstr_value_list ~loc rec_flag (List.concat (List.map ~f:(Typ_of.str_of_type loc) tds))
+  pstr_value_list ~loc rec_flag (List.concat (list_map ~f:(Typ_of.str_of_type loc) tds))
 
 let str_type_decl =
   Deriving.Generator.make_noarg my_str_type_decl

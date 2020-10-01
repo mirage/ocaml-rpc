@@ -1,9 +1,126 @@
-open Base
 open Ppxlib
 open Ast_builder.Default
 
+let list_find t ~f =
+  let rec loop = function
+    | [] -> None
+    | x :: l -> if f x then Some x else loop l
+  in
+  loop t
+
+let list_assoc_find_exn t ~equal key =
+  match list_find t ~f:(fun (key', _) -> equal key key') with
+  | None -> raise Not_found
+  | Some x -> snd x
+
+let list_assoc_mem t ~equal key =
+  match list_find t ~f:(fun (key', _) -> equal key key') with
+  | None -> false
+  | Some _ -> true
+
+let list_map l ~f = List.rev (List.rev_map f l)
+
+let list_fold_left t ~f ~init = List.fold_left f init t
+
+let list_fold_right l ~f ~init =
+  match l with
+  | [] -> init (* avoid the allocation of [~f] below *)
+  | _ -> list_fold_left ~f:(fun a b -> f b a) ~init (List.rev l)
+
+let list_mapi l ~f = 
+  let rev_mapi l ~f =
+    let rec loop i acc = function
+      | [] -> acc
+      | h :: t -> loop (i + 1) (f i h :: acc) t
+    in
+    loop 0 [] l
+  in List.rev (rev_mapi l ~f)
+
+let option_map ~f o = Option.map f o
+let option_bind ~f o = Option.bind o f
+
+let string_concat ?(sep = "") l =
+  match l with
+  | [] -> ""
+  (* The stdlib does not specialize this case because it could break existing projects. *)
+  | [ x ] -> x
+  | l -> String.concat sep l
+
+let string_split_on_chars str ~on =
+  let rec char_list_mem l (c : char) =
+    match l with
+    | [] -> false
+    | hd :: tl -> Char.equal hd c || char_list_mem tl c
+  in
+  let split_gen str ~on =
+    let is_delim c = char_list_mem on c
+    in
+    let len = String.length str in
+    let rec loop acc last_pos pos =
+      if pos = -1
+      then String.sub str 0 last_pos :: acc
+      else if is_delim str.[pos]
+      then (
+        let pos1 = pos + 1 in
+        let sub_str = String.sub str pos1 (last_pos - pos1) in
+        loop (sub_str :: acc) pos (pos - 1))
+      else loop acc last_pos (pos - 1)
+    in
+    loop [] len (len - 1)
+  in
+  split_gen str ~on
+
+let is_whitespace = function
+  | '\t' | '\n' | '\011' (* vertical tab *) | '\012' (* form feed *) | '\r' | ' ' -> true
+  | _ -> false
+
+let string_strip ?(drop = is_whitespace) t =
+  let lfindi ?(pos = 0) t ~f =
+    let n = String.length t in
+    let rec loop i = if i = n then None else if f i t.[i] then Some i else loop (i + 1) in
+    loop pos
+  in
+  let rfindi ?pos t ~f =
+    let rec loop i = if i < 0 then None else if f i t.[i] then Some i else loop (i - 1) in
+    let pos =
+      match pos with
+      | Some pos -> pos
+      | None -> String.length t - 1
+    in
+    loop pos
+  in
+  let last_non_drop ~drop t = rfindi t ~f:(fun _ c -> not (drop c))
+  in
+  let first_non_drop ~drop t = lfindi t ~f:(fun _ c -> not (drop c))
+  in
+  let length = String.length t in
+  if length = 0 || not (drop t.[0] || drop t.[length - 1])
+  then t
+  else (
+    match first_non_drop t ~drop with
+    | None -> ""
+    | Some first ->
+      (match last_non_drop t ~drop with
+       | None -> assert false
+       | Some last -> String.sub t first (last - first + 1)))
+
+let list_partition_tf t ~f =
+  let partition_map t ~f =
+    let rec loop t fst snd =
+      match t with
+      | [] -> List.rev fst, List.rev snd
+      | x :: t ->
+        (match f x with
+         | Ok y -> loop t (y :: fst) snd
+         | Error y -> loop t fst (y :: snd))
+    in
+    loop t [] []
+  in
+  let f x = if f x then Ok x else Error x in
+  partition_map t ~f
+
 let core_types loc =
-  List.map
+  list_map
     ~f:(fun (s, y) -> (s, y))
     [ ("unit", [%expr Rpc.Types.Unit])
     ; ("int", [%expr Rpc.Types.(Basic Int)])
@@ -24,7 +141,7 @@ let core_types loc =
 *)
 
 let fold_right_type_params fn params accum =
-  List.fold_right ~f:(fun (param, _) accum ->
+  list_fold_right ~f:(fun (param, _) accum ->
       match param with
       | { ptyp_desc = Ptyp_any; _ } -> accum
       | { ptyp_desc = Ptyp_var name; _ } ->
@@ -46,7 +163,7 @@ let poly_fun_of_type_decl ~loc type_decl expr =
 
 
 let fold_left_type_params fn accum params =
-  List.fold_left ~f:(fun accum (param, _) ->
+  list_fold_left ~f:(fun accum (param, _) ->
       match param with
       | { ptyp_desc = Ptyp_any; _ } -> accum
       | { ptyp_desc = Ptyp_var name; _ } ->
@@ -147,13 +264,13 @@ end
    use the nice `Attributes` module and have to roll our own. *)
 let attr loc name attrs =
   let pat = Ast_pattern.(pstr (pstr_eval (pexp_constant (pconst_string __ none)) __ ^:: nil)) in
-  List.find ~f:(fun ({attr_name ={ txt; _ }; _}) -> String.equal txt name) attrs
-  |> Option.map ~f:(fun ({attr_payload; _}) -> attr_payload)
-  |> Option.bind ~f:(fun str -> Ast_pattern.parse pat loc str ~on_error:(fun _ -> None) (fun str _ -> Some str))
+  list_find ~f:(fun ({attr_name ={ txt; _ }; _}) -> String.equal txt name) attrs
+  |> option_map ~f:(fun ({attr_payload; _}) -> attr_payload)
+  |> option_bind ~f:(fun str -> Ast_pattern.parse pat loc str ~on_error:(fun _ -> None) (fun str _ -> Some str))
 
-let split = String.split_on_chars ~on:['\n']
+let split = string_split_on_chars ~on:['\n']
 
-let convert_doc x = split x |> List.map ~f:(String.strip ~drop:(function | '\n' | ' ' -> true | _ -> false))
+let convert_doc x = split x |> list_map ~f:(string_strip ~drop:(function | '\n' | ' ' -> true | _ -> false))
 
 (** [get_doc loc rpcdoc attrs] extracts documentation from the type declarations. rpcdoc is
     the result of looking for \@doc tags. If this is found, we use that. If not, we look for
@@ -163,5 +280,5 @@ let get_doc ~loc rpcdoc (attrs : attributes) =
   let ocamldoc = attr loc "ocaml.doc" attrs in
   match rpcdoc, ocamldoc with
   | Some e, _ -> e
-  | _, Some s -> elist ~loc (convert_doc s |> List.map ~f:(estring ~loc))
+  | _, Some s -> elist ~loc (convert_doc s |> list_map ~f:(estring ~loc))
   | _, _ -> elist ~loc []
