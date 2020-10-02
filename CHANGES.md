@@ -1,3 +1,6 @@
+## 7.2.0 (October 2020)
+* ppx_deriving_rpc: fix a transitive dep on base to enable support for recent ppxlib
+
 ## 7.1.0 (June 2020)
 * Test suite refactoring
 * Port to latest ppxlib
