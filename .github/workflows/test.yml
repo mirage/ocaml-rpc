@@ -46,3 +46,5 @@ jobs:
       run: opam install -t rpclib rpclib-js rpclib-html rpclib-lwt rpclib-async ppx_deriving_rpc
     - name: Run Rpc Tests
       run: opam exec -- dune runtest -p rpc
+    - name: Build and run Examples
+      run: opam exec -- dune build @runexamples -p rpc
