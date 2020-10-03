@@ -232,7 +232,7 @@ module Make (M : MONAD) = struct
 
     let ( @-> ) t f = Function (t, f)
 
-    let declare_ notif name _ ty (rpc: T.rpcfn) =
+    let declare_ is_notification name _ ty (rpc: T.rpcfn) =
       let open Result in
       let rec inner : type b. (string * Rpc.t) list option * Rpc.t list -> b fn -> b =
        fun (named, unnamed) -> function
@@ -262,7 +262,7 @@ module Make (M : MONAD) = struct
               | Some l -> Rpc.Dict l :: List.rev unnamed
             in
             let call' = Rpc.call wire_name args in
-            let call = { call' with notif = notif } in
+            let call = { call' with is_notification = is_notification } in
             let rpc = T.put (rpc call) in
             let res =
               T.bind rpc (fun r ->
@@ -344,7 +344,7 @@ module Make (M : MONAD) = struct
       | Returning (_, _) -> false
 
     let declare_ : bool -> string -> string list -> 'a fn -> 'a res =
-     fun notif name _ ty ->
+     fun is_notification name _ ty ->
       let ( >>= ) = M.bind in
       (* We do not know the wire name yet as the description may still be unset *)
       Hashtbl.add funcs name None ;
@@ -382,11 +382,11 @@ module Make (M : MONAD) = struct
                   | Result.Ok x ->
                     let res = (Rpc.success
                                  (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty x)) in
-                    M.return { res with notif = notif }
+                    M.return { res with is_notification = is_notification }
                   | Result.Error y ->
                     let res = (Rpc.failure
                                  (Rpcmarshal.marshal e.Error.def.Rpc.Types.ty y)) in
-                    M.return { res with notif = notif })
+                    M.return { res with is_notification = is_notification })
                     |> T.get
           in
           inner ty impl
@@ -512,7 +512,7 @@ module Exn = struct
 
     let ( @-> ) t f = Function (t, f)
 
-    let declare_ notif name _ ty =
+    let declare_ is_notification name _ ty =
       let open Result in
       let rec inner : type b. (string * Rpc.t) list option * Rpc.t list -> b fn -> b =
        fun (named, unnamed) -> function
@@ -542,7 +542,7 @@ module Exn = struct
               | Some l -> Rpc.Dict l :: List.rev unnamed
             in
             let call' = Rpc.call wire_name args in
-            let call = { call' with notif = notif } in
+            let call = { call' with is_notification = is_notification } in
             let r = R.rpc call in
             if r.Rpc.success then
               match
@@ -622,7 +622,7 @@ module Exn = struct
       | Returning (_, _) -> false
 
     let declare_ : bool -> string -> string list -> 'a fn -> 'a res =
-     fun notif name _ ty ->
+     fun is_notification name _ ty ->
       (* We do not know the wire name yet as the description may still be unset *)
       Hashtbl.add funcs name None ;
       fun impl ->
@@ -662,7 +662,7 @@ module Exn = struct
               | Returning (t, _) ->
                   let call = Rpc.success
                       (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty impl) in
-                  { call with notif = notif }
+                  { call with is_notification = is_notification }
             with e ->
               let (BoxedError error_ty) = get_error_ty f in
               match error_ty.Error.matcher e with
