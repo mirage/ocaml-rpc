@@ -1,43 +1,15 @@
 open Ppxlib
 open Ast_builder.Default
 
-let list_find t ~f =
-  let rec loop = function
-    | [] -> None
-    | x :: l -> if f x then Some x else loop l
-  in
-  loop t
-
 let list_assoc_find_exn t ~equal key =
-  match list_find t ~f:(fun (key', _) -> equal key key') with
+  match List.find_opt (fun (key', _) -> equal key key') t with
   | None -> raise Not_found
   | Some x -> snd x
 
 let list_assoc_mem t ~equal key =
-  match list_find t ~f:(fun (key', _) -> equal key key') with
+  match List.find_opt (fun (key', _) -> equal key key') t with
   | None -> false
   | Some _ -> true
-
-let list_map l ~f = List.rev (List.rev_map f l)
-
-let list_fold_left t ~f ~init = List.fold_left f init t
-
-let list_fold_right l ~f ~init =
-  match l with
-  | [] -> init (* avoid the allocation of [~f] below *)
-  | _ -> list_fold_left ~f:(fun a b -> f b a) ~init (List.rev l)
-
-let list_mapi l ~f = 
-  let rev_mapi l ~f =
-    let rec loop i acc = function
-      | [] -> acc
-      | h :: t -> loop (i + 1) (f i h :: acc) t
-    in
-    loop 0 [] l
-  in List.rev (rev_mapi l ~f)
-
-let option_map ~f o = Option.map f o
-let option_bind ~f o = Option.bind o f
 
 let string_concat ?(sep = "") l =
   match l with
@@ -120,7 +92,7 @@ let list_partition_tf t ~f =
   partition_map t ~f
 
 let core_types loc =
-  list_map
+  ListLabels.map
     ~f:(fun (s, y) -> (s, y))
     [ ("unit", [%expr Rpc.Types.Unit])
     ; ("int", [%expr Rpc.Types.(Basic Int)])
@@ -141,7 +113,7 @@ let core_types loc =
 *)
 
 let fold_right_type_params fn params accum =
-  list_fold_right ~f:(fun (param, _) accum ->
+  ListLabels.fold_right ~f:(fun (param, _) accum ->
       match param with
       | { ptyp_desc = Ptyp_any; _ } -> accum
       | { ptyp_desc = Ptyp_var name; _ } ->
@@ -163,7 +135,7 @@ let poly_fun_of_type_decl ~loc type_decl expr =
 
 
 let fold_left_type_params fn accum params =
-  list_fold_left ~f:(fun accum (param, _) ->
+  ListLabels.fold_left ~f:(fun accum (param, _) ->
       match param with
       | { ptyp_desc = Ptyp_any; _ } -> accum
       | { ptyp_desc = Ptyp_var name; _ } ->
@@ -264,13 +236,13 @@ end
    use the nice `Attributes` module and have to roll our own. *)
 let attr loc name attrs =
   let pat = Ast_pattern.(pstr (pstr_eval (pexp_constant (pconst_string __ none)) __ ^:: nil)) in
-  list_find ~f:(fun ({attr_name ={ txt; _ }; _}) -> String.equal txt name) attrs
-  |> option_map ~f:(fun ({attr_payload; _}) -> attr_payload)
-  |> option_bind ~f:(fun str -> Ast_pattern.parse pat loc str ~on_error:(fun _ -> None) (fun str _ -> Some str))
+  List.find_opt (fun ({attr_name ={ txt; _ }; _}) -> String.equal txt name) attrs
+  |> Option.map (fun ({attr_payload; _}) -> attr_payload)
+  |> fun o -> Option.bind o (fun str -> Ast_pattern.parse pat loc str ~on_error:(fun _ -> None) (fun str _ -> Some str))
 
 let split = string_split_on_chars ~on:['\n']
 
-let convert_doc x = split x |> list_map ~f:(string_strip ~drop:(function | '\n' | ' ' -> true | _ -> false))
+let convert_doc x = split x |> ListLabels.map ~f:(string_strip ~drop:(function | '\n' | ' ' -> true | _ -> false))
 
 (** [get_doc loc rpcdoc attrs] extracts documentation from the type declarations. rpcdoc is
     the result of looking for \@doc tags. If this is found, we use that. If not, we look for
@@ -280,5 +252,5 @@ let get_doc ~loc rpcdoc (attrs : attributes) =
   let ocamldoc = attr loc "ocaml.doc" attrs in
   match rpcdoc, ocamldoc with
   | Some e, _ -> e
-  | _, Some s -> elist ~loc (convert_doc s |> list_map ~f:(estring ~loc))
+  | _, Some s -> elist ~loc (convert_doc s |> ListLabels.map ~f:(estring ~loc))
   | _, _ -> elist ~loc []
