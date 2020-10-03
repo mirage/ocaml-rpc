@@ -1,34 +1,34 @@
 open Example3_idl
-
 module M = Idl.IdM
-module MyIdl = Idl.Make(M)
-module PClient=Datapath(MyIdl.GenClient ())
-module PCmds=Datapath(Cmdlinergen.Gen ())
-module DClient=Data(MyIdl.GenClient ())
-module DCmds=Data(Cmdlinergen.Gen ())
-
-module CD = Datapath(Codegen.Gen ())
-module DD = Data(Codegen.Gen ())
+module MyIdl = Idl.Make (M)
+module PClient = Datapath (MyIdl.GenClient ())
+module PCmds = Datapath (Cmdlinergen.Gen ())
+module DClient = Data (MyIdl.GenClient ())
+module DCmds = Data (Cmdlinergen.Gen ())
+module CD = Datapath (Codegen.Gen ())
+module DD = Data (Codegen.Gen ())
 
 let generate_md () =
-  let interfaces = Codegen.Interfaces.create
+  let interfaces =
+    Codegen.Interfaces.create
       ~name:"SMAPIv3"
       ~title:"Storage APIs version 3"
-      ~description:[
-        "This set of interfaces is the third example of how to use the";
-        "ocaml-rpc library as an IDL to describe RPCs. This example is inspired";
-        "by the xapi-storage repository under the xapi-project organisation on";
-        "github."]
-      ~interfaces:[CD.implementation (); DD.implementation ()]
+      ~description:
+        [ "This set of interfaces is the third example of how to use the"
+        ; "ocaml-rpc library as an IDL to describe RPCs. This example is inspired"
+        ; "by the xapi-storage repository under the xapi-project organisation on"
+        ; "github."
+        ]
+      ~interfaces:[ CD.implementation (); DD.implementation () ]
   in
   let write fname str =
     let oc = open_out fname in
     Printf.fprintf oc "%s" str;
     close_out oc
   in
-
   Markdowngen.to_string interfaces |> write "smapi.md";
   ()
+
 
 (*let generate_py () =
   let interfaces = Codegen.Interfaces.empty "SMAPIv3" "Storage APIs version 3"
@@ -53,13 +53,14 @@ let generate_md () =
 
 let default_cmd =
   let doc = "a cli for an API" in
-  Cmdliner.Term.(ret (const (fun _ -> `Help (`Pager, None)) $ const ())),
-  Cmdliner.Term.info "cli" ~version:"1.6.1" ~doc
+  ( Cmdliner.Term.(ret (const (fun _ -> `Help (`Pager, None)) $ const ()))
+  , Cmdliner.Term.info "cli" ~version:"1.6.1" ~doc )
+
 
 let generate_md_cmd =
   let doc = "Generate Markdown for the interfaces" in
-  Cmdliner.Term.(const generate_md $ const ()),
-  Cmdliner.Term.info "markdown" ~doc
+  Cmdliner.Term.(const generate_md $ const ()), Cmdliner.Term.info "markdown" ~doc
+
 
 (*let generate_md_cmd =
   let doc = "Generate Python for the interfaces" in
@@ -67,7 +68,7 @@ let generate_md_cmd =
   Cmdliner.Term.info "python" ~doc
 *)
 (* Use a binary 16-byte length to frame RPC messages *)
-let binary_rpc path (call: Rpc.call) : Rpc.response =
+let binary_rpc path (call : Rpc.call) : Rpc.response =
   let sockaddr = Unix.ADDR_UNIX path in
   let s = Unix.socket Unix.PF_UNIX Unix.SOCK_STREAM 0 in
   Unix.connect s sockaddr;
@@ -83,8 +84,11 @@ let binary_rpc path (call: Rpc.call) : Rpc.response =
   let len = int_of_string (Bytes.unsafe_to_string len_buf) in
   let msg_buf = Bytes.make len '\000' in
   really_input ic msg_buf 0 len;
-  let (response: Rpc.response) = Jsonrpc.response_of_string (Bytes.unsafe_to_string msg_buf) in
+  let (response : Rpc.response) =
+    Jsonrpc.response_of_string (Bytes.unsafe_to_string msg_buf)
+  in
   response
+
 
 (*let server_cmd =
   let doc = "Start the server" in
@@ -93,11 +97,14 @@ let binary_rpc path (call: Rpc.call) : Rpc.response =
 
 let cli () =
   let rpc = binary_rpc "path" in
-  Cmdliner.Term.eval_choice default_cmd (
-    generate_md_cmd
-    :: (List.map 
-      (fun t -> let (term, info) = t rpc in (Cmdliner.Term.(term $ const ()), info)) 
-      (PCmds.implementation () @ DCmds.implementation ())
-    ))
+  Cmdliner.Term.eval_choice
+    default_cmd
+    (generate_md_cmd
+    :: List.map
+         (fun t ->
+           let term, info = t rpc in
+           Cmdliner.Term.(term $ const ()), info)
+         (PCmds.implementation () @ DCmds.implementation ()))
+
 
 let _ = cli ()

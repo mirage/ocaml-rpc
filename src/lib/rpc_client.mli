@@ -13,24 +13,26 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-*)
+ *)
 
-type content_type = [`XML | `JSON]
+type content_type =
+  [ `XML
+  | `JSON
+  ]
 
 val string_of_content_type : content_type -> string
-
 val content_type_of_string : string -> content_type
 
-val do_rpc :
-     content_type:content_type
+val do_rpc
+  :  content_type:content_type
   -> host:string
   -> port:int
   -> path:string
   -> Rpc.call
   -> Rpc.response
 
-val do_rpc_unix :
-     content_type:content_type
+val do_rpc_unix
+  :  content_type:content_type
   -> filename:string
   -> path:string
   -> Rpc.call
