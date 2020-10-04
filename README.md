@@ -292,10 +292,6 @@ opam install dune base64 ppxlib async js_of_ocaml-ppx lwt cow cmdliner rresult y
 ```
 For tests:
 
-``` ocamlsh
+```sh
 opam install alcotest alcotest-lwt
 ```
-
-`
-
-`

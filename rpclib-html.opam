@@ -9,7 +9,7 @@ doc: "https://mirage.github.io/ocaml-rpc/rpclib-html"
 bug-reports: "https://github.com/mirage/ocaml-rpc/issues"
 depends: [
   "ocaml"
-  "dune" {>= "2.0.0"}
+  "dune"
   "rpclib" {=version}
   "cow"
 ]

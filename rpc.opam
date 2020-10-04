@@ -8,12 +8,13 @@ doc: "https://mirage.github.io/ocaml-rpc/rpc"
 bug-reports: "https://github.com/mirage/ocaml-rpc/issues"
 depends: [
   "ocaml" {>= "4.04.1"}
-  "dune" {>= "2.0.0"}
+  "dune"
   "rpclib" {=version}
   "rpclib-lwt" {=version}
   "ppx_deriving_rpc" {=version}
   "alcotest" {with-test}
   # "md2mld" {(with-doc | with-test) & >= "0.3.0"}
+  "conf-which" {with-test}
   "odoc" {with-doc}
 ]
 build: [
