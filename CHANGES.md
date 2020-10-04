@@ -1,3 +1,8 @@
+## 8.0.0 (October 2020)
+* Drop reliance on base in ppx_deriving_rpc
+* rpclib-async: cleanup opam file
+* rpclib (breaking) rename notif -> is_notification
+
 ## 7.2.0 (October 2020)
 * ppx_deriving_rpc: fix a transitive dep on base to enable support for recent ppxlib
 
