@@ -14,8 +14,8 @@
 
 (executable
  (name suite_lwt)
- (libraries alcotest alcotest-lwt lwt.unix rpclib
-   rpclib-lwt rpclib.json threads)
+ (libraries alcotest alcotest-lwt lwt.unix rpclib rpclib-lwt rpclib.json
+   threads)
  (modules suite_lwt client_lwt_new)
  (preprocess
   (pps ppx_deriving_rpc)))

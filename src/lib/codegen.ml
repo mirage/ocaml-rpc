@@ -1,13 +1,16 @@
 open Rpc.Types
 
 type _ outerfn =
-  | Function: 'a Idl.Param.t * 'b outerfn -> ('a -> 'b) outerfn
-  | Returning:
-      ('a Idl.Param.t * 'b Idl.Error.t)
-      -> ('a, 'b) Result.result outerfn
+  | Function : 'a Idl.Param.t * 'b outerfn -> ('a -> 'b) outerfn
+  | Returning : ('a Idl.Param.t * 'b Idl.Error.t) -> ('a, 'b) Result.result outerfn
 
 module Method = struct
-  type 'a t = {name: string; description: string list; ty: 'a outerfn; is_notification : bool}
+  type 'a t =
+    { name : string
+    ; description : string list
+    ; ty : 'a outerfn
+    ; is_notification : bool
+    }
 
   let rec find_inputs : type a. a outerfn -> Idl.Param.boxed list =
    fun m ->
@@ -15,11 +18,13 @@ module Method = struct
     | Function (x, y) -> Idl.Param.Boxed x :: find_inputs y
     | Returning _ -> []
 
+
   let rec find_output : type a. a outerfn -> Idl.Param.boxed =
    fun m ->
     match m with
     | Returning (x, _y) -> Idl.Param.Boxed x
     | Function (_x, y) -> find_output y
+
 
   let rec find_errors : type a. a outerfn -> Rpc.Types.boxed_def =
    fun m ->
@@ -28,12 +33,15 @@ module Method = struct
     | Function (_x, y) -> find_errors y
 end
 
-type boxed_fn = BoxedFunction: 'a Method.t -> boxed_fn
+type boxed_fn = BoxedFunction : 'a Method.t -> boxed_fn
 
 module Interface = struct
   include Idl.Interface
 
-  type t = {details: Idl.Interface.description; methods: boxed_fn list}
+  type t =
+    { details : Idl.Interface.description
+    ; methods : boxed_fn list
+    }
 
   let prepend_arg : t -> 'a Idl.Param.t -> t =
    fun interface param ->
@@ -41,35 +49,43 @@ module Interface = struct
      fun arg -> Function (param, arg)
     in
     { interface with
-      methods=
+      methods =
         List.map
           (fun (BoxedFunction m) ->
             BoxedFunction
               Method.
-                {name= m.name; description= m.description; ty= prepend m.ty; is_notification= m.is_notification} )
-          interface.methods }
+                { name = m.name
+                ; description = m.description
+                ; ty = prepend m.ty
+                ; is_notification = m.is_notification
+                })
+          interface.methods
+    }
+
 
   let setify l =
     List.fold_left (fun set x -> if List.mem x set then set else x :: set) [] l
     |> List.rev
 
+
   let all_types : t -> boxed_def list =
    fun i ->
     let all_inputs =
       List.map
-        (function BoxedFunction f -> Method.(find_inputs f.ty))
+        (function
+          | BoxedFunction f -> Method.(find_inputs f.ty))
         i.methods
     in
     let all_outputs =
       List.map
-        (function BoxedFunction f -> Method.(find_output f.ty))
+        (function
+          | BoxedFunction f -> Method.(find_output f.ty))
         i.methods
     in
-    let all = List.concat (all_inputs @ [all_outputs]) in
-    let types =
-      List.map (fun (Idl.Param.Boxed p) -> BoxedDef p.Idl.Param.typedef) all
-    in
+    let all = List.concat (all_inputs @ [ all_outputs ]) in
+    let types = List.map (fun (Idl.Param.Boxed p) -> BoxedDef p.Idl.Param.typedef) all in
     setify types
+
 
   let all_errors i =
     i.methods
@@ -79,15 +95,17 @@ end
 
 module Interfaces = struct
   type t =
-    { name: string
-    ; title: string
-    ; description: string list
-    ; type_decls: boxed_def list
-    ; error_decls: boxed_def list
-    ; interfaces: Interface.t list }
+    { name : string
+    ; title : string
+    ; description : string list
+    ; type_decls : boxed_def list
+    ; error_decls : boxed_def list
+    ; interfaces : Interface.t list
+    }
 
   let empty name title description =
-    {name; title; description; type_decls= []; error_decls= []; interfaces= []}
+    { name; title; description; type_decls = []; error_decls = []; interfaces = [] }
+
 
   let add_interface i is =
     let not_in defs (BoxedDef def) =
@@ -95,13 +113,13 @@ module Interfaces = struct
     in
     let typedefs = Interface.all_types i in
     let new_typedefs = List.filter (not_in is.type_decls) typedefs in
-    let new_errors =
-      List.filter (not_in is.error_decls) (Interface.all_errors i)
-    in
+    let new_errors = List.filter (not_in is.error_decls) (Interface.all_errors i) in
     { is with
-      type_decls= new_typedefs @ is.type_decls
-    ; error_decls= new_errors @ is.error_decls
-    ; interfaces= i :: is.interfaces }
+      type_decls = new_typedefs @ is.type_decls
+    ; error_decls = new_errors @ is.error_decls
+    ; interfaces = i :: is.interfaces
+    }
+
 
   let create ~name ~title ~description ~interfaces =
     let i = empty name title description in
@@ -112,33 +130,30 @@ exception Interface_not_described
 
 module Gen () = struct
   type ('a, 'b) comp = ('a, 'b) Result.result
-
   type 'a fn = 'a outerfn
-
   type 'a res = unit
-
   type implementation = unit -> Interface.t
 
   let methods = ref []
 
   let implement i () =
     let n = i.Interface.name in
-    if String.capitalize_ascii n <> n then
-      failwith "Interface names must be capitalized" ;
-    let i = Interface.{details= i; methods= List.rev !methods} in
+    if String.capitalize_ascii n <> n then failwith "Interface names must be capitalized";
+    let i = Interface.{ details = i; methods = List.rev !methods } in
     i
 
-  let returning a b = Returning (a, b)
 
+  let returning a b = Returning (a, b)
   let ( @-> ) t f = Function (t, f)
 
   let declare_ is_notification name description ty =
-    let m = BoxedFunction Method.{name; description; ty; is_notification = is_notification} in
+    let m = BoxedFunction Method.{ name; description; ty; is_notification } in
     methods := m :: !methods
 
-  let declare : string -> string list -> 'a fn -> 'a res =
-    fun name description ty -> declare_ false name description ty
 
-  let declare_notification =
-    fun name description ty -> declare_ true name description ty
+  let declare : string -> string list -> 'a fn -> 'a res =
+   fun name description ty -> declare_ false name description ty
+
+
+  let declare_notification name description ty = declare_ true name description ty
 end

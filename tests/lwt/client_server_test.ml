@@ -5,16 +5,16 @@ let with_ok f = function
   | Ok r -> f r
   | Error _ -> Alcotest.fail "RPC call failed"
 
+
 let test_call_lwt _switch () =
   let open Lwt.Infix in
   let server =
-    let module Server =
-      Test_common.Test_interface.Interface (Rpc_lwt.GenServer ()) in
+    let module Server = Test_common.Test_interface.Interface (Rpc_lwt.GenServer ()) in
     let open Rpc_lwt in
-    Server.add (fun a b -> ErrM.return (a + b)) ;
-    Server.sub (fun a b -> ErrM.return (a - b)) ;
-    Server.mul (fun a b -> ErrM.return (a * b)) ;
-    Server.div (fun a b -> ErrM.return (a / b)) ;
+    Server.add (fun a b -> ErrM.return (a + b));
+    Server.sub (fun a b -> ErrM.return (a - b));
+    Server.mul (fun a b -> ErrM.return (a * b));
+    Server.div (fun a b -> ErrM.return (a / b));
     Rpc_lwt.server Server.implementation
   in
   let rpc call = server call in
@@ -37,4 +37,5 @@ let test_call_lwt _switch () =
   in
   t
 
-let tests = [Alcotest_lwt.test_case "test_call_lwt" `Quick test_call_lwt]
+
+let tests = [ Alcotest_lwt.test_case "test_call_lwt" `Quick test_call_lwt ]

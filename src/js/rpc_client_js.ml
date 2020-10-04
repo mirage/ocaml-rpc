@@ -14,35 +14,42 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-*)
+ *)
 
 let do_rpc enc dec content_type ~url call =
   let method_ = "POST" in
   let contents = enc call in
   let res, w = Lwt.task () in
   let req = Js_of_ocaml.XmlHttpRequest.create () in
-  req ## _open (Js_of_ocaml.Js.string method_) (Js_of_ocaml.Js.string url) Js_of_ocaml.Js._true ;
-  req ## setRequestHeader (Js_of_ocaml.Js.string "Content-type") (Js_of_ocaml.Js.string content_type) ;
-  req ##. onreadystatechange :=
-    Js_of_ocaml.Js.wrap_callback (fun _ ->
-        match req ##. readyState with
-        | Js_of_ocaml.XmlHttpRequest.DONE ->
-            Lwt.wakeup w (dec
-                            (Js_of_ocaml.Js.Opt.case
-                               req##.responseText
-                               (fun () -> "")
-                               (fun x -> Js_of_ocaml.Js.to_string x)))
-        | _ -> () ) ;
-  req ## send (Js_of_ocaml.Js.some (Js_of_ocaml.Js.string contents)) ;
-  Lwt.on_cancel res (fun () -> req ## abort) ;
+  req##_open
+    (Js_of_ocaml.Js.string method_)
+    (Js_of_ocaml.Js.string url)
+    Js_of_ocaml.Js._true;
+  req##setRequestHeader
+    (Js_of_ocaml.Js.string "Content-type")
+    (Js_of_ocaml.Js.string content_type);
+  req##.onreadystatechange
+    := Js_of_ocaml.Js.wrap_callback (fun _ ->
+           match req##.readyState with
+           | Js_of_ocaml.XmlHttpRequest.DONE ->
+             Lwt.wakeup
+               w
+               (dec
+                  (Js_of_ocaml.Js.Opt.case
+                     req##.responseText
+                     (fun () -> "")
+                     (fun x -> Js_of_ocaml.Js.to_string x)))
+           | _ -> ());
+  req##send (Js_of_ocaml.Js.some (Js_of_ocaml.Js.string contents));
+  Lwt.on_cancel res (fun () -> req##abort);
   res
 
-let do_xml_rpc =
-  do_rpc Xmlrpc.string_of_call Xmlrpc.response_of_string "text/xml"
 
-let do_json_rpc =
-  do_rpc Jsonrpc.string_of_call Jsonrpc.response_of_string "text/json"
+let do_xml_rpc = do_rpc Xmlrpc.string_of_call Xmlrpc.response_of_string "text/xml"
+let do_json_rpc = do_rpc Jsonrpc.string_of_call Jsonrpc.response_of_string "text/json"
 
 let do_json_rpc_opt =
-  do_rpc Rpc_client_js_helper.string_of_call
-    Rpc_client_js_helper.response_of_string "text/json"
+  do_rpc
+    Rpc_client_js_helper.string_of_call
+    Rpc_client_js_helper.response_of_string
+    "text/json"

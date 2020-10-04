@@ -13,12 +13,10 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-*)
+ *)
 
 let debug = ref false
-
 let set_debug x = debug := x
-
 let get_debug () = !debug
 
 type t =
@@ -55,89 +53,93 @@ module Types = struct
     | Char : char basic
 
   type _ typ =
-    | Basic: 'a basic -> 'a typ
+    | Basic : 'a basic -> 'a typ
     | DateTime : string typ
     | Base64 : string typ
-    | Array: 'a typ -> 'a array typ
-    | List: 'a typ -> 'a list typ
-    | Dict: 'a basic * 'b typ -> ('a * 'b) list typ
+    | Array : 'a typ -> 'a array typ
+    | List : 'a typ -> 'a list typ
+    | Dict : 'a basic * 'b typ -> ('a * 'b) list typ
     | Unit : unit typ
-    | Option: 'a typ -> 'a option typ
-    | Tuple: 'a typ * 'b typ -> ('a * 'b) typ
-    | Tuple3: 'a typ * 'b typ * 'c typ -> ('a * 'b * 'c) typ
-    | Tuple4: 'a typ * 'b typ * 'c typ * 'd typ -> ('a * 'b * 'c * 'd) typ
-    | Struct: 'a structure -> 'a typ
-    | Variant: 'a variant -> 'a typ
-    | Abstract: 'a abstract -> 'a typ
+    | Option : 'a typ -> 'a option typ
+    | Tuple : 'a typ * 'b typ -> ('a * 'b) typ
+    | Tuple3 : 'a typ * 'b typ * 'c typ -> ('a * 'b * 'c) typ
+    | Tuple4 : 'a typ * 'b typ * 'c typ * 'd typ -> ('a * 'b * 'c * 'd) typ
+    | Struct : 'a structure -> 'a typ
+    | Variant : 'a variant -> 'a typ
+    | Abstract : 'a abstract -> 'a typ
 
   (* A type definition has a name and description *)
-  and 'a def = {name: string; description: string list; ty: 'a typ}
+  and 'a def =
+    { name : string
+    ; description : string list
+    ; ty : 'a typ
+    }
 
-  and boxed_def = BoxedDef: 'a def -> boxed_def
+  and boxed_def = BoxedDef : 'a def -> boxed_def
 
   and ('a, 's) field =
-    { fname: string
-    ; fdescription: string list
-    ; fversion: Version.t option
-    ; field: 'a typ
-    ; fdefault: 'a option
-    ; fget: ('s -> 'a)
+    { fname : string
+    ; fdescription : string list
+    ; fversion : Version.t option
+    ; field : 'a typ
+    ; fdefault : 'a option
+    ; fget : 's -> 'a
     ; (* Lenses *)
-      fset: ('a -> 's -> 's) }
+      fset : 'a -> 's -> 's
+    }
 
-  and 'a boxed_field = BoxedField: ('a, 's) field -> 's boxed_field
+  and 'a boxed_field = BoxedField : ('a, 's) field -> 's boxed_field
 
   and field_getter =
-    {field_get: 'a. string -> 'a typ -> ('a, Rresult.R.msg) Result.result}
+    { field_get : 'a. string -> 'a typ -> ('a, Rresult.R.msg) Result.result }
 
   and 'a structure =
-    { sname: string
-    ; fields: 'a boxed_field list
-    ; version: Version.t option
-    ; constructor: (field_getter -> ('a, Rresult.R.msg) Result.result) }
+    { sname : string
+    ; fields : 'a boxed_field list
+    ; version : Version.t option
+    ; constructor : field_getter -> ('a, Rresult.R.msg) Result.result
+    }
 
   and ('a, 's) tag =
-    { tname: string
-    ; tdescription: string list
-    ; tversion: Version.t option
-    ; tcontents: 'a typ
-    ; tpreview: ('s -> 'a option)
-    ; treview: ('a -> 's) }
+    { tname : string
+    ; tdescription : string list
+    ; tversion : Version.t option
+    ; tcontents : 'a typ
+    ; tpreview : 's -> 'a option
+    ; treview : 'a -> 's
+    }
 
-  and 'a boxed_tag = BoxedTag: ('a, 's) tag -> 's boxed_tag
+  and 'a boxed_tag = BoxedTag : ('a, 's) tag -> 's boxed_tag
 
-  and tag_getter = {tget: 'a. 'a typ -> ('a, Rresult.R.msg) Result.result}
+  and tag_getter = { tget : 'a. 'a typ -> ('a, Rresult.R.msg) Result.result }
 
   and 'a variant =
-    { vname: string
-    ; variants: 'a boxed_tag list
-    ; vdefault: 'a option
-    ; vversion: Version.t option
-    ; vconstructor: (string -> tag_getter -> ('a, Rresult.R.msg) Result.result)
+    { vname : string
+    ; variants : 'a boxed_tag list
+    ; vdefault : 'a option
+    ; vversion : Version.t option
+    ; vconstructor : string -> tag_getter -> ('a, Rresult.R.msg) Result.result
     }
 
   and 'a abstract =
-    { aname: string
-    ; test_data: 'a list
-    ; rpc_of: ('a -> t)
-    ; of_rpc: (t -> ('a, Rresult.R.msg) Result.result) }
+    { aname : string
+    ; test_data : 'a list
+    ; rpc_of : 'a -> t
+    ; of_rpc : t -> ('a, Rresult.R.msg) Result.result
+    }
 
-  let int = {name= "int"; ty= Basic Int; description= ["Native integer"]}
-
-  let int32 = {name= "int32"; ty= Basic Int32; description= ["32-bit integer"]}
-
-  let int64 = {name= "int64"; ty= Basic Int64; description= ["64-bit integer"]}
-
-  let bool = {name= "bool"; ty= Basic Bool; description= ["Boolean"]}
+  let int = { name = "int"; ty = Basic Int; description = [ "Native integer" ] }
+  let int32 = { name = "int32"; ty = Basic Int32; description = [ "32-bit integer" ] }
+  let int64 = { name = "int64"; ty = Basic Int64; description = [ "64-bit integer" ] }
+  let bool = { name = "bool"; ty = Basic Bool; description = [ "Boolean" ] }
 
   let float =
-    {name= "float"; ty= Basic Float; description= ["Floating-point number"]}
+    { name = "float"; ty = Basic Float; description = [ "Floating-point number" ] }
 
-  let string = {name= "string"; ty= Basic String; description= ["String"]}
 
-  let char = {name= "char"; ty= Basic Char; description= ["Char"]}
-
-  let unit = {name= "unit"; ty= Unit; description= ["Unit"]}
+  let string = { name = "string"; ty = Basic String; description = [ "String" ] }
+  let char = { name = "char"; ty = Basic Char; description = [ "Char" ] }
+  let unit = { name = "unit"; ty = Unit; description = [ "Unit" ] }
 
   let default_types =
     [ BoxedDef int
@@ -147,11 +149,11 @@ module Types = struct
     ; BoxedDef float
     ; BoxedDef string
     ; BoxedDef char
-    ; BoxedDef unit ]
+    ; BoxedDef unit
+    ]
 end
 
 exception Runtime_error of string * t
-
 exception Runtime_exception of string * string
 
 let map_strings sep fn l = String.concat sep (List.map fn l)
@@ -167,32 +169,21 @@ let rec to_string t =
   | DateTime s -> sprintf "D(%s)" s
   | Enum ts -> sprintf "[%s]" (map_strings ";" to_string ts)
   | Dict ts ->
-      sprintf "{%s}"
-        (map_strings ";" (fun (s, t) -> sprintf "%s:%s" s (to_string t)) ts)
-  | Base64 s ->
-      sprintf "B64(%s)" s
+    sprintf "{%s}" (map_strings ";" (fun (s, t) -> sprintf "%s:%s" s (to_string t)) ts)
+  | Base64 s -> sprintf "B64(%s)" s
   | Null -> "N"
 
+
 let rpc_of_t x = x
-
 let rpc_of_int64 i = Int i
-
 let rpc_of_int32 i = Int (Int64.of_int32 i)
-
 let rpc_of_int i = Int (Int64.of_int i)
-
 let rpc_of_bool b = Bool b
-
 let rpc_of_float f = Float f
-
 let rpc_of_string s = String s
-
 let rpc_of_dateTime s = DateTime s
-
 let rpc_of_base64 s = Base64 s
-
 let rpc_of_unit () = Null
-
 let rpc_of_char x = Int (Int64.of_int (Char.code x))
 
 let int64_of_rpc = function
@@ -200,19 +191,23 @@ let int64_of_rpc = function
   | String s -> Int64.of_string s
   | x -> failwith (Printf.sprintf "Expected int64, got '%s'" (to_string x))
 
+
 let int32_of_rpc = function
   | Int i -> Int64.to_int32 i
   | String s -> Int32.of_string s
   | x -> failwith (Printf.sprintf "Expected int32, got '%s'" (to_string x))
+
 
 let int_of_rpc = function
   | Int i -> Int64.to_int i
   | String s -> int_of_string s
   | x -> failwith (Printf.sprintf "Expected int, got '%s'" (to_string x))
 
+
 let bool_of_rpc = function
   | Bool b -> b
   | x -> failwith (Printf.sprintf "Expected bool, got '%s'" (to_string x))
+
 
 let float_of_rpc = function
   | Float f -> f
@@ -221,26 +216,33 @@ let float_of_rpc = function
   | String s -> float_of_string s
   | x -> failwith (Printf.sprintf "Expected float, got '%s'" (to_string x))
 
+
 let string_of_rpc = function
   | String s -> s
   | x -> failwith (Printf.sprintf "Expected string, got '%s'" (to_string x))
+
 
 let dateTime_of_rpc = function
   | DateTime s -> s
   | x -> failwith (Printf.sprintf "Expected DateTime, got '%s'" (to_string x))
 
+
 let base64_of_rpc = function
   | Base64 s -> Base64.decode_exn s
   | x -> failwith (Printf.sprintf "Expected base64, got '%s'" (to_string x))
+
 
 let unit_of_rpc = function
   | Null -> ()
   | x -> failwith (Printf.sprintf "Expected unit, got '%s'" (to_string x))
 
+
 let char_of_rpc x =
   let x = int_of_rpc x in
-  if x < 0 || x > 255 then failwith (Printf.sprintf "Char out of range (%d)" x)
+  if x < 0 || x > 255
+  then failwith (Printf.sprintf "Char out of range (%d)" x)
   else Char.chr x
+
 
 let t_of_rpc t = t
 
@@ -249,106 +251,123 @@ let lowerfn = function
   | Enum (String s :: ss) -> Enum (String (String.lowercase_ascii s) :: ss)
   | x -> x
 
+
 module ResultUnmarshallers = struct
   open Rresult
 
   let int64_of_rpc = function
     | Int i -> R.ok i
-    | String s -> (
-      try R.ok (Int64.of_string s) with _ ->
-        R.error_msg (Printf.sprintf "Expected int64, got string '%s'" s) )
-    | x ->
-        R.error_msg (Printf.sprintf "Expected int64, got '%s'" (to_string x))
+    | String s ->
+      (try R.ok (Int64.of_string s) with
+      | _ -> R.error_msg (Printf.sprintf "Expected int64, got string '%s'" s))
+    | x -> R.error_msg (Printf.sprintf "Expected int64, got '%s'" (to_string x))
+
 
   let int32_of_rpc = function
     | Int i -> R.ok (Int64.to_int32 i)
-    | String s -> (
-      try R.ok (Int32.of_string s) with _ ->
-        R.error_msg (Printf.sprintf "Expected int32, got string '%s'" s) )
-    | x ->
-        R.error_msg (Printf.sprintf "Expected int32, got '%s'" (to_string x))
+    | String s ->
+      (try R.ok (Int32.of_string s) with
+      | _ -> R.error_msg (Printf.sprintf "Expected int32, got string '%s'" s))
+    | x -> R.error_msg (Printf.sprintf "Expected int32, got '%s'" (to_string x))
+
 
   let int_of_rpc = function
     | Int i -> R.ok (Int64.to_int i)
-    | String s -> (
-      try R.ok (int_of_string s) with _ ->
-        R.error_msg (Printf.sprintf "Expected int, got string '%s'" s) )
+    | String s ->
+      (try R.ok (int_of_string s) with
+      | _ -> R.error_msg (Printf.sprintf "Expected int, got string '%s'" s))
     | x -> R.error_msg (Printf.sprintf "Expected int, got '%s'" (to_string x))
+
 
   let bool_of_rpc = function
     | Bool b -> R.ok b
     | x -> R.error_msg (Printf.sprintf "Expected bool, got '%s'" (to_string x))
 
+
   let float_of_rpc = function
     | Float f -> R.ok f
     | Int i -> R.ok (Int64.to_float i)
     | Int32 i -> R.ok (Int32.to_float i)
-    | String s -> (
-      try R.ok (float_of_string s) with _ ->
-        R.error_msg (Printf.sprintf "Expected float, got string '%s'" s) )
-    | x ->
-        R.error_msg (Printf.sprintf "Expected float, got '%s'" (to_string x))
+    | String s ->
+      (try R.ok (float_of_string s) with
+      | _ -> R.error_msg (Printf.sprintf "Expected float, got string '%s'" s))
+    | x -> R.error_msg (Printf.sprintf "Expected float, got '%s'" (to_string x))
+
 
   let string_of_rpc = function
     | String s -> R.ok s
-    | x ->
-        R.error_msg (Printf.sprintf "Expected string, got '%s'" (to_string x))
+    | x -> R.error_msg (Printf.sprintf "Expected string, got '%s'" (to_string x))
+
 
   let dateTime_of_rpc = function
     | DateTime s -> R.ok s
-    | x ->
-        R.error_msg
-          (Printf.sprintf "Expected DateTime, got '%s'" (to_string x))
+    | x -> R.error_msg (Printf.sprintf "Expected DateTime, got '%s'" (to_string x))
+
 
   let base64_of_rpc = function
     | Base64 s -> R.ok s
-    | x ->
-        R.error_msg (Printf.sprintf "Expected base64, got '%s'" (to_string x))
+    | x -> R.error_msg (Printf.sprintf "Expected base64, got '%s'" (to_string x))
+
 
   let unit_of_rpc = function
     | Null -> R.ok ()
     | x -> R.error_msg (Printf.sprintf "Expected unit, got '%s'" (to_string x))
 
+
   let char_of_rpc x =
     Rresult.R.bind (int_of_rpc x) (fun x ->
-        if x < 0 || x > 255 then
-          R.error_msg (Printf.sprintf "Char out of range (%d)" x)
-        else R.ok (Char.chr x) )
+        if x < 0 || x > 255
+        then R.error_msg (Printf.sprintf "Char out of range (%d)" x)
+        else R.ok (Char.chr x))
+
 
   let t_of_rpc t = R.ok t
 end
 
 let struct_extend rpc default_rpc =
-  match (rpc, default_rpc) with
+  match rpc, default_rpc with
   | Dict real, Dict default_fields ->
-      Dict
-        (List.fold_left
-           (fun real (f, default) ->
-             if List.mem_assoc f real then real else (f, default) :: real )
-           real default_fields)
+    Dict
+      (List.fold_left
+         (fun real (f, default) ->
+           if List.mem_assoc f real then real else (f, default) :: real)
+         real
+         default_fields)
   | _, _ -> rpc
+
 
 type callback = string list -> t -> unit
 
-type call = {name: string; params: t list; is_notification: bool}
+type call =
+  { name : string
+  ; params : t list
+  ; is_notification : bool
+  }
 
-let call name params = {name; params; is_notification = false}
-
-let notification name params = {name; params; is_notification = true}
+let call name params = { name; params; is_notification = false }
+let notification name params = { name; params; is_notification = true }
 
 let string_of_call call =
-  Printf.sprintf "-> %s(%s)" call.name
+  Printf.sprintf
+    "-> %s(%s)"
+    call.name
     (String.concat "," (List.map to_string call.params))
 
-type response = {success: bool; contents: t; is_notification: bool}
+
+type response =
+  { success : bool
+  ; contents : t
+  ; is_notification : bool
+  }
 
 let string_of_response response =
-  Printf.sprintf "<- %s(%s)"
+  Printf.sprintf
+    "<- %s(%s)"
     (if response.success then "success" else "failure")
     (to_string response.contents)
 
+
 (* is_notification is to be set as true only if the call was a notification *)
 
-let success v = {success= true; contents= v; is_notification= false}
-
-let failure v = {success= false; contents= v; is_notification= false}
+let success v = { success = true; contents = v; is_notification = false }
+let failure v = { success = false; contents = v; is_notification = false }
