@@ -1,3 +1,7 @@
+## 8.1.0 (March 2021)
+* github: test with 4.12 (@psafont)
+* ppx_deriving_rpc: make compatible with ppxlib.0.18.0 (@NathanReb)
+
 ## 8.0.0 (October 2020)
 * Drop reliance on base in ppx_deriving_rpc
 * rpclib-async: cleanup opam file
