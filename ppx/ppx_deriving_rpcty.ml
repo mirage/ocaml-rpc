@@ -297,7 +297,7 @@ module Typ_of = struct
           in
           let vconstructor_case =
             case
-              ~lhs:(ppat_constant (Pconst_string (lower_rpc_name, None)))
+              ~lhs:(pstring lower_rpc_name)
               ~guard:None
               ~rhs:
                 [%expr
