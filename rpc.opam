@@ -13,7 +13,7 @@ depends: [
   "rpclib-lwt" {=version}
   "ppx_deriving_rpc" {=version}
   "alcotest" {with-test}
-  # "md2mld" {(with-doc | with-test) & >= "0.3.0"}
+  "md2mld" {with-doc & >= "0.4.0"}
   "conf-which" {with-test}
   "odoc" {with-doc}
 ]
