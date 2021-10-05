@@ -91,7 +91,7 @@ let run_linters file =
   run_cmd
     "pylint should exit with 0"
     ("pylint \
-      --disable=line-too-long,too-few-public-methods,unused-argument,no-self-use,invalid-name,broad-except,protected-access,redefined-builtin,useless-object-inheritance,super-with-arguments "
+      --disable=line-too-long,too-few-public-methods,unused-argument,no-self-use,invalid-name,broad-except,protected-access,redefined-builtin,useless-object-inheritance,super-with-arguments,consider-using-f-string "
     ^ file);
   run_cmd "pycodestyle should exit with 0" ("pycodestyle --ignore=W504,E501 " ^ file)
 
