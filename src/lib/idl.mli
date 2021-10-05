@@ -134,7 +134,7 @@ module Make (M : MONAD) : sig
 
   module type RPCTRANSFORMER = sig
     type 'a box
-    type ('a, 'b) resultb = ('a, 'b) Result.result box
+    type ('a, 'b) resultb = ('a, 'b) Result.t box
     type rpcfn = Rpc.call -> Rpc.response M.t
 
     val lift : ('a -> 'b M.t) -> 'a -> 'b box
@@ -180,7 +180,7 @@ module Make (M : MONAD) : sig
       function, which might send the RPC across the network, and returns a
       function of type 'a, in this case [(int -> string -> (bool, err) result)].
 
-      Our functions return a [Result.result] type, which contains
+      Our functions return a [Result.t] type, which contains
       the result of the Rpc, which might be an error message indicating
       a problem happening on the remote end. *)
   module GenClient () : sig

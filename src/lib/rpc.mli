@@ -85,13 +85,13 @@ module Types : sig
   and 'a boxed_field = BoxedField : ('a, 's) field -> 's boxed_field
 
   and field_getter =
-    { field_get : 'a. string -> 'a typ -> ('a, Rresult.R.msg) Result.result }
+    { field_get : 'a. string -> 'a typ -> ('a, Rresult.R.msg) Result.t }
 
   and 'a structure =
     { sname : string
     ; fields : 'a boxed_field list
     ; version : Version.t option
-    ; constructor : field_getter -> ('a, Rresult.R.msg) Result.result
+    ; constructor : field_getter -> ('a, Rresult.R.msg) Result.t
     }
 
   and ('a, 's) tag =
@@ -106,21 +106,21 @@ module Types : sig
 
   and 'a boxed_tag = BoxedTag : ('a, 's) tag -> 's boxed_tag
 
-  and tag_getter = { tget : 'a. 'a typ -> ('a, Rresult.R.msg) Result.result }
+  and tag_getter = { tget : 'a. 'a typ -> ('a, Rresult.R.msg) Result.t }
 
   and 'a variant =
     { vname : string
     ; variants : 'a boxed_tag list
     ; vdefault : 'a option
     ; vversion : Version.t option
-    ; vconstructor : string -> tag_getter -> ('a, Rresult.R.msg) Result.result
+    ; vconstructor : string -> tag_getter -> ('a, Rresult.R.msg) Result.t
     }
 
   and 'a abstract =
     { aname : string
     ; test_data : 'a list
     ; rpc_of : 'a -> t
-    ; of_rpc : t -> ('a, Rresult.R.msg) Result.result
+    ; of_rpc : t -> ('a, Rresult.R.msg) Result.t
     }
 
   val int : int def
@@ -160,17 +160,17 @@ val char_of_rpc : t -> char
 val unit_of_rpc : t -> unit
 
 module ResultUnmarshallers : sig
-  val int64_of_rpc : t -> (int64, Rresult.R.msg) Result.result
-  val int32_of_rpc : t -> (int32, Rresult.R.msg) Result.result
-  val int_of_rpc : t -> (int, Rresult.R.msg) Result.result
-  val bool_of_rpc : t -> (bool, Rresult.R.msg) Result.result
-  val float_of_rpc : t -> (float, Rresult.R.msg) Result.result
-  val string_of_rpc : t -> (string, Rresult.R.msg) Result.result
-  val dateTime_of_rpc : t -> (string, Rresult.R.msg) Result.result
-  val base64_of_rpc : t -> (string, Rresult.R.msg) Result.result
-  val t_of_rpc : t -> (t, Rresult.R.msg) Result.result
-  val unit_of_rpc : t -> (unit, Rresult.R.msg) Result.result
-  val char_of_rpc : t -> (char, Rresult.R.msg) Result.result
+  val int64_of_rpc : t -> (int64, Rresult.R.msg) Result.t
+  val int32_of_rpc : t -> (int32, Rresult.R.msg) Result.t
+  val int_of_rpc : t -> (int, Rresult.R.msg) Result.t
+  val bool_of_rpc : t -> (bool, Rresult.R.msg) Result.t
+  val float_of_rpc : t -> (float, Rresult.R.msg) Result.t
+  val string_of_rpc : t -> (string, Rresult.R.msg) Result.t
+  val dateTime_of_rpc : t -> (string, Rresult.R.msg) Result.t
+  val base64_of_rpc : t -> (string, Rresult.R.msg) Result.t
+  val t_of_rpc : t -> (t, Rresult.R.msg) Result.t
+  val unit_of_rpc : t -> (unit, Rresult.R.msg) Result.t
+  val char_of_rpc : t -> (char, Rresult.R.msg) Result.t
 end
 
 (** {2 Calls} *)

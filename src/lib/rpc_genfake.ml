@@ -74,7 +74,7 @@ let rec gentest : type a. a typ -> a list =
       match n with
       | 0 -> acc
       | n ->
-        let field_get : type a. string -> a typ -> (a, Rresult.R.msg) Result.result =
+        let field_get : type a. string -> a typ -> (a, Rresult.R.msg) Result.t =
          fun _ ty ->
           let vs = gentest ty in
           Result.Ok (List.nth vs (Random.int (List.length vs)))
@@ -169,7 +169,7 @@ let rec genall : type a. int -> string -> a typ -> a list =
     in
     List.map
       (fun combination ->
-        let field_get : type a. string -> a typ -> (a, Rresult.R.msg) Result.result =
+        let field_get : type a. string -> a typ -> (a, Rresult.R.msg) Result.t =
          fun fname ty ->
           let n = List.assoc fname combination in
           let vs = genall (depth - 1) fname ty in
@@ -222,7 +222,7 @@ let rec gen_nice : type a. a typ -> string -> a =
   | Tuple4 (x, y, z, a) ->
     gen_nice x (narg 1), gen_nice y (narg 2), gen_nice z (narg 3), gen_nice a (narg 4)
   | Struct { constructor; _ } ->
-    let field_get : type a. string -> a typ -> (a, Rresult.R.msg) Result.result =
+    let field_get : type a. string -> a typ -> (a, Rresult.R.msg) Result.t =
      fun name ty -> Result.Ok (gen_nice ty name)
     in
     (match constructor { field_get } with

@@ -1,6 +1,6 @@
 type _ outerfn =
   | Function : 'a Idl.Param.t * 'b outerfn -> ('a -> 'b) outerfn
-  | Returning : ('a Idl.Param.t * 'b Idl.Error.t) -> ('a, 'b) Result.result outerfn
+  | Returning : ('a Idl.Param.t * 'b Idl.Error.t) -> ('a, 'b) Result.t outerfn
 
 module Method : sig
   type 'a t =
@@ -59,13 +59,13 @@ end
 exception Interface_not_described
 
 module Gen () : sig
-  type ('a, 'b) comp = ('a, 'b) Result.result
+  type ('a, 'b) comp = ('a, 'b) Result.t
   type 'a fn = 'a outerfn
   type 'a res = unit
   type implementation = unit -> Interface.t
 
   val implement : Interface.description -> implementation
-  val returning : 'a Idl.Param.t -> 'b Idl.Error.t -> ('a, 'b) Result.result outerfn
+  val returning : 'a Idl.Param.t -> 'b Idl.Error.t -> ('a, 'b) Result.t outerfn
   val ( @-> ) : 'a Idl.Param.t -> 'b outerfn -> ('a -> 'b) outerfn
   val declare : string -> string list -> 'a fn -> 'a res
   val declare_notification : string -> string list -> 'a fn -> 'a res

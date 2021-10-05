@@ -130,7 +130,7 @@ let get_arg call has_named name is_opt =
 module Make (M : MONAD) = struct
   module type RPCTRANSFORMER = sig
     type 'a box
-    type ('a, 'b) resultb = ('a, 'b) Result.result box
+    type ('a, 'b) resultb = ('a, 'b) Result.t box
     type rpcfn = Rpc.call -> Rpc.response M.t
 
     val lift : ('a -> 'b M.t) -> 'a -> 'b box
@@ -144,7 +144,7 @@ module Make (M : MONAD) = struct
 
   module T = struct
     type 'a box = { box : 'a M.t }
-    type ('a, 'b) resultb = ('a, 'b) Result.result box
+    type ('a, 'b) resultb = ('a, 'b) Result.t box
     type rpcfn = Rpc.call -> Rpc.response M.t
 
     let lift f x = { box = f x }
