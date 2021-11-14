@@ -1,3 +1,7 @@
+## 8.1.1 (November 2021)
+* Ignore error about using f-strings in python bindings (@psafont)
+* Compatibility with rresult 0.7.0 (@psafont)
+
 ## 8.1.0 (March 2021)
 * github: test with 4.12 (@psafont)
 * ppx_deriving_rpc: make compatible with ppxlib.0.18.0 (@NathanReb)
