@@ -6,7 +6,7 @@ module Gen () = struct
     -> ((Rpc.call -> Rpc.response) -> (unit -> unit) Cmdliner.Term.t * Cmdliner.Term.info)
        list
 
-  type ('a, 'b) comp = ('a, 'b) Result.result
+  type ('a, 'b) comp = ('a, 'b) Result.t
   type 'a rpcfn = Rpc.call -> Rpc.response
   type 'a res = unit
 

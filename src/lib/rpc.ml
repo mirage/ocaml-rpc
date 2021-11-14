@@ -91,13 +91,13 @@ module Types = struct
   and 'a boxed_field = BoxedField : ('a, 's) field -> 's boxed_field
 
   and field_getter =
-    { field_get : 'a. string -> 'a typ -> ('a, Rresult.R.msg) Result.result }
+    { field_get : 'a. string -> 'a typ -> ('a, Rresult.R.msg) Result.t }
 
   and 'a structure =
     { sname : string
     ; fields : 'a boxed_field list
     ; version : Version.t option
-    ; constructor : field_getter -> ('a, Rresult.R.msg) Result.result
+    ; constructor : field_getter -> ('a, Rresult.R.msg) Result.t
     }
 
   and ('a, 's) tag =
@@ -111,21 +111,21 @@ module Types = struct
 
   and 'a boxed_tag = BoxedTag : ('a, 's) tag -> 's boxed_tag
 
-  and tag_getter = { tget : 'a. 'a typ -> ('a, Rresult.R.msg) Result.result }
+  and tag_getter = { tget : 'a. 'a typ -> ('a, Rresult.R.msg) Result.t }
 
   and 'a variant =
     { vname : string
     ; variants : 'a boxed_tag list
     ; vdefault : 'a option
     ; vversion : Version.t option
-    ; vconstructor : string -> tag_getter -> ('a, Rresult.R.msg) Result.result
+    ; vconstructor : string -> tag_getter -> ('a, Rresult.R.msg) Result.t
     }
 
   and 'a abstract =
     { aname : string
     ; test_data : 'a list
     ; rpc_of : 'a -> t
-    ; of_rpc : t -> ('a, Rresult.R.msg) Result.result
+    ; of_rpc : t -> ('a, Rresult.R.msg) Result.t
     }
 
   let int = { name = "int"; ty = Basic Int; description = [ "Native integer" ] }

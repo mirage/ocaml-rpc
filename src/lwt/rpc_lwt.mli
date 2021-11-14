@@ -3,7 +3,7 @@ type server_implementation
 
 module T : sig
   type 'a box
-  type ('a, 'b) resultb = ('a, 'b) Result.result box
+  type ('a, 'b) resultb = ('a, 'b) Result.t box
   type rpcfn = Rpc.call -> Rpc.response Lwt.t
 
   val lift : ('a -> 'b Lwt.t) -> 'a -> 'b box

@@ -72,12 +72,12 @@ module Client = MyAPI (MyIdl.GenClient ())
 module Server = MyAPI (MyIdl.GenServer ())
 
 let _ =
-  (* The Client module generated above makes use of the Result.result type,
+  (* The Client module generated above makes use of the Result.t type,
      and hence it is convenient to use the Monadic `bind` and `return`
      functions in Rresult.R *)
   let open MyIdl in
   (* The server is used by associating the RPC declarations with their
-     implementations. The return type is expected to be Result.result, hence
+     implementations. The return type is expected to be Result.t, hence
      the use of `ok` here. *)
   Server.api1 (fun i s ->
       Printf.printf "Received '%d' and '%s': returning '%b'\n" i s true;
@@ -166,7 +166,7 @@ let vm_name_description : (string, vm) field =
 (* The constructor function here takes a 'field getter' argument. This is
    a record with a single field, `g`, with signature:
 
-       g: 'a. string -> 'a Types.typ -> ('a, Rresult.R.msg) Result.result
+       g: 'a. string -> 'a Types.typ -> ('a, Rresult.R.msg) Result.t
 
    this is used to obtain the values for each field. With this mechanism,
    the details of how each field value is obtained is up to the caller of the
@@ -324,7 +324,7 @@ let _ =
     if paused then return_err (Errors "Paused start is unimplemented") else return ()
   in
   VMServer.start impl;
-  (* And an implementation that raises exceptions rather than Result.result
+  (* And an implementation that raises exceptions rather than Result.t
      types *)
   let implexn _vm' paused =
     if paused then raise (ExampleExn (Errors "Paused start is unimplemented"));

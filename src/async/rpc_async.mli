@@ -3,7 +3,7 @@ type server_implementation
 
 module T : sig
   type 'a box
-  type ('a, 'b) resultb = ('a, 'b) Result.result box
+  type ('a, 'b) resultb = ('a, 'b) Result.t box
   type rpcfn = Rpc.call -> Rpc.response Async.Deferred.t
 
   val lift : ('a -> 'b Async.Deferred.t) -> 'a -> 'b box

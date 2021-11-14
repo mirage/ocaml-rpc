@@ -76,7 +76,7 @@ will give two functions:
   `val rpc_of_t : t -> Rpc.t`
 
 * A function to convert values of type `Rpc.t` to values of type `t` :
-  `val t_of_rpc : Rpc.t -> (t,string) Result.result`
+  `val t_of_rpc : Rpc.t -> (t,string) Result.t`
 
 It also supports the `@key` annotations for having different field names:
 ```ocaml

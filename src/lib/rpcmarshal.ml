@@ -5,7 +5,7 @@ type err = [ `Msg of string ]
 
 let tailrec_map f l = List.rev_map f l |> List.rev
 
-let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result =
+let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.t =
  fun t v ->
   let open Rpc in
   let open Result in
@@ -107,7 +107,7 @@ let rec unmarshal : type a. a typ -> Rpc.t -> (a, err) Result.result =
       let keys = List.map (fun (s, v) -> String.lowercase_ascii s, v) keys' in
       constructor
         { field_get =
-            (let x : type a. string -> a typ -> (a, Rresult.R.msg) Result.result =
+            (let x : type a. string -> a typ -> (a, Rresult.R.msg) Result.t =
               fun s ty ->
                let s = String.lowercase_ascii s in
                match ty with
