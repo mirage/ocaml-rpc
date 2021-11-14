@@ -4,7 +4,7 @@
  (action
   (progn
    (with-stdout-to
-    index.mld.new
+    index.mld
     (run %{bin:md2mld} %{deps})))))
 
 (documentation
