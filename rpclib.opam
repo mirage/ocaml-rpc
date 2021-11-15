@@ -6,13 +6,14 @@ tags: ["org:mirage" "org:xapi-project"]
 homepage: "https://github.com/mirage/ocaml-rpc"
 doc: "https://mirage.github.io/ocaml-rpc/rpclib"
 bug-reports: "https://github.com/mirage/ocaml-rpc/issues"
+license: "ISC"
 depends: [
   "ocaml" {>= "4.04.0"}
   "alcotest" {with-test}
   "dune" {>= "2.0.0"}
   "base64" {>= "3.4.0"}
-  "cmdliner"
-  "rresult"
+  "cmdliner" {>= "0.9.8"}
+  "rresult" {>= "0.3.0"}
   "xmlm"
   "yojson" {>= "1.7.0"}
 ]
@@ -21,7 +22,7 @@ conflicts: [
 ]
 build: [
   ["dune" "build" "-p" name "-j" jobs]
-  ["dune" "runtest" "-p" name] {with-test}
+  ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
 dev-repo: "git://github.com/mirage/ocaml-rpc"
 description: """
