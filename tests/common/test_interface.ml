@@ -2,6 +2,7 @@ module Interface (R : Idl.RPC) = struct
   open R
 
   let int_p = Idl.Param.mk Rpc.Types.int
+  let string_p = Idl.Param.mk Rpc.Types.string
 
   let int_p_named_1 =
     Idl.Param.mk ~name:"int1" ~description:[ "first int param" ] Rpc.Types.int
@@ -40,6 +41,11 @@ module Interface (R : Idl.RPC) = struct
       [ "Divide two numbers" ]
       (int_p_named_1 @-> int_p_named_2 @-> returning int_p_result Idl.DefaultError.err)
 
+  let ping =
+    R.declare
+      "ping"
+      [ "Check if service is alive (no params)" ]
+      (void (returning string_p Idl.DefaultError.err))
 
   let implementation =
     implement

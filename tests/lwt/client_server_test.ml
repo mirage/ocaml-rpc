@@ -15,6 +15,7 @@ let test_call_lwt _switch () =
     Server.sub (fun a b -> ErrM.return (a - b));
     Server.mul (fun a b -> ErrM.return (a * b));
     Server.div (fun a b -> ErrM.return (a / b));
+    Server.ping (fun () -> ErrM.return "OK");
     Rpc_lwt.server Server.implementation
   in
   let rpc call = server call in
@@ -34,6 +35,9 @@ let test_call_lwt _switch () =
     >>= fun () ->
     Client.div rpc 8 2
     >>>= with_ok (fun n -> Alcotest.(check int) "div" 4 n |> Lwt.return)
+    >>= fun () ->
+    Client.ping rpc ()
+    >>>= with_ok (fun n -> Alcotest.(check string) "ping" "OK" n |> Lwt.return)
   in
   t
 
