@@ -1,5 +1,6 @@
 type _ outerfn =
   | Function : 'a Idl.Param.t * 'b outerfn -> ('a -> 'b) outerfn
+  | VoidFunction : 'b outerfn -> (unit -> 'b) outerfn
   | Returning : ('a Idl.Param.t * 'b Idl.Error.t) -> ('a, 'b) Result.t outerfn
 
 module Method : sig
@@ -67,6 +68,7 @@ module Gen () : sig
   val implement : Interface.description -> implementation
   val returning : 'a Idl.Param.t -> 'b Idl.Error.t -> ('a, 'b) Result.t outerfn
   val ( @-> ) : 'a Idl.Param.t -> 'b outerfn -> ('a -> 'b) outerfn
+  val void : 'b outerfn -> (unit -> 'b) outerfn
   val declare : string -> string list -> 'a fn -> 'a res
   val declare_notification : string -> string list -> 'a fn -> 'a res
 end

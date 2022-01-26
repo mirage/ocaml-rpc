@@ -2,6 +2,7 @@ open Rpc.Types
 
 type _ outerfn =
   | Function : 'a Idl.Param.t * 'b outerfn -> ('a -> 'b) outerfn
+  | VoidFunction : 'b outerfn -> (unit -> 'b) outerfn
   | Returning : ('a Idl.Param.t * 'b Idl.Error.t) -> ('a, 'b) Result.t outerfn
 
 module Method = struct
@@ -16,6 +17,7 @@ module Method = struct
    fun m ->
     match m with
     | Function (x, y) -> Idl.Param.Boxed x :: find_inputs y
+    | VoidFunction y -> find_inputs y
     | Returning _ -> []
 
 
@@ -23,6 +25,7 @@ module Method = struct
    fun m ->
     match m with
     | Returning (x, _y) -> Idl.Param.Boxed x
+    | VoidFunction y -> find_output y
     | Function (_x, y) -> find_output y
 
 
@@ -30,6 +33,7 @@ module Method = struct
    fun m ->
     match m with
     | Returning (_x, y) -> Rpc.Types.BoxedDef y.Idl.Error.def
+    | VoidFunction y -> find_errors y
     | Function (_x, y) -> find_errors y
 end
 
@@ -145,6 +149,7 @@ module Gen () = struct
 
   let returning a b = Returning (a, b)
   let ( @-> ) t f = Function (t, f)
+  let void f = VoidFunction f
 
   let declare_ is_notification name description ty =
     let m = BoxedFunction Method.{ name; description; ty; is_notification } in
