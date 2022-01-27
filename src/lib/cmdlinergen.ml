@@ -21,10 +21,12 @@ module Gen () = struct
 
   type _ fn =
     | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
+    | VoidFunction : 'b fn -> (unit -> 'b) fn
     | Returning : ('a Param.t * 'b Idl.Error.t) -> ('a, 'b) comp fn
 
   let returning a b = Returning (a, b)
   let ( @-> ) t f = Function (t, f)
+  let void f = VoidFunction f
   let pos = ref 0
 
   let term_of_param : type a. a Param.t -> Rpc.t Cmdliner.Term.t =
@@ -165,6 +167,12 @@ module Gen () = struct
               const (fun x (named, unnamed) -> named, x :: unnamed) $ term $ cur
             in
             inner term f)
+        | VoidFunction f ->
+            let term =
+              let open Cmdliner.Term in
+              const (fun (named, unnamed) -> named, unnamed) $ cur
+            in
+            inner term f
         | Returning (_, _) ->
           let run (named, unnamed) =
             let args =
