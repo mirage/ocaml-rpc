@@ -104,7 +104,7 @@ module type RPC = sig
 
   (** Require a unit argument in OCaml without sending a parameter.
       Useful for methods that take no arguments. *)
-  val void : 'b fn -> (unit -> 'b) fn
+  val noargs : 'b fn -> (unit -> 'b) fn
 
   (** This defines the return type of an RPC *)
   val returning : 'a Param.t -> 'b Error.t -> ('a, 'b) comp fn

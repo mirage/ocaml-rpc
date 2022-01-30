@@ -45,7 +45,7 @@ module Interface (R : Idl.RPC) = struct
     R.declare
       "ping"
       [ "Check if service is alive (no params)" ]
-      (void (returning string_p Idl.DefaultError.err))
+      (noargs (returning string_p Idl.DefaultError.err))
 
   let implementation =
     implement
