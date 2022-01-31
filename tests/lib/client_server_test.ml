@@ -9,6 +9,7 @@ let test_call_core () =
     Server.sub (fun a b -> a - b);
     Server.mul (fun a b -> a * b);
     Server.div (fun a b -> a / b);
+    Server.ping (fun () -> "OK");
     server Server.implementation
   in
   let module Client =
@@ -19,7 +20,8 @@ let test_call_core () =
   Alcotest.(check int) "add" 4 (Client.add 1 3);
   Alcotest.(check int) "sub" 2 (Client.sub 3 1);
   Alcotest.(check int) "mul" 6 (Client.mul 2 3);
-  Alcotest.(check int) "div" 4 (Client.div 8 2)
+  Alcotest.(check int) "div" 4 (Client.div 8 2);
+  Alcotest.(check string) "ping" "OK" (Client.ping ())
 
 
 let tests = [ "test_call_core", `Quick, test_call_core ]

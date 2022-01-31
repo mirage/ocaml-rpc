@@ -1,3 +1,7 @@
+## 8.1.2 (February 2022)
+* Add the `noargs` constructor for declaring interfaces that do not take any 
+  parameters.
+
 ## 8.1.1 (November 2021)
 * Ignore error about using f-strings in python bindings (@psafont)
 * Compatibility with rresult 0.7.0 (@psafont)

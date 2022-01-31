@@ -76,6 +76,7 @@ module type RPC = sig
 
   val implement : Interface.description -> implementation
   val ( @-> ) : 'a Param.t -> 'b fn -> ('a -> 'b) fn
+  val noargs : 'b fn -> (unit -> 'b) fn
   val returning : 'a Param.t -> 'b Error.t -> ('a, 'b) comp fn
   val declare : string -> string list -> 'a fn -> 'a res
   val declare_notification : string -> string list -> 'a fn -> 'a res
@@ -195,6 +196,7 @@ module Make (M : MONAD) = struct
 
     type _ fn =
       | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
+      | NoArgsFunction : 'b fn -> (unit -> 'b) fn
       | Returning : ('a Param.t * 'b Error.t) -> ('a, 'b) comp fn
 
     let description = ref None
@@ -208,6 +210,7 @@ module Make (M : MONAD) = struct
 
     let returning a err = Returning (a, err)
     let ( @-> ) t f = Function (t, f)
+    let noargs f = NoArgsFunction f
 
     let declare_ is_notification name _ ty (rpc : T.rpcfn) =
       let open Result in
@@ -233,6 +236,7 @@ module Make (M : MONAD) = struct
             | None ->
               let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
               inner (named, marshalled :: unnamed) f)
+        | NoArgsFunction f -> fun () -> inner (named, unnamed) f
         | Returning (t, e) ->
           let wire_name = get_wire_name !description name in
           let args =
@@ -302,6 +306,7 @@ module Make (M : MONAD) = struct
 
     type _ fn =
       | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
+      | NoArgsFunction : 'b fn -> (unit -> 'b) fn
       | Returning : ('a Param.t * 'b Error.t) -> ('a, 'b) comp fn
 
     let funcs = Hashtbl.create 20
@@ -314,12 +319,14 @@ module Make (M : MONAD) = struct
 
     let returning a b = Returning (a, b)
     let ( @-> ) t f = Function (t, f)
+    let noargs f = NoArgsFunction f
 
     let rec has_named_args : type a. a fn -> bool = function
       | Function (t, f) ->
         (match t.Param.name with
         | Some _ -> true
         | None -> has_named_args f)
+      | NoArgsFunction f -> has_named_args f
       | Returning (_, _) -> false
 
 
@@ -353,6 +360,7 @@ module Make (M : MONAD) = struct
               (match z with
               | Result.Ok arg -> inner f (impl arg) call'
               | Result.Error (`Msg m) -> M.fail (MarshalError m))
+            | NoArgsFunction f -> inner f (impl ()) call
             | Returning (t, e) ->
               T.bind impl (function
                   | Result.Ok x ->
@@ -491,6 +499,7 @@ module Exn = struct
 
     type _ fn =
       | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
+      | NoArgsFunction : 'b fn -> (unit -> 'b) fn
       | Returning : ('a Param.t * 'b Error.t) -> ('a, _) comp fn
 
     let description = ref None
@@ -502,6 +511,7 @@ module Exn = struct
 
     let returning a err = Returning (a, err)
     let ( @-> ) t f = Function (t, f)
+    let noargs f = NoArgsFunction f
 
     let declare_ is_notification name _ ty =
       let open Result in
@@ -527,6 +537,7 @@ module Exn = struct
             | None ->
               let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
               inner (named, marshalled :: unnamed) f)
+        | NoArgsFunction f -> fun () -> inner (named, unnamed) f
         | Returning (t, e) ->
           let wire_name = get_wire_name !description name in
           let args =
@@ -589,6 +600,7 @@ module Exn = struct
 
     type _ fn =
       | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
+      | NoArgsFunction : 'b fn -> (unit -> 'b) fn
       | Returning : ('a Param.t * 'b Error.t) -> ('a, _) comp fn
 
     let funcs = Hashtbl.create 20
@@ -601,11 +613,13 @@ module Exn = struct
 
     let returning a b = Returning (a, b)
     let ( @-> ) t f = Function (t, f)
+    let noargs f = NoArgsFunction f
 
     type boxed_error = BoxedError : 'a Error.t -> boxed_error
 
     let rec get_error_ty : type a. a fn -> boxed_error = function
       | Function (_, f) -> get_error_ty f
+      | NoArgsFunction f -> get_error_ty f
       | Returning (_, e) -> BoxedError e
 
 
@@ -614,6 +628,7 @@ module Exn = struct
         (match t.Param.name with
         | Some _ -> true
         | None -> has_named_args f)
+      | NoArgsFunction f -> has_named_args f
       | Returning (_, _) -> false
 
 
@@ -651,6 +666,7 @@ module Exn = struct
                   | Result.Error (`Msg m) -> raise (MarshalError m)
                 in
                 inner f (impl arg) call'
+              | NoArgsFunction f -> inner f (impl ()) call
               | Returning (t, _) ->
                 let call =
                   Rpc.success (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty impl)

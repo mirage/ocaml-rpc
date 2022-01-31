@@ -1,4 +1,4 @@
-.PHONY: build release install uninstall clean test reindent reformat
+.PHONY: build release install uninstall clean test examples reindent reformat
 
 build:
 	dune build @install
@@ -15,8 +15,11 @@ uninstall:
 clean:
 	dune clean
 
-test:
+test: examples
 	dune runtest
+
+examples:
+	dune build @runexamples -p rpc
 
 reindent:
 	git ls-files '*.ml*' | xargs ocp-indent -i
