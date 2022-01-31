@@ -313,13 +313,14 @@ module Parser = struct
   let make_float = make (fun data -> Float (float_of_string data))
   let make_string = make (fun data -> String data)
   let make_dateTime = make (fun data -> DateTime data)
-  let make_base64 = make (fun data -> Base64 (Base64.decode_exn data))
+  let make_base64 ?(base64_decode=fun s -> Base64.decode_exn s) =
+    make (fun data -> Base64 (base64_decode data))
   let make_enum = make (fun data -> Enum data)
   let make_dict = make (fun data -> Dict data)
 
   (* General parser functions *)
-  let rec of_xml ?callback accu input =
-    try value (map_tags (basic_types ?callback accu)) input with
+  let rec of_xml ?callback ?base64_decode accu input =
+    try value (map_tags (basic_types ?callback ?base64_decode accu)) input with
     | Xmlm.Error ((a, b), e) as exn ->
       eprintf "Characters %i--%i: %s\n%!" a b (Xmlm.error_message e);
       raise exn
@@ -328,13 +329,13 @@ module Parser = struct
       raise e
 
 
-  and basic_types ?callback accu input = function
+  and basic_types ?callback ?base64_decode accu input = function
     | "int" | "i8" | "i4" -> make_int ?callback accu (get_data input)
     | "boolean" -> make_bool ?callback accu (get_data input)
     | "double" -> make_float ?callback accu (get_data input)
     | "string" -> make_string ?callback accu (get_data input)
     | "dateTime.iso8601" -> make_dateTime ?callback accu (get_data input)
-    | "base64" -> make_base64 ?callback accu (get_data input)
+    | "base64" -> make_base64 ?callback ?base64_decode accu (get_data input)
     | "array" -> make_enum ?callback accu (data (of_xmls ?callback accu) input)
     | "struct" ->
       make_dict
@@ -359,25 +360,25 @@ module Parser = struct
     List.rev !r
 end
 
-let of_string ?callback str =
+let of_string ?callback ?base64_decode str =
   let input = Xmlm.make_input (`String (0, str)) in
   (match Xmlm.peek input with
   | `Dtd _ -> ignore (Xmlm.input input)
   | _ -> ());
-  Parser.of_xml ?callback [] input
+  Parser.of_xml ?callback ?base64_decode [] input
 
 
-let of_a ?callback ~next_char b =
+let of_a ?callback ?base64_decode ~next_char b =
   let aux () =
     match next_char b with
     | Some c -> int_of_char c
     | None -> raise End_of_file
   in
   let input = Xmlm.make_input (`Fun aux) in
-  Parser.of_xml ?callback [] input
+  Parser.of_xml ?callback ?base64_decode [] input
 
 
-let call_of_string ?callback str =
+let call_of_string ?callback ?base64_decode str =
   let input = Xmlm.make_input (`String (0, str)) in
   (match Xmlm.peek input with
   | `Dtd _ -> ignore (Xmlm.input input)
@@ -395,7 +396,8 @@ let call_of_string ?callback str =
           while Xmlm.peek input <> `El_end do
             Parser.map_tag
               "param"
-              (fun input -> params := Parser.of_xml ?callback [] input :: !params)
+              (fun input -> params :=
+                Parser.of_xml ?callback ?base64_decode [] input :: !params)
               input;
             Parser.skip_empty input
           done)
@@ -404,11 +406,11 @@ let call_of_string ?callback str =
   call !name (List.rev !params)
 
 
-let response_of_fault ?callback input =
+let response_of_fault ?callback ?base64_decode input =
   Parser.map_tag
     "fault"
     (fun input ->
-      match Parser.of_xml ?callback [] input with
+      match Parser.of_xml ?callback ?base64_decode [] input with
       | Dict d ->
         let fault_code = List.assoc "faultCode" d in
         let fault_string = List.assoc "faultString" d in
@@ -417,14 +419,14 @@ let response_of_fault ?callback input =
     input
 
 
-let response_of_success ?callback input =
+let response_of_success ?callback ?base64_decode input =
   Parser.map_tag
     "params"
     (fun input ->
       Parser.map_tag
         "param"
         (fun input ->
-          match Parser.of_xml ?callback [] input with
+          match Parser.of_xml ?callback ?base64_decode [] input with
           | Dict d ->
             if List.mem_assoc "Status" d
                && List.assoc "Status" d = String "Success"
@@ -440,7 +442,7 @@ let response_of_success ?callback input =
     input
 
 
-let response_of_input ?callback input =
+let response_of_input ?callback ?base64_decode input =
   (match Xmlm.peek input with
   | `Dtd _ -> ignore (Xmlm.input input)
   | _ -> ());
@@ -449,8 +451,10 @@ let response_of_input ?callback input =
     (fun input ->
       Parser.skip_empty input;
       match Xmlm.peek input with
-      | `El_start ((_, "params"), _) -> response_of_success ?callback input
-      | `El_start ((_, "fault"), _) -> response_of_fault ?callback input
+      | `El_start ((_, "params"), _) ->
+          response_of_success ?callback ?base64_decode input
+      | `El_start ((_, "fault"), _) ->
+          response_of_fault ?callback ?base64_decode input
       | `El_start ((_, tag), _) ->
         parse_error (sprintf "open_tag(%s)" tag) "open_tag(fault/params)" input
       | `Data d -> parse_error (String.escaped d) "open_tag(fault/params)" input
@@ -459,11 +463,11 @@ let response_of_input ?callback input =
     input
 
 
-let response_of_string ?callback str =
+let response_of_string ?callback ?base64_decode str =
   let input = Xmlm.make_input (`String (0, str)) in
-  response_of_input ?callback input
+  response_of_input ?callback ?base64_decode input
 
 
-let response_of_in_channel ?callback chan =
+let response_of_in_channel ?callback ?base64_decode chan =
   let input = Xmlm.make_input (`Channel chan) in
-  response_of_input ?callback input
+  response_of_input ?callback ?base64_decode input
