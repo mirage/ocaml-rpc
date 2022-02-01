@@ -1,15 +1,15 @@
 ## 8.1.2 (February 2022)
 * Add the `noargs` constructor for declaring interfaces that do not take any 
-  parameters.
-* Allow Xmlrpc callers to override the base64 decoding function.
+  parameters. (tbrk #170)
+* Allow Xmlrpc callers to override the base64 decoding function. (tbrk #171)
 
 ## 8.1.1 (November 2021)
-* Ignore error about using f-strings in python bindings (@psafont)
-* Compatibility with rresult 0.7.0 (@psafont)
+* Ignore error about using f-strings in python bindings (psafont)
+* Compatibility with rresult 0.7.0 (psafont)
 
 ## 8.1.0 (March 2021)
-* github: test with 4.12 (@psafont)
-* ppx_deriving_rpc: make compatible with ppxlib.0.18.0 (@NathanReb)
+* github: test with 4.12 (psafont)
+* ppx_deriving_rpc: make compatible with ppxlib.0.18.0 (NathanReb)
 
 ## 8.0.0 (October 2020)
 * Drop reliance on base in ppx_deriving_rpc
