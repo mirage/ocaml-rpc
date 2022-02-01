@@ -1,6 +1,7 @@
 ## 8.1.2 (February 2022)
 * Add the `noargs` constructor for declaring interfaces that do not take any 
   parameters.
+* Allow Xmlrpc callers to override the base64 decoding function.
 
 ## 8.1.1 (November 2021)
 * Ignore error about using f-strings in python bindings (@psafont)
