@@ -283,6 +283,46 @@ used to generate something from an interface defined following the above
 pattern. For example, it is possible to write an `RPC` implementation that
 generates a GUI for a given interface.
 
+## Base64 Decoding
+
+The treatment of line feeds (and other characters) in 
+[XML-RPC](http://xmlrpc.com) base64-encoded data is underspecified.
+
+By default, this library decodes values using the `Base64.decode_exn` 
+function of [ocaml-base64](https://github.com/mirage/ocaml-base64). This 
+function implements [RFC4648](https://datatracker.ietf.org/doc/html/rfc4648) 
+which requires the rejection of non-alphabet characters for security reasons 
+(see [section 3.3](https://datatracker.ietf.org/doc/html/rfc4648#section-3.3)
+and also [section 3.1](https://datatracker.ietf.org/doc/html/rfc4648#section-3.1)).
+
+This is problematic when communicating with servers that are less strict. 
+For instance, the 
+[encode](https://docs.python.org/3/library/xmlrpc.client.html#xmlrpc.client.Binary.encode) 
+function of the Python `xmlrpc.client` refers to [section 6.8 of 
+RFC2045](https://datatracker.ietf.org/doc/html/rfc2045.html#section-6.8) to 
+justify inserting a newline character every 76 characters.
+For this reasons, the functions in `Xmlrpc` allow the caller to override the 
+`base64_decoder`. The following declaration gives a rough-and-ready 
+“dangerous” implementation based on the `Base64.rfc2045` package.
+A better implementation would only accept a `\n` every 76 characters.
+
+```
+let base64_2045_decoder s =
+  let open Base64_rfc2045 in
+  let buf = Buffer.create 1024 in
+  let d = decoder (`String s) in
+  let rec go () =
+    match decode d with
+    | `Flush s -> (Buffer.add_string buf s; go ())
+    | `End -> Buffer.contents buf
+    (* best-effort *)
+    | `Malformed _   (* ignore missing '\r' before '\n', etc. *)
+    | `Wrong_padding (* ignore *)
+    | `Await -> go ()
+  in
+  go ()
+```
+
 ## Building
 
 To build, first install the dependencies:
