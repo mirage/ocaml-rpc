@@ -10,7 +10,7 @@ jobs:
       matrix:
         # windows-latest async does not support it for now
         operating-system: [macos-latest, ubuntu-latest]
-        ocaml-version: [ '4.12.0', '4.11.1', '4.10.1', '4.09.1', '4.08.1' ]
+        ocaml-version: [ '4.14.0', '4.08.1' ]
     steps:
     - uses: actions/checkout@master
     - name: Setup Python
@@ -26,22 +26,14 @@ jobs:
         key: ${{ runner.os }}-pip
         restore-keys: |
           ${{ runner.os }}-
-    - name: Install dependencies
+    - name: Install Python dependencies
       run: pip install pylint pycodestyle
-    - name: OCaml GitHub Action
-      uses: avsm/setup-ocaml@v1
+    - name: Install OCaml
+      uses: ocaml/setup-ocaml@v2
       with:
-        ocaml-version: ${{ matrix.ocaml-version }}
-    - name: Pin Packages
-      run: |
-        opam pin add rpclib.dev -n .
-        opam pin add rpclib-js.dev -n .
-        opam pin add rpclib-html.dev -n .
-        opam pin add rpclib-lwt.dev -n .
-        opam pin add rpclib-async.dev -n .
-        opam pin add ppx_deriving_rpc.dev -n .
-    - name: Dependencies
-      run: opam install -t rpclib rpclib-js rpclib-html rpclib-lwt rpclib-async ppx_deriving_rpc --deps-only
+        ocaml-compiler: ${{ matrix.ocaml-version }}
+    - name: Install OCaml dependencies
+      run: opam install -t . --deps-only
     - name: Build and test independently
       run: opam install -t rpclib rpclib-js rpclib-html rpclib-lwt rpclib-async ppx_deriving_rpc
     - name: Run Rpc Tests
