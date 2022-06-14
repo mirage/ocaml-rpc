@@ -1,3 +1,6 @@
+## 9.0.0 (June 2022)
+* Breaking: change Cmdlinergen to use non-deprecated types (psafont #172)
+
 ## 8.1.2 (February 2022)
 * Add the `noargs` constructor for declaring interfaces that do not take any 
   parameters. (tbrk #170)

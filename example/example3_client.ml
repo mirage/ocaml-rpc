@@ -51,16 +51,9 @@ let generate_md () =
   ()
 *)
 
-let default_cmd =
-  let doc = "a cli for an API" in
-  ( Cmdliner.Term.(ret (const (fun _ -> `Help (`Pager, None)) $ const ()))
-  , Cmdliner.Term.info "cli" ~version:"1.6.1" ~doc )
-
-
 let generate_md_cmd =
   let doc = "Generate Markdown for the interfaces" in
-  Cmdliner.Term.(const generate_md $ const ()), Cmdliner.Term.info "markdown" ~doc
-
+  Cmdliner.(Cmd.v (Cmd.info "markdown" ~doc) Term.(const generate_md $ const ()))
 
 (*let generate_md_cmd =
   let doc = "Generate Python for the interfaces" in
@@ -97,14 +90,20 @@ let binary_rpc path (call : Rpc.call) : Rpc.response =
 
 let cli () =
   let rpc = binary_rpc "path" in
-  Cmdliner.Term.eval_choice
-    default_cmd
-    (generate_md_cmd
+  let default = Cmdliner.Term.(ret (const (fun _ -> `Help (`Pager, None)) $ const ())) in
+  let info = 
+    let doc = "a cli for an API" in
+    Cmdliner.Cmd.info "cli" ~version:"1.6.1" ~doc
+  in
+  let cmds = generate_md_cmd
     :: List.map
          (fun t ->
            let term, info = t rpc in
-           Cmdliner.Term.(term $ const ()), info)
-         (PCmds.implementation () @ DCmds.implementation ()))
+           Cmdliner.(Cmd.v info (Term.(term $ const ()))))
+         (PCmds.implementation () @ DCmds.implementation ())
+  in
+  let cmd = Cmdliner.Cmd.group ~default info cmds in 
+  exit (Cmdliner.Cmd.eval cmd)
 
 
 let _ = cli ()
