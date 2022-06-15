@@ -3,7 +3,7 @@ open Idl
 module Gen () = struct
   type implementation =
     unit
-    -> ((Rpc.call -> Rpc.response) -> (unit -> unit) Cmdliner.Term.t * Cmdliner.Term.info)
+    -> ((Rpc.call -> Rpc.response) -> (unit -> unit) Cmdliner.Term.t * Cmdliner.Cmd.info)
        list
 
   type ('a, 'b) comp = ('a, 'b) Result.t
@@ -50,44 +50,44 @@ module Gen () = struct
     match p.Param.typedef.Rpc.Types.ty with
     | Basic Int ->
       Term.app
-        (Term.pure Rpc.rpc_of_int64)
+        (Term.const Rpc.rpc_of_int64)
         Cmdliner.Arg.(required & pos (incr ()) (some int64) None & pinfo)
     | Basic Int32 ->
       Term.app
-        (Term.pure Rpc.rpc_of_int64)
+        (Term.const Rpc.rpc_of_int64)
         Cmdliner.Arg.(required & pos (incr ()) (some int64) None & pinfo)
     | Basic Int64 ->
       Term.app
-        (Term.pure Rpc.rpc_of_int64)
+        (Term.const Rpc.rpc_of_int64)
         Cmdliner.Arg.(required & pos (incr ()) (some int64) None & pinfo)
     | Basic String ->
       Term.app
-        (Term.pure Rpc.rpc_of_string)
+        (Term.const Rpc.rpc_of_string)
         Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo)
     | Basic Bool ->
       Term.app
-        (Term.pure Rpc.rpc_of_bool)
+        (Term.const Rpc.rpc_of_bool)
         Cmdliner.Arg.(required & pos (incr ()) (some bool) None & pinfo)
     | Basic Float ->
       Term.app
-        (Term.pure Rpc.rpc_of_float)
+        (Term.const Rpc.rpc_of_float)
         Cmdliner.Arg.(required & pos (incr ()) (some float) None & pinfo)
     | Basic Char ->
       Term.app
-        (Term.pure (fun s -> Rpc.rpc_of_char s.[0]))
+        (Term.const (fun s -> Rpc.rpc_of_char s.[0]))
         Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo)
     | Unit -> Term.(const Rpc.Null)
     | DateTime ->
       Term.app
-        (Term.pure Rpc.rpc_of_dateTime)
+        (Term.const Rpc.rpc_of_dateTime)
         Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo)
     | Base64 ->
       Term.app
-        (Term.pure Rpc.rpc_of_base64)
+        (Term.const Rpc.rpc_of_base64)
         Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo)
     | Array _ ->
       Term.app
-        (Term.pure (fun x ->
+        (Term.const (fun x ->
              let x = Jsonrpc.of_string x in
              match x with
              | Rpc.Enum _ -> x
@@ -95,7 +95,7 @@ module Gen () = struct
         Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo)
     | List _ ->
       Term.app
-        (Term.pure (fun x ->
+        (Term.const (fun x ->
              let x = Jsonrpc.of_string x in
              match x with
              | Rpc.Enum _ -> x
@@ -103,7 +103,7 @@ module Gen () = struct
         Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo)
     | Dict _ ->
       Term.app
-        (Term.pure (fun x ->
+        (Term.const (fun x ->
              let x = Jsonrpc.of_string x in
              match x with
              | Rpc.Dict _ -> x
@@ -115,7 +115,7 @@ module Gen () = struct
     | Tuple4 _ -> Term.const Rpc.Null
     | Struct _ ->
       Term.app
-        (Term.pure (fun x ->
+        (Term.const (fun x ->
              let x = Jsonrpc.of_string x in
              match x with
              | Rpc.Dict _ -> x
@@ -123,7 +123,7 @@ module Gen () = struct
         Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo)
     | Variant _ ->
       Term.app
-        (Term.pure (fun x ->
+        (Term.const (fun x ->
              let x = Jsonrpc.of_string x in
              match x with
              | Rpc.Enum _ | Rpc.String _ -> x
@@ -131,7 +131,7 @@ module Gen () = struct
         Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo)
     | Abstract { of_rpc; _ } ->
       Term.app
-        (Term.pure (fun x ->
+        (Term.const (fun x ->
              let x = Jsonrpc.of_string x in
              match of_rpc x with
              | Ok _ -> x
@@ -192,7 +192,7 @@ module Gen () = struct
       in
       let doc = String.concat " " desc_list in
       pos := 0;
-      inner (Cmdliner.Term.pure ([], [])) ty, Cmdliner.Term.info wire_name ~doc
+      inner (Cmdliner.Term.const ([], [])) ty, Cmdliner.Cmd.info wire_name ~doc
     in
     terms := generate :: !terms
 
