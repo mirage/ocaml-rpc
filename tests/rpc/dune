@@ -22,7 +22,7 @@
 
 (rule
  (alias runtest)
- (package rpc)
+ (package ppx_deriving_rpc)
  (deps
   (:s suite.exe)
   (source_tree .))
