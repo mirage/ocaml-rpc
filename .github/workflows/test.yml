@@ -35,8 +35,8 @@ jobs:
     - name: Install OCaml dependencies
       run: opam install -t . --deps-only
     - name: Build and test independently
-      run: opam install -t rpclib rpclib-js rpclib-html rpclib-lwt rpclib-async ppx_deriving_rpc
-    - name: Run Rpc Tests
-      run: opam exec -- dune runtest -p rpc
+      run: opam install -t rpclib rpclib-js rpclib-html rpclib-lwt rpclib-async
+    - name: Run Rpc and Ppx_deriving_rpc Tests
+      run: opam exec -- dune runtest -p ppx_deriving_rpc
     - name: Build and run Examples
-      run: opam exec -- dune build @runexamples -p rpc
+      run: opam exec -- dune build @runexamples -p ppx_deriving_rpc

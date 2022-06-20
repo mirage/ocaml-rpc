@@ -1,3 +1,6 @@
+## unreleased
+* Removed deprecated rpc virutal package
+
 ## 9.0.0 (June 2022)
 * Breaking: change Cmdlinergen to use non-deprecated types (psafont #172)
 

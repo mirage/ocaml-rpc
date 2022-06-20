@@ -5,7 +5,7 @@
 let keys obj =
   let arr =
     Js_of_ocaml.Js.Unsafe.meth_call
-      (Js_of_ocaml.Js.Unsafe.variable "Object")
+      (Js_of_ocaml.Js.Unsafe.pure_js_expr "Object")
       "keys"
       [| Js_of_ocaml.Js.Unsafe.inject obj |]
   in
@@ -16,7 +16,7 @@ let keys obj =
 let is_array obj =
   let str =
     Js_of_ocaml.Js.Unsafe.call
-      (Js_of_ocaml.Js.Unsafe.variable "Object.prototype.toString")
+      (Js_of_ocaml.Js.Unsafe.pure_js_expr "Object.prototype.toString")
       obj
       [||]
   in
@@ -24,7 +24,7 @@ let is_array obj =
 
 
 (* Magic to find out whether something is one of the Js_of_ocaml Javascript string types *)
-let mlString_constr = Js_of_ocaml.Js.Unsafe.variable "MlString"
+let mlString_constr = Js_of_ocaml.Js.Unsafe.pure_js_expr "MlString"
 let is_string obj = Js_of_ocaml.Js.instanceof obj mlString_constr
 
 (* Seems to work. I hope there's a better way of doing this! *)

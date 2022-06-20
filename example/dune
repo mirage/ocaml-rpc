@@ -23,7 +23,7 @@
  (alias runexamples)
  (deps
   (:e example.exe))
- (package rpc)
+ (package ppx_deriving_rpc)
  (action
   (run %{e})))
 
@@ -31,7 +31,7 @@
  (alias runexamples)
  (deps
   (:e example2.exe))
- (package rpc)
+ (package ppx_deriving_rpc)
  (action
   (run %{e})))
 
@@ -39,6 +39,6 @@
  (alias runexamples)
  (deps
   (:e example3_client.exe))
- (package rpc)
+ (package ppx_deriving_rpc)
  (action
   (run %{e})))
