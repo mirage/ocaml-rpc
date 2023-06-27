@@ -97,7 +97,8 @@ class ListAction(argparse.Action):
 
 
 let compat_block =
-  [ Line "if sys.version_info[0] > 2:"
+  [ Line "get_str = str"
+  ; Line "if sys.version_info[0] > 2:"
   ; Block [ Line "long = int"; Line "unicode = str"; Line "str = bytes" ]
   ; Line ""
   ]
@@ -847,7 +848,7 @@ let of_interfaces ?(helpers = inline_defaults) i =
             ; Block
                 [ Line {|logging.log("caught %s", exn)|}
                 ; Line "traceback.print_exc()"
-                ; Line "return InternalError(str(exn)).failure()"
+                ; Line "return InternalError(get_str(exn)).failure()"
                 ]
             ]
         ]
