@@ -6,8 +6,21 @@ type err = [ `Msg of string ]
 
 let badstuff msg = failwith (Printf.sprintf "Failed to construct the record: %s" msg)
 
-let rec gentest : type a. a typ -> a list =
- fun t ->
+module SeenType = struct
+  type t = T : _ typ -> t
+  let compare a b = if a == b then 0 else Stdlib.compare a b
+end
+
+module Seen = Set.Make(SeenType)
+
+(* don't use this on recursive types! *)
+
+let rec gentest : type a. Seen.t -> a typ -> a list =
+ fun seen t ->
+  let seen_t = SeenType.T t in
+  if Seen.mem seen_t seen then []
+  else
+  let gentest t = gentest (Seen.add seen_t seen) t in
   match t with
   | Basic Int -> [ 0; 1; max_int; -1; 1000000 ]
   | Basic Int32 -> [ 0l; 1l; Int32.max_int; -1l; 999999l ]
@@ -95,10 +108,18 @@ let rec gentest : type a. a typ -> a list =
   | Abstract { test_data; _ } -> test_data
 
 
-let thin d result = if d < 0 then [ List.hd result ] else result
+let thin d result =
+  if d < 0 then match result with
+  | [] -> []
+  | hd :: _ -> [hd]
+  else result
 
-let rec genall : type a. int -> string -> a typ -> a list =
- fun depth strhint t ->
+let rec genall: type a. Seen.t -> int -> string -> a typ -> a list =
+ fun seen depth strhint t ->
+  let seen_t = SeenType.T t in
+  if Seen.mem seen_t seen then []
+  else
+  let genall depth strhint t = genall (Seen.add seen_t seen) depth strhint t in
   match t with
   | Basic Int -> [ 0 ]
   | Basic Int32 -> [ 0l ]
@@ -192,6 +213,8 @@ let rec genall : type a. int -> string -> a typ -> a list =
   | Abstract { test_data; _ } -> test_data
 
 
+(* don't use this on recursive types! *)
+
 let rec gen_nice : type a. a typ -> string -> a =
  fun ty hint ->
   let narg n = Printf.sprintf "%s_%d" hint n in
@@ -235,3 +258,6 @@ let rec gen_nice : type a. a typ -> string -> a =
       let content = gen_nice v.tcontents v.tname in
       v.treview content)
   | Abstract { test_data; _ } -> List.hd test_data
+
+let gentest t = gentest Seen.empty t
+let genall t = genall Seen.empty t

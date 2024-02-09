@@ -312,6 +312,11 @@ type nested =
   }
 [@@deriving rpcty]
 
+type recursive =
+  | A of recursive * string
+  | B of int
+[@@deriving rpcty]
+
 let fakegen () =
   let fake ty =
     let fake = Rpc_genfake.genall 10 "string" ty in
@@ -335,7 +340,8 @@ let fakegen () =
   in
   fake typ_of_test_record_opt;
   fake typ_of_test_variant_name;
-  fake typ_of_nested
+  fake typ_of_nested;
+  fake typ_of_recursive
 
 
 type test_defaults = { test_with_default : int [@default 5] } [@@deriving rpcty]
