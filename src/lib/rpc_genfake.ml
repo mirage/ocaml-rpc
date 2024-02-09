@@ -13,186 +13,146 @@ end
 
 module Seen = Set.Make(SeenType)
 
-let rec gentest : type a. Seen.t -> a typ -> a list =
+let rec gentest : type a. Seen.t -> a typ -> a Seq.t =
  fun seen t ->
   let seen_t = SeenType.T t in
-  if Seen.mem seen_t seen then []
+  if Seen.mem seen_t seen then Seq.empty
   else
   let gentest t = gentest (Seen.add seen_t seen) t in
   match t with
-  | Basic Int -> [ 0; 1; max_int; -1; 1000000 ]
-  | Basic Int32 -> [ 0l; 1l; Int32.max_int; -1l; 999999l ]
-  | Basic Int64 -> [ 0L; 1L; Int64.max_int; -1L; 999999999999L ]
-  | Basic Bool -> [ true; false ]
-  | Basic Float -> [ 0.0; max_float; min_float; -1.0 ]
+  | Basic Int -> [ 0; 1; max_int; -1; 1000000 ] |> List.to_seq
+  | Basic Int32 -> [ 0l; 1l; Int32.max_int; -1l; 999999l ] |> List.to_seq
+  | Basic Int64 -> [ 0L; 1L; Int64.max_int; -1L; 999999999999L ] |> List.to_seq
+  | Basic Bool -> [ true; false ] |> List.to_seq
+  | Basic Float -> [ 0.0; max_float; min_float; -1.0 ] |> List.to_seq
   | Basic String ->
     [ "Test string"
     ; ""
     ; "ᚻᛖ ᚳᚹᚫᚦ ᚦᚫᛏ ᚻᛖ ᛒᚢᛞᛖ ᚩᚾ ᚦᚫᛗ \
        ᛚᚪᚾᛞᛖ ᚾᚩᚱᚦᚹᛖᚪᚱᛞᚢᛗ ᚹᛁᚦ ᚦᚪ ᚹᛖᛥᚫ"
     ; "\000foo"
-    ]
-  | Basic Char -> [ '\000'; 'a'; 'z'; '\255' ]
-  | DateTime -> [ "19700101T00:00:00Z" ]
-  | Base64 -> [ "SGVsbG8sIHdvcmxkIQ==" (* "Hello, world!" *) ]
-  | Array typ -> [ gentest typ |> Array.of_list; [||] ]
-  | List typ -> [ gentest typ; [] ]
+    ] |> List.to_seq
+  | Basic Char -> [ '\000'; 'a'; 'z'; '\255' ] |> List.to_seq
+  | DateTime -> [ "19700101T00:00:00Z" ] |> List.to_seq
+  | Base64 -> [ "SGVsbG8sIHdvcmxkIQ==" (* "Hello, world!" *) ] |> List.to_seq
+  | Array typ -> [ gentest typ |> Array.of_seq; [||] ] |> List.to_seq
+  | List typ -> [ gentest typ |> List.of_seq; [] ] |> List.to_seq
   | Dict (basic, typ) ->
     let keys = gentest (Basic basic) in
-    let vs = gentest typ in
-    let x =
-      List.fold_left
-        (fun (acc, l2) v ->
-          match l2 with
-          | x :: xs -> (v, x) :: acc, xs
-          | [] -> (v, List.hd vs) :: acc, List.tl vs)
-        ([], vs)
-        keys
-      |> fst
-    in
-    [ x ]
-  | Unit -> [ () ]
+    let vs = Seq.cycle (gentest typ) in
+    let x = Seq.map2 (fun k v -> k, v) keys vs |> List.of_seq in
+    Seq.return x
+  | Unit -> Seq.return ()
   | Option t ->
     let vs = gentest t in
-    None :: List.map (fun x -> Some x) vs
+    Seq.(append (return None) @@ map (fun x -> Some x) vs)
   | Tuple (t1, t2) ->
     let v1s = gentest t1 in
     let v2s = gentest t2 in
-    List.map (fun v1 -> List.map (fun v2 -> v1, v2) v2s) v1s |> List.flatten
+    Seq.product v1s v2s
   | Tuple3 (t1, t2, t3) ->
     let v1s = gentest t1 in
     let v2s = gentest t2 in
     let v3s = gentest t3 in
-    List.map (fun v1 -> List.map (fun v2 -> List.map (fun v3 -> v1, v2, v3) v3s) v2s) v1s
-    |> List.flatten
-    |> List.flatten
+    Seq.(product (product v1s v2s) v3s |> map (fun ((x,y),z) -> x,y,z))
   | Tuple4 (t1, t2, t3, t4) ->
     let v1s = gentest t1 in
     let v2s = gentest t2 in
     let v3s = gentest t3 in
     let v4s = gentest t4 in
-    List.map
-      (fun v1 ->
-        List.map
-          (fun v2 -> List.map (fun v3 -> List.map (fun v4 -> v1, v2, v3, v4) v4s) v3s)
-          v2s)
-      v1s
-    |> List.flatten
-    |> List.flatten
-    |> List.flatten
+    Seq.(product (product v1s v2s) (product v3s v4s) |> map (fun ((x,y),(z,t)) -> x,y,z,t))
   | Struct { constructor; _ } ->
-    let rec gen_n acc n =
-      match n with
-      | 0 -> acc
-      | n ->
+    let gen _ =
         let field_get : type a. string -> a typ -> (a, Rresult.R.msg) Result.t =
          fun _ ty ->
-          let vs = gentest ty in
-          Result.Ok (List.nth vs (Random.int (List.length vs)))
+          let vs = gentest ty |> Array.of_seq in
+          Result.Ok (vs.(Random.int (Array.length vs)))
         in
         (match constructor { field_get } with
-        | Result.Ok x -> gen_n (x :: acc) (n - 1)
+        | Result.Ok x -> x
         | Result.Error (`Msg y) -> badstuff y)
     in
-    gen_n [] 10
+    Seq.ints 0 |> Seq.take 10 |> Seq.map gen
   | Variant { variants; _ } ->
-    List.map
+    variants |> List.to_seq |> Seq.map
       (function
         | Rpc.Types.BoxedTag v ->
-          let contents = gentest v.tcontents in
-          let content = List.nth contents (Random.int (List.length contents)) in
+          let contents = gentest v.tcontents |> Array.of_seq in
+          let content = contents.(Random.int (Array.length contents)) in
           v.treview content)
-      variants
-  | Abstract { test_data; _ } -> test_data
-
+  | Abstract { test_data; _ } -> test_data |> List.to_seq
 
 let thin d result =
-  if d < 0 then match result with
-  | [] -> []
-  | hd :: _ -> [hd]
-  else result
+  if d < 0 then Seq.take 1 result else result
 
-let rec genall: type a. Seen.t -> int -> string -> a typ -> a list =
+let rec genall: type a. Seen.t -> int -> string -> a typ -> a Seq.t =
  fun seen depth strhint t ->
   let seen_t = SeenType.T t in
-  if Seen.mem seen_t seen then []
+  if Seen.mem seen_t seen then Seq.empty
   else
   let genall depth strhint t = genall (Seen.add seen_t seen) depth strhint t in
   match t with
-  | Basic Int -> [ 0 ]
-  | Basic Int32 -> [ 0l ]
-  | Basic Int64 -> [ 0L ]
-  | Basic Bool -> thin depth [ true; false ]
-  | Basic Float -> [ 0.0 ]
-  | Basic String -> [ strhint ]
-  | Basic Char -> [ 'a' ]
-  | DateTime -> [ "19700101T00:00:00Z" ]
-  | Base64 -> [ "SGVsbG8sIHdvcmxkIQ==" (* "Hello, world!" *) ]
-  | Array typ -> thin depth [ genall (depth - 1) strhint typ |> Array.of_list; [||] ]
-  | List typ -> thin depth [ genall (depth - 1) strhint typ; [] ]
+  | Basic Int -> Seq.return 0
+  | Basic Int32 -> Seq.return 0l
+  | Basic Int64 -> Seq.return 0L
+  | Basic Bool -> thin depth (List.to_seq [ true; false ])
+  | Basic Float -> Seq.return 0.0
+  | Basic String -> Seq.return strhint
+  | Basic Char -> Seq.return 'a'
+  | DateTime -> Seq.return "19700101T00:00:00Z"
+  | Base64 -> Seq.return "SGVsbG8sIHdvcmxkIQ==" (* "Hello, world!" *)
+  | Array typ -> thin depth ([ genall (depth - 1) strhint typ |> Array.of_seq; [||] ] |> List.to_seq)
+  | List typ -> thin depth ([ genall (depth - 1) strhint typ |> List.of_seq; [] ] |> List.to_seq)
   | Dict (basic, typ) ->
     let keys = genall (depth - 1) strhint (Basic basic) in
     let vs = genall (depth - 1) strhint typ in
-    let x = List.map (fun k -> List.map (fun v -> [ k, v ]) vs) keys in
-    List.flatten x |> thin depth
-  | Unit -> [ () ]
+    Seq.product keys vs |> Seq.map (fun x -> [x]) |> thin depth
+  | Unit -> Seq.return ()
   | Option t ->
     let vs = genall (depth - 1) strhint t in
-    thin depth (List.map (fun x -> Some x) vs @ [ None ])
+    thin depth Seq.(append (map (fun x -> Some x) vs) @@ return None )
   | Tuple (t1, t2) ->
     let v1s = genall (depth - 1) strhint t1 in
     let v2s = genall (depth - 1) strhint t2 in
-    List.map (fun v1 -> List.map (fun v2 -> v1, v2) v2s) v1s |> List.flatten |> thin depth
+    Seq.product v1s v2s |> thin depth
   | Tuple3 (t1, t2, t3) ->
     let v1s = genall (depth - 1) strhint t1 in
     let v2s = genall (depth - 1) strhint t2 in
     let v3s = genall (depth - 1) strhint t3 in
-    let l =
-      List.map
-        (fun v1 -> List.map (fun v2 -> List.map (fun v3 -> v1, v2, v3) v3s) v2s)
-        v1s
-    in
-    l |> List.flatten |> List.flatten |> thin depth
+    Seq.(product (product v1s v2s) v3s |> map (fun ((x,y),z) -> x,y,z))
   | Tuple4 (t1, t2, t3, t4) ->
     let v1s = genall (depth - 1) strhint t1 in
     let v2s = genall (depth - 1) strhint t2 in
     let v3s = genall (depth - 1) strhint t3 in
     let v4s = genall (depth - 1) strhint t4 in
-    let l =
-      List.map
-        (fun v1 ->
-          List.map
-            (fun v2 -> List.map (fun v3 -> List.map (fun v4 -> v1, v2, v3, v4) v4s) v3s)
-            v2s)
-        v1s
-    in
-    l |> List.flatten |> List.flatten |> List.flatten |> thin depth
+    Seq.(product (product v1s v2s) (product v3s v4s) |> map (fun ((x,y),(z,t)) -> x,y,z,t))
   | Struct { constructor; fields; _ } ->
     let fields_maxes =
-      List.map
+      fields
+      |> List.to_seq
+      |>
+      Seq.map
         (function
           | BoxedField f ->
-            let n = List.length (genall (depth - 1) strhint f.field) in
+            let n = Seq.length (genall (depth - 1) strhint f.field) in
             f.fname, n)
-        fields
     in
     let all_combinations =
-      List.fold_left
+      Seq.fold_left
         (fun acc (f, max) ->
-          let rec inner n = if n = 0 then [] else (f, n) :: inner (n - 1) in
-          let ns = inner max in
-          List.map (fun (f, n) -> List.map (fun dict -> (f, n - 1) :: dict) acc) ns
-          |> List.flatten)
-        [ [] ]
+          Seq.ints 1 |> Seq.take max |>  Seq.flat_map @@ fun i ->
+          Seq.map (fun dict -> (f, i - 1) :: dict) acc
+        )
+        (Seq.return [] )
         fields_maxes
     in
-    List.map
+    Seq.map
       (fun combination ->
         let field_get : type a. string -> a typ -> (a, Rresult.R.msg) Result.t =
          fun fname ty ->
           let n = List.assoc fname combination in
-          let vs = genall (depth - 1) fname ty in
-          Result.Ok (List.nth vs n)
+          let vs = genall (depth - 1) fname ty |> Array.of_seq in
+          Result.Ok (vs.(n))
         in
         match constructor { field_get } with
         | Result.Ok x -> x
@@ -200,15 +160,15 @@ let rec genall: type a. Seen.t -> int -> string -> a typ -> a list =
       all_combinations
     |> thin depth
   | Variant { variants; _ } ->
-    List.map
+    variants
+    |> List.to_seq
+    |> Seq.flat_map
       (function
         | Rpc.Types.BoxedTag v ->
           let contents = genall (depth - 1) strhint v.tcontents in
-          List.map (fun content -> v.treview content) contents)
-      variants
-    |> List.flatten
+          Seq.map (fun content -> v.treview content) contents)
     |> thin depth
-  | Abstract { test_data; _ } -> test_data
+  | Abstract { test_data; _ } -> test_data |> List.to_seq
 
 
 (* don't use this on recursive types! *)
@@ -258,6 +218,6 @@ let rec gen_nice : type a. a typ -> string -> a =
   | Abstract { test_data; _ } -> List.hd test_data
 
 (** don't use this on recursive types! *)
-let gentest t = gentest Seen.empty t
+let gentest t = gentest Seen.empty t |> List.of_seq
 
-let genall t = genall Seen.empty t
+let genall depth strhint t = genall Seen.empty depth strhint t |> List.of_seq
