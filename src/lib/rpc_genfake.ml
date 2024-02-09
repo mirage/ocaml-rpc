@@ -82,15 +82,15 @@ let rec gentest : type a. Seen.t -> a typ -> a Seq.t =
           v.treview content)
   | Abstract { test_data; _ } -> test_data |> List.to_seq
 
-let thin d result =
-  if d < 0 then Seq.take 1 result else result
-
-let rec genall: type a. Seen.t -> int -> string -> a typ -> a Seq.t =
- fun seen depth strhint t ->
+let rec genall: type a. maxcomb:int -> Seen.t -> int -> string -> a typ -> a Seq.t =
+ fun ~maxcomb seen depth strhint t ->
+  let thin d result =
+    if d < 0 then Seq.take 1 result else Seq.take maxcomb result
+  in
   let seen_t = SeenType.T t in
   if Seen.mem seen_t seen then Seq.empty
   else
-  let genall depth strhint t = genall (Seen.add seen_t seen) depth strhint t in
+  let genall depth strhint t = genall ~maxcomb (Seen.add seen_t seen) depth strhint t in
   match t with
   | Basic Int -> Seq.return 0
   | Basic Int32 -> Seq.return 0l
@@ -219,5 +219,4 @@ let rec gen_nice : type a. a typ -> string -> a =
 
 (** don't use this on recursive types! *)
 let gentest t = gentest Seen.empty t |> List.of_seq
-
-let genall depth strhint t = genall Seen.empty depth strhint t |> List.of_seq
+let genall ?(maxcomb=Sys.max_array_length) depth strhint t = genall ~maxcomb Seen.empty depth strhint t |> List.of_seq
