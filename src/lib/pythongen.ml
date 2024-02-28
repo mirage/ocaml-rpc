@@ -213,10 +213,12 @@ let rec typecheck : type a. a typ -> string -> t list =
         variants
     in
     let check_contents =
-      List.fold_left
-        (fun acc x -> List.concat [ acc; check false x ])
-        (check true (List.hd variants_to_check))
-        (List.tl variants_to_check)
+      match variants_to_check with
+      | [] -> []
+      | v :: vs ->
+        List.fold_left
+          (fun acc x -> List.concat [ acc; check false x ])
+          (check true v) vs
     in
     let all_tags = List.map (fun (BoxedTag t) -> t.tname) variants in
     let pylist =
