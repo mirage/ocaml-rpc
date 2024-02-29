@@ -67,6 +67,50 @@ module Interface (R : Idl.RPC) = struct
 end
 
 module IfCode = Interface (Codegen.Gen ())
+module UnitVInterface (R : Idl.RPC) = struct
+  open R
+
+  type unit_variant =
+    | Empty
+    | Hollow
+    | Vacant
+    | Void
+  [@@deriving rpcty]
+
+  let unit_variant_p = Idl.Param.mk ~name:"unit_variant" unit_variant
+  let int_p = Idl.Param.mk Rpc.Types.int
+
+  let discard_v =
+    R.declare
+      "discard_v"
+      [ "constant function taking a unit variant and discards it by returning an integer"
+      ]
+      (unit_variant_p @-> returning int_p Idl.DefaultError.err)
+
+  let implementation =
+    implement
+      { Idl.Interface.name = "UnitVInterface"
+      ; namespace = Some "UnitVInterface"
+      ; description =
+          [ "Unit variant interface which does absolutely nothing. Only used to test \
+             whether the pythongen code can handle variants with zero argument \
+             constructors."
+          ]
+      ; version = 1, 0, 0
+      }
+end
+
+module UnitVCode : sig
+  val implementation : unit -> Codegen.Interface.t
+end =
+  UnitVInterface (Codegen.Gen ())
+
+let unitv_interface = 
+  Codegen.Interfaces.create
+    ~name:"unitv"
+    ~title:"Unit Variant"
+    ~description:[ "Interface for Unit variant" ]
+    ~interfaces:[ UnitVCode.implementation () ]
 
 let interfaces =
   Codegen.Interfaces.create
@@ -146,6 +190,8 @@ let check_exceptions () =
   gen_python_bindings "python/bindings.py";
   run_cmd "Exceptions should be correctly generated" "python python/exn_test.py"
 
+let check_unit_variants () =
+  Pythongen.of_interfaces interfaces |> Pythongen.string_of_ts |> ignore
 
 let tests =
   [ ( "Check generated test interface bindings with pylint & pycodestyle"
@@ -153,5 +199,6 @@ let tests =
     , lint_bindings )
   ; "Check generated commandline bindings", `Slow, test_commandline
   ; "Check generated test class with commandline bindings", `Slow, check_test_class
-  ; "Cehck generated exceptions", `Slow, check_exceptions
+  ; "Check generated exceptions", `Slow, check_exceptions
+  ; "Check python generation on variants with zero-arg constructors", `Quick, check_unit_variants
   ]
