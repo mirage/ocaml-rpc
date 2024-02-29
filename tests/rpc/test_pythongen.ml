@@ -199,6 +199,6 @@ let tests =
     , lint_bindings )
   ; "Check generated commandline bindings", `Slow, test_commandline
   ; "Check generated test class with commandline bindings", `Slow, check_test_class
-  ; "Cehck generated exceptions", `Slow, check_exceptions
+  ; "Check generated exceptions", `Slow, check_exceptions
   ; "Check python generation on variants with zero-arg constructors", `Quick, check_unit_variants
   ]
