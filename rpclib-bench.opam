@@ -1,0 +1,40 @@
+opam-version: "2.0"
+synopsis: "Benchmarks for ocaml-rpc, a library to deal with RPCs in OCaml"
+maintainer: "Marcello Seri"
+authors: ["Edwin Török"]
+tags: ["org:mirage" "org:xapi-project"]
+homepage: "https://github.com/mirage/ocaml-rpc"
+bug-reports: "https://github.com/mirage/ocaml-rpc/issues"
+license: "ISC"
+depends: [
+  "ocaml" {>= "4.08"}
+  "dune" {>= "2.0.0"}
+  "rpclib" {= version}
+  "alcotest" {with-test}
+  "cmdliner" {>= "1.3.0"}
+  "bechamel" {>= "0.5.0"}
+  "bechamel-notty" {>= "0.5.0"}
+  "fmt" {>= "0.9.0"}
+  "notty" {>= "0.2.3"}
+  "qcheck-core" {with-test & >= "0.23.0"}
+  "qcheck-alcotest" {with-test & >= "0.23.0"}
+  "sexplib" {>= "v0.16.0"}
+]
+build: [
+  ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "runtest" "-p" name "-j" jobs] {with-test}
+]
+dev-repo: "git://github.com/mirage/ocaml-rpc"
+description: """
+`ocaml-rpc` is a library that provides remote procedure calls (RPC)
+using XML or JSON as transport encodings, and multiple generators
+for documentations, clients, servers, javascript bindings, python
+bindings, ...
+
+The transport mechanism itself is outside the scope of this library
+as all conversions are from and to strings.
+
+This package contains benchmarks for this library,
+and tests for the benchmarks.
+"""
+x-maintenance-intent: [ "(latest)" ]
