@@ -699,6 +699,7 @@ let commandline_parse _ (BoxedFunction m) =
                    | Basic Int32 -> ", type=int"
                    | Basic Bool -> ", type=lambda x: json.loads(x.lower())"
                    | Basic Float -> ", type=float"
+                   | Variant _ -> ", type=json.loads"
                    | _ -> "")))
           inputs
       @ [ Line "return vars(parser.parse_args())" ])
