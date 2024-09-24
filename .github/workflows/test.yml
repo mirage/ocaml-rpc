@@ -29,7 +29,7 @@ jobs:
     - name: Install Python dependencies
       run: pip install pylint pycodestyle
     - name: Install OCaml
-      uses: ocaml/setup-ocaml@v2
+      uses: ocaml/setup-ocaml@v3
       with:
         ocaml-compiler: ${{ matrix.ocaml-version }}
     - name: Install OCaml dependencies
