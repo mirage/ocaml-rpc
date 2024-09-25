@@ -98,8 +98,9 @@ class ListAction(argparse.Action):
 
 let compat_block =
   [ Line "get_str = str"
-  ; Line "if sys.version_info[0] > 2:"
-  ; Block [ Line "long = int"; Line "unicode = str"; Line "str = bytes" ]
+  ; Line "long = int"
+  ; Line "unicode = str"
+  ; Line "str = bytes"
   ; Line ""
   ]
 
@@ -699,6 +700,7 @@ let commandline_parse _ (BoxedFunction m) =
                    | Basic Int32 -> ", type=int"
                    | Basic Bool -> ", type=lambda x: json.loads(x.lower())"
                    | Basic Float -> ", type=float"
+                   | Variant _ -> ", type=json.loads"
                    | _ -> "")))
           inputs
       @ [ Line "return vars(parser.parse_args())" ])
