@@ -98,8 +98,9 @@ class ListAction(argparse.Action):
 
 let compat_block =
   [ Line "get_str = str"
-  ; Line "if sys.version_info[0] > 2:"
-  ; Block [ Line "long = int"; Line "unicode = str"; Line "str = bytes" ]
+  ; Line "long = int"
+  ; Line "unicode = str"
+  ; Line "str = bytes"
   ; Line ""
   ]
 
