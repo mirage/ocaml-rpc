@@ -13,8 +13,6 @@ end
 
 module Seen = Set.Make(SeenType)
 
-(* don't use this on recursive types! *)
-
 let rec gentest : type a. Seen.t -> a typ -> a list =
  fun seen t ->
   let seen_t = SeenType.T t in
@@ -259,5 +257,7 @@ let rec gen_nice : type a. a typ -> string -> a =
       v.treview content)
   | Abstract { test_data; _ } -> List.hd test_data
 
+(** don't use this on recursive types! *)
 let gentest t = gentest Seen.empty t
+
 let genall t = genall Seen.empty t
