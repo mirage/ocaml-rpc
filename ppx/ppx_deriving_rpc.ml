@@ -239,6 +239,7 @@ module Of_rpc = struct
     | { ptyp_desc = Ptyp_alias (_, _); _ } -> failwith "Ptyp_alias not handled"
     | { ptyp_desc = Ptyp_class (_, _); _ } -> failwith "Ptyp_class not handled"
     | { ptyp_desc = Ptyp_package _; _ } -> failwith "Ptyp_package not handled"
+    | { ptyp_desc = Ptyp_open _; _ } -> failwith "Ptyp_open not handled"
 
 
   let str_of_type ~loc type_decl =
@@ -393,7 +394,7 @@ module Of_rpc = struct
         [%expr
           fun rpc ->
             let rpc' = Rpc.lowerfn rpc in
-            [%e pexp_function (cases @ [ default ])] rpc']
+            [%e pexp_function_cases (cases @ [ default ])] rpc']
     in
     of_rpc
 end
@@ -523,7 +524,7 @@ module Rpc_of = struct
                | _ -> failwith "cannot be derived for")
         |> List.rev
       in
-      pexp_function cases
+      pexp_function_cases cases
     | { ptyp_desc = Ptyp_any; _ } -> failwith "Ptyp_any not handled"
     | { ptyp_desc = Ptyp_var name; _ } -> [%expr [%e evar ("poly_" ^ name)]]
     | { ptyp_desc = Ptyp_poly (_, _); _ } -> failwith "Ptyp_poly not handled"
@@ -533,6 +534,7 @@ module Rpc_of = struct
     | { ptyp_desc = Ptyp_alias (_, _); _ } -> failwith "Ptyp_alias not handled"
     | { ptyp_desc = Ptyp_class (_, _); _ } -> failwith "Ptyp_class not handled"
     | { ptyp_desc = Ptyp_package _; _ } -> failwith "Ptyp_package not handled"
+    | { ptyp_desc = Ptyp_open _; _ } -> failwith "Ptyp_open not handled"
 
 
   (*  | _ -> failwith "Error"*)
@@ -625,7 +627,7 @@ module Rpc_of = struct
                  | Pcstr_record _ -> failwith "record variants are not supported")
           |> List.rev
         in
-        pexp_function cases
+        pexp_function_cases cases
     in
     to_rpc
 end
