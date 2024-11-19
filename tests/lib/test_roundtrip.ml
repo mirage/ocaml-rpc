@@ -62,9 +62,8 @@ let make_tests name to_wire pp_wire of_wire =
         | _ -> failwith "bad value")
   ; make_test "unit" unit () Rpc.rpc_of_unit Rpc.unit_of_rpc
   ; make_test "Int32.compat" int32 Int32.min_int (fun i -> Rpc.Int32 i) Rpc.int32_of_rpc
-(* JSONRPC is broken here, will be reenabled in followup commits
   ; make_test "DateTime" string "2024-01-01" Rpc.rpc_of_dateTime Rpc.dateTime_of_rpc
-  ; make_test "Base64" string "\x01\x00\x02" rpc_of_base64_encode Rpc.base64_of_rpc*)
+  ; make_test "Base64" string "\x01\x00\x02" rpc_of_base64_encode Rpc.base64_of_rpc
   ]
 
 
