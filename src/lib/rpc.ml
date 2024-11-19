@@ -194,6 +194,7 @@ let int64_of_rpc = function
 
 let int32_of_rpc = function
   | Int i -> Int64.to_int32 i
+  | Int32 i -> i
   | String s -> Int32.of_string s
   | x -> failwith (Printf.sprintf "Expected int32, got '%s'" (to_string x))
 
