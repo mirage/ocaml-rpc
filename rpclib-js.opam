@@ -26,3 +26,4 @@ bindings, ...
 The transport mechanism itself is outside the scope of this library
 as all conversions are from and to strings.
 """
+x-maintenance-intent: [ "(latest)" ]
