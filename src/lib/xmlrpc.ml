@@ -14,78 +14,97 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
-
 open Printf
 open Rpc
 
 (* marshalling/unmarshalling code *)
+let some_gt = Some "&gt;"
+let some_lt = Some "&lt;"
+let some_amp = Some "&amp;"
+let some_quot = Some "&quot;"
+let some_nil = Some "nil"
+
 (* The XML-RPC is not very clear about what characters can be in a string value ... *)
-let encode =
-  let translate = function
-    | '>' -> Some "&gt;"
-    | '<' -> Some "&lt;"
-    | '&' -> Some "&amp;"
-    | '"' -> Some "&quot;"
-    | c when (c >= '\x20' && c <= '\xff') || c = '\x09' || c = '\x0a' || c = '\x0d' ->
-      None
-    | _ -> Some ""
-  in
-  Internals.encode translate
+let[@inline always] translate = function
+  | '>' -> some_gt
+  | '<' -> some_lt
+  | '&' -> some_amp
+  | '"' -> some_quot
+  | c when (c >= '\x20' && c <= '\xff') || c = '\x09' || c = '\x0a' || c = '\x0d' -> None
+  | _ -> some_nil
 
 
-let rec add_value ?(strict = false) f = function
-  | Null -> f "<value><nil/></value>"
+(** Encodes a string using the given translation function that maps a character
+    to a string that is its encoded version, if that character needs encoding. *)
+let[@inline always] encode_buf buf s =
+  let n = String.length s in
+  let m = ref 0 in
+  for i = 0 to n - 1 do
+    match (translate [@inlined]) (String.unsafe_get s i) with
+    | None -> ()
+    | Some n ->
+      Buffer.add_substring buf s !m (i - !m);
+      Buffer.add_string buf n;
+      m := i + 1
+  done;
+  Buffer.add_substring buf s !m (n - !m)
+
+
+let rec add_value ?(strict = false) buf = function
+  | Null -> Buffer.add_string buf "<value><nil/></value>"
   | Int i ->
-    f "<value>";
-    if strict then f "<i8>";
-    f (Int64.to_string i);
-    if strict then f "</i8>";
-    f "</value>"
+    Buffer.add_string buf "<value>";
+    if strict then Buffer.add_string buf "<i8>";
+    (* bprintf is faster than Int64.to_string *)
+    Printf.bprintf buf "%Ld" i;
+    if strict then Buffer.add_string buf "</i8>";
+    Buffer.add_string buf "</value>"
   | Int32 i ->
-    f "<value><i4>";
-    f (Int32.to_string i);
-    f "</i4></value>"
+    Buffer.add_string buf "<value><i4>";
+    (* here Int32.to_string is faster *)
+    Buffer.add_string buf (Int32.to_string i);
+    Buffer.add_string buf "</i4></value>"
   | Bool b ->
-    f "<value><boolean>";
-    f (if b then "1" else "0");
-    f "</boolean></value>"
+    Buffer.add_string buf "<value><boolean>";
+    Buffer.add_string buf (if b then "1" else "0");
+    Buffer.add_string buf "</boolean></value>"
   | Float d ->
-    f "<value><double>";
+    Buffer.add_string buf "<value><double>";
     (* NB: "%g" loses a lot of precision (e.g. resulting in "1.32621e+09") *)
-    f (Printf.sprintf "%.16g" d);
-    f "</double></value>"
+    Printf.bprintf buf "%.16g" d;
+    Buffer.add_string buf "</double></value>"
   | String s ->
-    f "<value>";
-    f (encode s);
-    f "</value>"
+    Buffer.add_string buf "<value>";
+    encode_buf buf s;
+    Buffer.add_string buf "</value>"
   | DateTime s ->
-    f "<value><dateTime.iso8601>";
-    f s;
-    f "</dateTime.iso8601></value>"
+    Buffer.add_string buf "<value><dateTime.iso8601>";
+    Buffer.add_string buf s;
+    Buffer.add_string buf "</dateTime.iso8601></value>"
   | Base64 s ->
-    f "<value><base64>";
-    f (Base64.encode_exn s);
-    f "</base64></value>"
+    Buffer.add_string buf "<value><base64>";
+    Buffer.add_string buf (Base64.encode_exn s);
+    Buffer.add_string buf "</base64></value>"
   | Enum l ->
-    f "<value><array><data>";
-    List.iter (add_value ~strict f) l;
-    f "</data></array></value>"
+    Buffer.add_string buf "<value><array><data>";
+    List.iter (add_value ~strict buf) l;
+    Buffer.add_string buf "</data></array></value>"
   | Dict d ->
-    let add_member (name, value) =
-      f "<member><name>";
-      f name;
-      f "</name>";
-      add_value ~strict f value;
-      f "</member>"
+    let add_member  (name, value) =
+      Buffer.add_string buf "<member><name>";
+      Buffer.add_string buf name;
+      Buffer.add_string buf "</name>";
+      add_value ~strict buf value;
+      Buffer.add_string buf "</member>"
     in
-    f "<value><struct>";
+    Buffer.add_string buf "<value><struct>";
     List.iter add_member d;
-    f "</struct></value>"
+    Buffer.add_string buf "</struct></value>"
 
 
 let to_string ?(strict = false) x =
   let buf = Buffer.create 128 in
-  add_value ~strict (Buffer.add_string buf) x;
+  add_value ~strict buf x;
   Buffer.contents buf
 
 
@@ -95,34 +114,33 @@ let string_of_call ?(strict = false) call =
   let add = B.add_string buf in
   add "<?xml version=\"1.0\"?>";
   add "<methodCall><methodName>";
-  add (encode call.name);
+  encode_buf buf call.name;
   add "</methodName><params>";
   List.iter
     (fun p ->
       add "<param>";
-      add (to_string ~strict p);
+      add_value ~strict buf p;
       add "</param>")
     call.params;
   add "</params></methodCall>";
   B.contents buf
 
 
-let add_response ?(strict = false) add response =
+let add_response ?(strict = false) buf response =
   let v =
     if response.success
     then Dict [ "Status", String "Success"; "Value", response.contents ]
     else Dict [ "Status", String "Failure"; "ErrorDescription", response.contents ]
   in
-  add "<?xml version=\"1.0\"?><methodResponse><params><param>";
-  add_value ~strict add v;
-  add "</param></params></methodResponse>"
+  Buffer.add_string buf "<?xml version=\"1.0\"?><methodResponse><params><param>";
+  add_value ~strict buf v;
+  Buffer.add_string buf "</param></params></methodResponse>"
 
 
 let string_of_response ?(strict = false) response =
   let module B = Buffer in
   let buf = B.create 256 in
-  let add = B.add_string buf in
-  add_response ~strict add response;
+  add_response ~strict buf response;
   B.contents buf
 
 
@@ -450,3 +468,7 @@ let response_of_string ?callback ?base64_decoder str =
 let response_of_in_channel ?callback ?base64_decoder chan =
   let input = Xmlm.make_input (`Channel chan) in
   response_of_input ?callback ?base64_decoder input
+
+
+(* backward compat, unused *)
+let encode = Internals.encode translate
