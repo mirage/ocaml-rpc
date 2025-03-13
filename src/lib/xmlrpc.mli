@@ -1,4 +1,4 @@
-val encode : string -> string
+val encode : string -> string [@@ocaml.deprecated]
 val to_string : ?strict:bool -> Rpc.t -> string
 
 val to_a
