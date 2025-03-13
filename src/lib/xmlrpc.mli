@@ -1,24 +1,7 @@
 val encode : string -> string [@@ocaml.deprecated]
 val to_string : ?strict:bool -> Rpc.t -> string
-
-val to_a
-  :  ?strict:bool
-  -> empty:(unit -> 'a)
-  -> append:('a -> string -> unit)
-  -> Rpc.t
-  -> 'a
-[@@ocaml.deprecated]
-
 val string_of_call : ?strict:bool -> Rpc.call -> string
 val string_of_response : ?strict:bool -> Rpc.response -> string
-
-val a_of_response
-  :  ?strict:bool
-  -> empty:(unit -> 'a)
-  -> append:('a -> string -> unit)
-  -> Rpc.response
-  -> 'a
-[@@ocaml.deprecated]
 
 exception Parse_error of string * string * Xmlm.input
 
@@ -36,14 +19,6 @@ val of_string
   -> ?base64_decoder:(string -> string)
   -> string
   -> Rpc.t
-
-val of_a
-  :  ?callback:(string list -> Rpc.t -> unit)
-  -> ?base64_decoder:(string -> string)
-  -> next_char:('b -> char option)
-  -> 'b
-  -> Rpc.t
-[@@ocaml.deprecated]
 
 val call_of_string
   :  ?callback:(string list -> Rpc.t -> unit)
