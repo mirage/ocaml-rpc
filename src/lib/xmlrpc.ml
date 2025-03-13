@@ -18,20 +18,11 @@ open Printf
 open Rpc
 
 (* marshalling/unmarshalling code *)
-let some_gt = Some "&gt;"
-let some_lt = Some "&lt;"
-let some_amp = Some "&amp;"
-let some_quot = Some "&quot;"
-let some_nil = Some "nil"
 
-(* The XML-RPC is not very clear about what characters can be in a string value ... *)
-let[@inline always] translate = function
-  | '>' -> some_gt
-  | '<' -> some_lt
-  | '&' -> some_amp
-  | '"' -> some_quot
-  | c when (c >= '\x20' && c <= '\xff') || c = '\x09' || c = '\x0a' || c = '\x0d' -> None
-  | _ -> some_nil
+let[@inline always] encode_add buf s m ~i n =
+  Buffer.add_substring buf s m (i - m);
+  Buffer.add_string buf n;
+  i + 1
 
 
 (** Encodes a string using the given translation function that maps a character
@@ -39,18 +30,21 @@ let[@inline always] translate = function
 let[@inline always] encode_buf buf s =
   let n = String.length s in
   let m = ref 0 in
+  (* do not let the ref escape, better optimizations *)
   for i = 0 to n - 1 do
-    match (translate [@inlined]) (String.unsafe_get s i) with
-    | None -> ()
-    | Some n ->
-      Buffer.add_substring buf s !m (i - !m);
-      Buffer.add_string buf n;
-      m := i + 1
+    (* The XML-RPC is not very clear about what characters can be in a string value ... *)
+    match String.unsafe_get s i with
+    | '>' -> m := encode_add buf s !m ~i "&gt;"
+    | '<' -> m := encode_add buf s !m ~i "&lt;"
+    | '&' -> m := encode_add buf s !m ~i "&amp;"
+    | '"' -> m := encode_add buf s !m ~i "&quot;"
+    | '\x20' .. '\xff' | '\x09' | '\x0a' | '\x0d' -> ()
+    | _ -> m := encode_add buf s !m ~i ""
   done;
   Buffer.add_substring buf s !m (n - !m)
 
 
-let rec add_value ?(strict = false) buf = function
+let rec add_value ~strict buf = function
   | Null -> Buffer.add_string buf "<value><nil/></value>"
   | Int i ->
     Buffer.add_string buf "<value>";
@@ -90,7 +84,7 @@ let rec add_value ?(strict = false) buf = function
     List.iter (add_value ~strict buf) l;
     Buffer.add_string buf "</data></array></value>"
   | Dict d ->
-    let add_member  (name, value) =
+    let add_member (name, value) =
       Buffer.add_string buf "<member><name>";
       Buffer.add_string buf name;
       Buffer.add_string buf "</name>";
@@ -471,4 +465,19 @@ let response_of_in_channel ?callback ?base64_decoder chan =
 
 
 (* backward compat, unused *)
+let some_gt = Some "&gt;"
+let some_lt = Some "&lt;"
+let some_amp = Some "&amp;"
+let some_quot = Some "&quot;"
+let some_nil = Some "nil"
+
+let translate = function
+  | '>' -> some_gt
+  | '<' -> some_lt
+  | '&' -> some_amp
+  | '"' -> some_quot
+  | c when (c >= '\x20' && c <= '\xff') || c = '\x09' || c = '\x0a' || c = '\x0d' -> None
+  | _ -> some_nil
+
+
 let encode = Internals.encode translate
