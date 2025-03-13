@@ -89,12 +89,6 @@ let to_string ?(strict = false) x =
   Buffer.contents buf
 
 
-let to_a ?(strict = false) ~empty ~append x =
-  let buf = empty () in
-  add_value ~strict (fun s -> append buf s) x;
-  buf
-
-
 let string_of_call ?(strict = false) call =
   let module B = Buffer in
   let buf = B.create 1024 in
@@ -120,7 +114,7 @@ let add_response ?(strict = false) add response =
     else Dict [ "Status", String "Failure"; "ErrorDescription", response.contents ]
   in
   add "<?xml version=\"1.0\"?><methodResponse><params><param>";
-  to_a ~strict ~empty:(fun () -> ()) ~append:(fun _ s -> add s) v;
+  add_value ~strict add v;
   add "</param></params></methodResponse>"
 
 
@@ -130,13 +124,6 @@ let string_of_response ?(strict = false) response =
   let add = B.add_string buf in
   add_response ~strict add response;
   B.contents buf
-
-
-let a_of_response ?(strict = false) ~empty ~append response =
-  let buf = empty () in
-  let add s = append buf s in
-  add_response ~strict add response;
-  buf
 
 
 exception Parse_error of string * string * Xmlm.input
@@ -368,16 +355,6 @@ let of_string ?callback ?base64_decoder str =
   (match Xmlm.peek input with
    | `Dtd _ -> ignore (Xmlm.input input)
    | _ -> ());
-  Parser.of_xml ?callback ?base64_decoder [] input
-
-
-let of_a ?callback ?base64_decoder ~next_char b =
-  let aux () =
-    match next_char b with
-    | Some c -> int_of_char c
-    | None -> raise End_of_file
-  in
-  let input = Xmlm.make_input (`Fun aux) in
   Parser.of_xml ?callback ?base64_decoder [] input
 
 
