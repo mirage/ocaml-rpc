@@ -104,6 +104,20 @@ let get_wire_name description name =
     | None -> name)
 
 
+let check_dups_exn api params =
+  let named = params |> List.filter_map Fun.id |> List.rev in
+  let uniq = named |> List.sort_uniq String.compare in
+  let duplicates = List.length named - List.length uniq in
+  if duplicates <> 0
+  then
+    invalid_arg
+    @@ Printf.sprintf
+         "%s: %d duplicate arguments in: %s"
+         api
+         duplicates
+         (String.concat "," named)
+
+
 let get_arg call has_named name is_opt =
   match has_named, name, call.Rpc.params with
   | true, Some n, Rpc.Dict named :: unnamed ->
@@ -199,6 +213,21 @@ module Make (M : MONAD) = struct
       | NoArgsFunction : 'b fn -> (unit -> 'b) fn
       | Returning : ('a Param.t * 'b Error.t) -> ('a, 'b) comp fn
 
+    let rec params_of : type a. string option list -> a fn -> string option list =
+     fun aux t ->
+      match t with
+      | Function (p, fn) -> params_of (p.Param.name :: aux) fn
+      | NoArgsFunction fn -> params_of aux fn
+      | Returning _ -> aux
+
+
+    let params_of t = params_of [] t
+
+    let check_dups_exn name fn =
+      fn |> params_of |> check_dups_exn name;
+      fn
+
+
     let description = ref None
     let strict = ref false
     let make_strict () = strict := true
@@ -267,8 +296,12 @@ module Make (M : MONAD) = struct
       inner (None, []) ty
 
 
-    let declare_notification name a ty (rpc : T.rpcfn) = declare_ true name a ty rpc
-    let declare name a ty (rpc : T.rpcfn) = declare_ false name a ty rpc
+    let declare_notification name a ty (rpc : T.rpcfn) =
+      declare_ true name a (check_dups_exn name ty) rpc
+
+
+    let declare name a ty (rpc : T.rpcfn) =
+      declare_ false name a (check_dups_exn name ty) rpc
   end
 
   let server hashtbl =
@@ -308,6 +341,21 @@ module Make (M : MONAD) = struct
       | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
       | NoArgsFunction : 'b fn -> (unit -> 'b) fn
       | Returning : ('a Param.t * 'b Error.t) -> ('a, 'b) comp fn
+
+    let rec params_of : type a. string option list -> a fn -> string option list =
+     fun aux t ->
+      match t with
+      | Function (p, fn) -> params_of (p.Param.name :: aux) fn
+      | NoArgsFunction fn -> params_of aux fn
+      | Returning _ -> aux
+
+
+    let params_of t = params_of [] t
+
+    let check_dups_exn name fn =
+      fn |> params_of |> check_dups_exn name;
+      fn
+
 
     let funcs = Hashtbl.create 20
     let description = ref None
@@ -383,8 +431,8 @@ module Make (M : MONAD) = struct
         Hashtbl.add funcs wire_name (Some rpcfn)
 
 
-    let declare_notification name a ty = declare_ true name a ty
-    let declare name a ty = declare_ false name a ty
+    let declare_notification name a ty = declare_ true name a (check_dups_exn name ty)
+    let declare name a ty = declare_ false name a (check_dups_exn name ty)
   end
 end
 
@@ -502,6 +550,21 @@ module Exn = struct
       | NoArgsFunction : 'b fn -> (unit -> 'b) fn
       | Returning : ('a Param.t * 'b Error.t) -> ('a, _) comp fn
 
+    let rec params_of : type a. string option list -> a fn -> string option list =
+     fun aux t ->
+      match t with
+      | Function (p, fn) -> params_of (p.Param.name :: aux) fn
+      | NoArgsFunction fn -> params_of aux fn
+      | Returning _ -> aux
+
+
+    let params_of t = params_of [] t
+
+    let check_dups_exn name fn =
+      fn |> params_of |> check_dups_exn name;
+      fn
+
+
     let description = ref None
 
     let implement x =
@@ -561,8 +624,8 @@ module Exn = struct
       inner (None, []) ty
 
 
-    let declare name a ty = declare_ false name a ty
-    let declare_notification name a ty = declare_ true name a ty
+    let declare name a ty = declare_ false name a (check_dups_exn name ty)
+    let declare_notification name a ty = declare_ true name a (check_dups_exn name ty)
   end
 
   let server hashtbl =
@@ -602,6 +665,21 @@ module Exn = struct
       | Function : 'a Param.t * 'b fn -> ('a -> 'b) fn
       | NoArgsFunction : 'b fn -> (unit -> 'b) fn
       | Returning : ('a Param.t * 'b Error.t) -> ('a, _) comp fn
+
+    let rec params_of : type a. string option list -> a fn -> string option list =
+     fun aux t ->
+      match t with
+      | Function (p, fn) -> params_of (p.Param.name :: aux) fn
+      | NoArgsFunction fn -> params_of aux fn
+      | Returning _ -> aux
+
+
+    let params_of t = params_of [] t
+
+    let check_dups_exn name fn =
+      fn |> params_of |> check_dups_exn name;
+      fn
+
 
     let funcs = Hashtbl.create 20
     let description = ref None
@@ -688,7 +766,7 @@ module Exn = struct
         Hashtbl.add funcs wire_name (Some rpcfn)
 
 
-    let declare name a ty = declare_ true name a ty
-    let declare_notification name a ty = declare_ false name a ty
+    let declare name a ty = declare_ true name a (check_dups_exn name ty)
+    let declare_notification name a ty = declare_ false name a (check_dups_exn name ty)
   end
 end
