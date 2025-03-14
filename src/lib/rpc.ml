@@ -194,6 +194,7 @@ let int64_of_rpc = function
 
 let int32_of_rpc = function
   | Int i -> Int64.to_int32 i
+  | Int32 i -> i
   | String s -> Int32.of_string s
   | x -> failwith (Printf.sprintf "Expected int32, got '%s'" (to_string x))
 
@@ -223,12 +224,12 @@ let string_of_rpc = function
 
 
 let dateTime_of_rpc = function
-  | DateTime s -> s
+  | DateTime s | String s -> s
   | x -> failwith (Printf.sprintf "Expected DateTime, got '%s'" (to_string x))
 
 
 let base64_of_rpc = function
-  | Base64 s -> Base64.decode_exn s
+  | Base64 s | String s -> Base64.decode_exn s
   | x -> failwith (Printf.sprintf "Expected base64, got '%s'" (to_string x))
 
 
