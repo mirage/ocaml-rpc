@@ -57,7 +57,7 @@ let rec rpc_of_json json =
     Rpc.String (Js_of_ocaml.Js.to_string str)
   | _ ->
     (* Datetime maybe? *)
-    Js_of_ocaml.Firebug.console##log
+    Js_of_ocaml.Console.console##log
       (Js_of_ocaml.Js.string (Printf.sprintf "Ack! got %s" (Js_of_ocaml.Js.to_string ty)));
     Rpc.Bool false
 
@@ -129,7 +129,7 @@ let response_of_string str =
         | _ -> failwith "inconsistent input"
       with
       | _ ->
-        Js_of_ocaml.Firebug.console##log
+        Js_of_ocaml.Console.console##log
           (Js_of_ocaml.Js.string
              (Printf.sprintf "Weirdness: %s" (Rpc.to_string (get "id" d))));
         raise (Malformed_method_response "id")
@@ -142,5 +142,5 @@ let response_of_string str =
         (Malformed_method_response
            (Printf.sprintf "<result=%s><error=%s>" (Rpc.to_string x) (Rpc.to_string y))))
   | rpc ->
-    Js_of_ocaml.Firebug.console##log (Js_of_ocaml.Js.string (Rpc.to_string rpc));
+    Js_of_ocaml.Console.console##log (Js_of_ocaml.Js.string (Rpc.to_string rpc));
     failwith "Bah"
