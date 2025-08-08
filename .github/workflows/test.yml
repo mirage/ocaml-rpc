@@ -10,7 +10,7 @@ jobs:
       matrix:
         # windows-latest async does not support it for now
         operating-system: [macos-latest, ubuntu-latest]
-        ocaml-version: [ '5.2.0', '4.14.0' ]
+        ocaml-version: [ '5.3.0', '5.2.0', '4.14.2' ]
     steps:
     - uses: actions/checkout@master
     - name: Setup Python
@@ -33,10 +33,16 @@ jobs:
       with:
         ocaml-compiler: ${{ matrix.ocaml-version }}
     - name: Install OCaml dependencies
-      run: opam install -t . --deps-only
+      run: opam install -t ./ppx_deriving_rpc.opam ./rpclib-html.opam ./rpclib-js.opam ./rpclib-lwt.opam ./rpclib.opam --deps-only
     - name: Build and test independently
-      run: opam install -t rpclib rpclib-js rpclib-html rpclib-lwt rpclib-async
+      run: opam install -t rpclib rpclib-js rpclib-html rpclib-lwt
     - name: Run Rpc and Ppx_deriving_rpc Tests
       run: opam exec -- dune runtest -p ppx_deriving_rpc
     - name: Build and run Examples
       run: opam exec -- dune build @runexamples -p ppx_deriving_rpc
+    - if: ${{ matrix.ocaml-version >= '5.3.0' }}
+      name: Install OCaml dependencies (Async)
+      run: opam install -t ./rpclib-async.opam --deps-only
+    - if: ${{ matrix.ocaml-version >= '5.3.0' }}
+      name: Build and test independently (Async)
+      run: opam install -t rpclib-async
