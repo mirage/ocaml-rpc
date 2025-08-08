@@ -55,6 +55,7 @@ module Typ_of = struct
       | { ptyp_desc = Ptyp_alias (_, _); _ } -> failwith "Ptyp_alias not handled"
       | { ptyp_desc = Ptyp_class (_, _); _ } -> failwith "Ptyp_class not handled"
       | { ptyp_desc = Ptyp_package _; _ } -> failwith "Ptyp_package not handled"
+      | { ptyp_desc = Ptyp_open _; _ } -> failwith "Ptyp_open not handled"
     in
     expr
 
@@ -269,7 +270,7 @@ module Typ_of = struct
             else [ case ~guard:None ~lhs:ppat_any ~rhs:[%expr None] ]
           in
           let vpreview =
-            pexp_function
+            pexp_function_cases
               ([ case
                    ~lhs:(ppat_construct (Located.mk (lident cname)) pat)
                    ~guard:None
@@ -277,7 +278,7 @@ module Typ_of = struct
                ]
               @ vpreview_default)
           in
-          let vreview = pexp_function [ case ~lhs:pat' ~guard:None ~rhs:constr ] in
+          let vreview = pexp_function_cases [ case ~lhs:pat' ~guard:None ~rhs:constr ] in
           let variant =
             [%expr
               BoxedTag
@@ -304,7 +305,7 @@ module Typ_of = struct
                   Rresult.R.bind
                     (t.tget [%e contents])
                     [%e
-                      pexp_function
+                      pexp_function_cases
                         [ case ~lhs:pat' ~guard:None ~rhs:[%expr Rresult.R.ok [%e constr]]
                         ]]]
           in
