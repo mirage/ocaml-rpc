@@ -1,5 +1,9 @@
-## unreleased
-* Removed deprecated rpc virutal package
+## 10.0.0 (Dec 2025)
+* Removed deprecated rpc virtual package
+* Python3 support
+* Drop Python2 support
+* Rpc_genfake: avoid crash on recursive types
+* Rcplib-async is now OCaml 5.3+ only (the other libraries still support OCaml 4.14)
 
 ## 9.0.0 (June 2022)
 * Breaking: change Cmdlinergen to use non-deprecated types (psafont #172)
