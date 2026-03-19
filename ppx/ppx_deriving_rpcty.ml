@@ -1,6 +1,7 @@
 open Ppxlib
 open Ast_builder.Default
 open Common
+open! Ppx_compat
 
 let deriver = "rpcty"
 
@@ -45,17 +46,10 @@ module Typ_of = struct
       | [%type: [%t? typ] option] -> [%expr Rpc.Types.Option [%e expr_of_typ ~loc typ]]
       | { ptyp_desc = Ptyp_constr (lid, _); _ } ->
         type_constr_conv lid ~loc ~f:typ_of_f []
-      | { ptyp_desc = Ptyp_variant (_, _, _); _ } -> failwith "Ptyp_variant not handled"
-      | { ptyp_desc = Ptyp_any; _ } -> failwith "Ptyp_any not handled"
       | { ptyp_desc = Ptyp_var name; _ } -> evar ~loc ("poly_" ^ name)
       | { ptyp_desc = Ptyp_poly (_, _); _ } -> failwith "Ptyp_poly not handled"
-      | { ptyp_desc = Ptyp_extension _; _ } -> failwith "Ptyp_extension not handled"
-      | { ptyp_desc = Ptyp_arrow (_, _, _); _ } -> failwith "Ptyp_arrow not handled"
-      | { ptyp_desc = Ptyp_object (_, _); _ } -> failwith "Ptyp_object not handled"
-      | { ptyp_desc = Ptyp_alias (_, _); _ } -> failwith "Ptyp_alias not handled"
-      | { ptyp_desc = Ptyp_class (_, _); _ } -> failwith "Ptyp_class not handled"
-      | { ptyp_desc = Ptyp_package _; _ } -> failwith "Ptyp_package not handled"
-      | { ptyp_desc = Ptyp_open _; _ } -> failwith "Ptyp_open not handled"
+      | unsupported ->
+        failwith ("core type not handled: " ^ string_of_core_type unsupported)
     in
     expr
 
