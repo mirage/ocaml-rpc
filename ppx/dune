@@ -6,5 +6,5 @@
  (ppx_runtime_libraries rpclib)
  (libraries ppxlib)
  (preprocess
-  (pps ppxlib.metaquot ppxlib.runner))
+  (pps ppxlib.metaquot))
  (wrapped false))

@@ -10,7 +10,7 @@ bug-reports: "https://github.com/mirage/ocaml-rpc/issues"
 license: "ISC"
 depends: [
   "ocaml"
-  "dune" {>= "2.0.0"}
+  "dune" {>= "3.10.0"}
   "rpclib" {=version}
   "cow" {>= "2.0.0"}
 ]
