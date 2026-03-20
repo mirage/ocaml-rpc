@@ -75,8 +75,8 @@ let string_strip ?(drop = is_whitespace) t =
     | None -> ""
     | Some first ->
       (match last_non_drop t ~drop with
-      | None -> assert false
-      | Some last -> String.sub t first (last - first + 1)))
+       | None -> assert false
+       | Some last -> String.sub t first (last - first + 1)))
 
 
 let list_partition_tf t ~f =
@@ -86,8 +86,8 @@ let list_partition_tf t ~f =
       | [] -> List.rev fst, List.rev snd
       | x :: t ->
         (match f x with
-        | Ok y -> loop t (y :: fst) snd
-        | Error y -> loop t fst (y :: snd))
+         | Ok y -> loop t (y :: fst) snd
+         | Error y -> loop t fst (y :: snd))
     in
     loop t [] []
   in
@@ -140,7 +140,7 @@ let fold_right_type_decl fn { ptype_params; _ } accum =
 let poly_fun_of_type_decl ~loc type_decl expr =
   fold_right_type_decl
     (fun name expr ->
-      pexp_fun ~loc Nolabel None (ppat_var ~loc { txt = "poly_" ^ name; loc }) expr)
+       pexp_fun ~loc Nolabel None (ppat_var ~loc { txt = "poly_" ^ name; loc }) expr)
     type_decl
     expr
 
@@ -234,7 +234,8 @@ module Attrs = struct
     Attribute.declare
       "rpc.name"
       context
-      Ast_pattern.(pstr (pstr_eval (pexp_constant (pconst_string __ __ none)) nil ^:: nil))
+      Ast_pattern.(
+        pstr (pstr_eval (pexp_constant (pconst_string __ __ none)) nil ^:: nil))
       (fun x _loc -> x)
 
 
@@ -245,7 +246,8 @@ module Attrs = struct
     Attribute.declare
       "rpc.key"
       Attribute.Context.label_declaration
-      Ast_pattern.(pstr (pstr_eval (pexp_constant (pconst_string __ __ none)) nil ^:: nil))
+      Ast_pattern.(
+        pstr (pstr_eval (pexp_constant (pconst_string __ __ none)) nil ^:: nil))
       (fun x _loc -> x)
 
 
@@ -265,7 +267,7 @@ let attr loc name attrs =
   |> Option.map (fun { attr_payload; _ } -> attr_payload)
   |> fun o ->
   Option.bind o (fun str ->
-      Ast_pattern.parse pat loc str ~on_error:(fun _ -> None) (fun str _loc _ -> Some str))
+    Ast_pattern.parse pat loc str ~on_error:(fun _ -> None) (fun str _loc _ -> Some str))
 
 
 let split = string_split_on_chars ~on:[ '\n' ]
@@ -275,8 +277,8 @@ let convert_doc x =
   |> ListLabels.map
        ~f:
          (string_strip ~drop:(function
-             | '\n' | ' ' -> true
-             | _ -> false))
+            | '\n' | ' ' -> true
+            | _ -> false))
 
 
 (** [get_doc loc rpcdoc attrs] extracts documentation from the type declarations. rpcdoc is

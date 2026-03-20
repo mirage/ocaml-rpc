@@ -4,7 +4,7 @@ module Gen () = struct
   type implementation =
     unit
     -> ((Rpc.call -> Rpc.response) -> (unit -> unit) Cmdliner.Term.t * Cmdliner.Cmd.info)
-       list
+         list
 
   type ('a, 'b) comp = ('a, 'b) Result.t
   type 'a rpcfn = Rpc.call -> Rpc.response
@@ -14,7 +14,7 @@ module Gen () = struct
   let terms = ref []
 
   let implement : Idl.Interface.description -> implementation =
-   fun x ->
+    fun x ->
     description := Some x;
     fun () -> !terms
 
@@ -30,7 +30,7 @@ module Gen () = struct
   let pos = ref 0
 
   let term_of_param : type a. a Param.t -> Rpc.t Cmdliner.Term.t =
-   fun p ->
+    fun p ->
     let open Rpc.Types in
     let open Cmdliner in
     let pinfo =
@@ -39,8 +39,8 @@ module Gen () = struct
         ~doc:(String.concat " " p.Param.description)
         ~docv:
           (match p.Param.name with
-          | Some s -> s
-          | None -> p.Param.typedef.Rpc.Types.name)
+           | Some s -> s
+           | None -> p.Param.typedef.Rpc.Types.name)
     in
     let incr () =
       let p = !pos in
@@ -88,26 +88,26 @@ module Gen () = struct
     | Array _ ->
       Term.app
         (Term.const (fun x ->
-             let x = Jsonrpc.of_string x in
-             match x with
-             | Rpc.Enum _ -> x
-             | _ -> failwith "Type error"))
+           let x = Jsonrpc.of_string x in
+           match x with
+           | Rpc.Enum _ -> x
+           | _ -> failwith "Type error"))
         Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo)
     | List _ ->
       Term.app
         (Term.const (fun x ->
-             let x = Jsonrpc.of_string x in
-             match x with
-             | Rpc.Enum _ -> x
-             | _ -> failwith "Type error"))
+           let x = Jsonrpc.of_string x in
+           match x with
+           | Rpc.Enum _ -> x
+           | _ -> failwith "Type error"))
         Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo)
     | Dict _ ->
       Term.app
         (Term.const (fun x ->
-             let x = Jsonrpc.of_string x in
-             match x with
-             | Rpc.Dict _ -> x
-             | _ -> failwith "Type error"))
+           let x = Jsonrpc.of_string x in
+           match x with
+           | Rpc.Dict _ -> x
+           | _ -> failwith "Type error"))
         Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo)
     | Option _ -> Term.(const Rpc.Null)
     | Tuple _ -> Term.const Rpc.Null
@@ -116,26 +116,26 @@ module Gen () = struct
     | Struct _ ->
       Term.app
         (Term.const (fun x ->
-             let x = Jsonrpc.of_string x in
-             match x with
-             | Rpc.Dict _ -> x
-             | _ -> failwith "Type error"))
+           let x = Jsonrpc.of_string x in
+           match x with
+           | Rpc.Dict _ -> x
+           | _ -> failwith "Type error"))
         Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo)
     | Variant _ ->
       Term.app
         (Term.const (fun x ->
-             let x = Jsonrpc.of_string x in
-             match x with
-             | Rpc.Enum _ | Rpc.String _ -> x
-             | _ -> failwith "Type error"))
+           let x = Jsonrpc.of_string x in
+           match x with
+           | Rpc.Enum _ | Rpc.String _ -> x
+           | _ -> failwith "Type error"))
         Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo)
     | Abstract { of_rpc; _ } ->
       Term.app
         (Term.const (fun x ->
-             let x = Jsonrpc.of_string x in
-             match of_rpc x with
-             | Ok _ -> x
-             | Error _ -> failwith "Type error"))
+           let x = Jsonrpc.of_string x in
+           match of_rpc x with
+           | Ok _ -> x
+           | Error _ -> failwith "Type error"))
         Cmdliner.Arg.(required & pos (incr ()) (some string) None & pinfo)
 
 
@@ -143,36 +143,36 @@ module Gen () = struct
     let generate rpc =
       let wire_name = Idl.get_wire_name !description name in
       let rec inner
-          : type b.
-            ((string * Rpc.t) list * Rpc.t list) Cmdliner.Term.t
-            -> b fn
-            -> (unit -> unit) Cmdliner.Term.t
+        : type b.
+          ((string * Rpc.t) list * Rpc.t list) Cmdliner.Term.t
+          -> b fn
+          -> (unit -> unit) Cmdliner.Term.t
         =
-       fun cur f ->
+        fun cur f ->
         match f with
         | Function (t, f) ->
           let term = term_of_param t in
           (match t.Param.name with
-          | Some param_name ->
-            let term =
-              let open Cmdliner.Term in
-              const (fun x (named, unnamed) -> (param_name, x) :: named, unnamed)
-              $ term
-              $ cur
-            in
-            inner term f
-          | None ->
-            let term =
-              let open Cmdliner.Term in
-              const (fun x (named, unnamed) -> named, x :: unnamed) $ term $ cur
-            in
-            inner term f)
+           | Some param_name ->
+             let term =
+               let open Cmdliner.Term in
+               const (fun x (named, unnamed) -> (param_name, x) :: named, unnamed)
+               $ term
+               $ cur
+             in
+             inner term f
+           | None ->
+             let term =
+               let open Cmdliner.Term in
+               const (fun x (named, unnamed) -> named, x :: unnamed) $ term $ cur
+             in
+             inner term f)
         | NoArgsFunction f ->
-            let term =
-              let open Cmdliner.Term in
-              const (fun (named, unnamed) -> named, unnamed) $ cur
-            in
-            inner term f
+          let term =
+            let open Cmdliner.Term in
+            const (fun (named, unnamed) -> named, unnamed) $ cur
+          in
+          inner term f
         | Returning (_, _) ->
           let run (named, unnamed) =
             let args =

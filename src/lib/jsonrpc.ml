@@ -185,14 +185,16 @@ let version_id_and_call_of_string_option str =
         match version with
         | V1 ->
           (match get "params" d with
-          | Enum l -> l
-          | _ -> raise (Malformed_method_request "Invalid field 'params' in request body"))
+           | Enum l -> l
+           | _ ->
+             raise (Malformed_method_request "Invalid field 'params' in request body"))
         | V2 ->
           (match get' "params" d with
-          | None | Some Null -> []
-          | Some (Enum l) -> l
-          | Some (Dict l) -> [ Dict l ]
-          | _ -> raise (Malformed_method_request "Invalid field 'params' in request body"))
+           | None | Some Null -> []
+           | Some (Enum l) -> l
+           | Some (Dict l) -> [ Dict l ]
+           | _ ->
+             raise (Malformed_method_request "Invalid field 'params' in request body"))
       in
       let id =
         match get' "id" d with
@@ -237,51 +239,51 @@ let get_response extractor str =
         | _ -> raise (Malformed_method_response "id")
       in
       (match get' "jsonrpc" d with
-      | None ->
-        let result = get "result" d in
-        let error = get "error" d in
-        (match result, error with
-        | v, Null -> success v
-        | Null, v -> failure v
-        | x, y ->
-          raise
-            (Malformed_method_response
-               (Printf.sprintf
-                  "<result=%s><error=%s>"
-                  (Rpc.to_string x)
-                  (Rpc.to_string y))))
-      | Some (String "2.0") ->
-        let result = get' "result" d in
-        let error = get' "error" d in
-        (match result, error with
-        | Some v, None -> success v
-        | None, Some v ->
-          (match v with
-          | Dict err ->
-            let (_ : int64) =
-              match get "code" err with
-              | Int i -> i
-              | _ -> raise (Malformed_method_response "Error code")
-            in
-            let _ =
-              match get "message" err with
-              | String s -> s
-              | _ -> raise (Malformed_method_response "Error message")
-            in
-            failure v
-          | _ -> raise (Malformed_method_response "Error object"))
-        | Some x, Some y ->
-          raise
-            (Malformed_method_response
-               (Printf.sprintf
-                  "<result=%s><error=%s>"
-                  (Rpc.to_string x)
-                  (Rpc.to_string y)))
-        | None, None ->
-          raise
-            (Malformed_method_response
-               (Printf.sprintf "neither <result> nor <error> was found")))
-      | _ -> raise (Malformed_method_response "jsonrpc"))
+       | None ->
+         let result = get "result" d in
+         let error = get "error" d in
+         (match result, error with
+          | v, Null -> success v
+          | Null, v -> failure v
+          | x, y ->
+            raise
+              (Malformed_method_response
+                 (Printf.sprintf
+                    "<result=%s><error=%s>"
+                    (Rpc.to_string x)
+                    (Rpc.to_string y))))
+       | Some (String "2.0") ->
+         let result = get' "result" d in
+         let error = get' "error" d in
+         (match result, error with
+          | Some v, None -> success v
+          | None, Some v ->
+            (match v with
+             | Dict err ->
+               let (_ : int64) =
+                 match get "code" err with
+                 | Int i -> i
+                 | _ -> raise (Malformed_method_response "Error code")
+               in
+               let _ =
+                 match get "message" err with
+                 | String s -> s
+                 | _ -> raise (Malformed_method_response "Error message")
+               in
+               failure v
+             | _ -> raise (Malformed_method_response "Error object"))
+          | Some x, Some y ->
+            raise
+              (Malformed_method_response
+                 (Printf.sprintf
+                    "<result=%s><error=%s>"
+                    (Rpc.to_string x)
+                    (Rpc.to_string y)))
+          | None, None ->
+            raise
+              (Malformed_method_response
+                 (Printf.sprintf "neither <result> nor <error> was found")))
+       | _ -> raise (Malformed_method_response "jsonrpc"))
     | rpc ->
       raise
         (Malformed_method_response

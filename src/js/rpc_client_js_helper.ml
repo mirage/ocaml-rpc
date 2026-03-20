@@ -48,7 +48,7 @@ let rec rpc_of_json json =
       Rpc.Dict
         (List.map
            (fun x ->
-             x, rpc_of_json (Js_of_ocaml.Js.Unsafe.get json (Js_of_ocaml.Js.string x)))
+              x, rpc_of_json (Js_of_ocaml.Js.Unsafe.get json (Js_of_ocaml.Js.string x)))
            okeys))
   | "boolean" -> Rpc.Bool (Js_of_ocaml.Js.to_bool (Obj.magic json))
   | "number" ->
@@ -135,12 +135,12 @@ let response_of_string str =
         raise (Malformed_method_response "id")
     in
     (match result, error with
-    | v, Rpc.Null -> Rpc.success v
-    | Rpc.Null, v -> Rpc.failure v
-    | x, y ->
-      raise
-        (Malformed_method_response
-           (Printf.sprintf "<result=%s><error=%s>" (Rpc.to_string x) (Rpc.to_string y))))
+     | v, Rpc.Null -> Rpc.success v
+     | Rpc.Null, v -> Rpc.failure v
+     | x, y ->
+       raise
+         (Malformed_method_response
+            (Printf.sprintf "<result=%s><error=%s>" (Rpc.to_string x) (Rpc.to_string y))))
   | rpc ->
     Js_of_ocaml.Firebug.console##log (Js_of_ocaml.Js.string (Rpc.to_string rpc));
     failwith "Bah"

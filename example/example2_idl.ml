@@ -35,11 +35,11 @@ module Datatypes = struct
       { def = errty
       ; raiser =
           (function
-          | e -> raise (DatatypeError e))
+            | e -> raise (DatatypeError e))
       ; matcher =
           (function
-          | DatatypeError e -> Some e
-          | _ -> None)
+            | DatatypeError e -> Some e
+            | _ -> None)
       }
 end
 

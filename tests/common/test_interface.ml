@@ -41,11 +41,13 @@ module Interface (R : Idl.RPC) = struct
       [ "Divide two numbers" ]
       (int_p_named_1 @-> int_p_named_2 @-> returning int_p_result Idl.DefaultError.err)
 
+
   let ping =
     R.declare
       "ping"
       [ "Check if service is alive (no params)" ]
       (noargs (returning string_p Idl.DefaultError.err))
+
 
   let implementation =
     implement

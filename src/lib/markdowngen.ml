@@ -63,7 +63,7 @@ let definition_of_t : type a. a typ -> string list = function
 
 
 let rec ocaml_patt_of_t : type a. a typ -> string =
- fun ty ->
+  fun ty ->
   let of_basic : type b. b basic -> string = function
     | Int -> "int"
     | Int32 -> "int32"
@@ -102,7 +102,7 @@ let rec ocaml_patt_of_t : type a. a typ -> string =
 
 
 let rpc_of : type a. a typ -> string -> Rpc.t =
- fun ty hint -> Rpcmarshal.marshal ty (Rpc_genfake.gen_nice ty hint)
+  fun ty hint -> Rpcmarshal.marshal ty (Rpc_genfake.gen_nice ty hint)
 
 
 let table headings rows =
@@ -179,7 +179,7 @@ let of_args args =
 
 
 let of_struct_fields : 'a boxed_field list -> string list =
- fun all ->
+  fun all ->
   let of_row (BoxedField f) =
     let ty = string_of_t f.field in
     [ f.fname; String.concat "" ty; get_description f.fdescription ]
@@ -188,7 +188,7 @@ let of_struct_fields : 'a boxed_field list -> string list =
 
 
 let of_variant_tags : 'a boxed_tag list -> string list =
- fun all ->
+  fun all ->
   let of_row (BoxedTag t) =
     let ty = string_of_t t.tcontents in
     [ t.tname; String.concat "" ty; get_description t.tdescription ]
@@ -208,12 +208,12 @@ let of_type_decl _ (BoxedDef t as t') =
     in
     let example =
       ("```json"
-      :: List.map
-           (fun x ->
-             Jsonrpc.to_string x
-             |> Yojson.Basic.from_string
-             |> Yojson.Basic.pretty_to_string)
-           marshalled)
+       :: List.map
+            (fun x ->
+               Jsonrpc.to_string x
+               |> Yojson.Basic.from_string
+               |> Yojson.Basic.pretty_to_string)
+            marshalled)
       @ [ "```" ]
     in
     let definition =
@@ -236,18 +236,18 @@ let json_of_method namespace _ _ (Codegen.BoxedFunction m) =
   let named, unnamed =
     List.fold_left
       (fun (named, unnamed) bp ->
-        match bp with
-        | Idl.Param.Boxed p ->
-          let rpc =
-            rpc_of
-              p.Idl.Param.typedef.Rpc.Types.ty
-              (match p.Idl.Param.name with
-              | Some n -> n
-              | None -> p.Idl.Param.typedef.Rpc.Types.name)
-          in
-          (match p.Idl.Param.name with
-          | Some n -> (n, rpc) :: named, unnamed
-          | None -> named, rpc :: unnamed))
+         match bp with
+         | Idl.Param.Boxed p ->
+           let rpc =
+             rpc_of
+               p.Idl.Param.typedef.Rpc.Types.ty
+               (match p.Idl.Param.name with
+                | Some n -> n
+                | None -> p.Idl.Param.typedef.Rpc.Types.name)
+           in
+           (match p.Idl.Param.name with
+            | Some n -> (n, rpc) :: named, unnamed
+            | None -> named, rpc :: unnamed))
       ([], [])
       inputs
   in
@@ -272,8 +272,8 @@ let json_of_method namespace _ _ (Codegen.BoxedFunction m) =
     Rpc_genfake.gen_nice
       output.Idl.Param.typedef.Rpc.Types.ty
       (match output.Idl.Param.name with
-      | Some n -> n
-      | None -> output.Idl.Param.typedef.Rpc.Types.name)
+       | Some n -> n
+       | None -> output.Idl.Param.typedef.Rpc.Types.name)
   in
   let marshalled = Rpcmarshal.marshal output.Idl.Param.typedef.Rpc.Types.ty example_ty in
   let output =
@@ -294,8 +294,8 @@ let ocaml_of_method (Codegen.BoxedFunction m) =
         "%s%s"
         t.Rpc.Types.tname
         (match t.Rpc.Types.tcontents with
-        | Unit -> ""
-        | t -> Printf.sprintf " %s" (ocaml_patt_of_t t))
+         | Unit -> ""
+         | t -> Printf.sprintf " %s" (ocaml_patt_of_t t))
   in
   let err_pre, err_post =
     match error.Rpc.Types.ty with
@@ -320,16 +320,16 @@ let ocaml_of_method (Codegen.BoxedFunction m) =
     match p with
     | Idl.Param.Boxed p ->
       (match p.Idl.Param.name with
-      | Some n -> n
-      | None -> p.Idl.Param.typedef.Rpc.Types.name)
+       | Some n -> n
+       | None -> p.Idl.Param.typedef.Rpc.Types.name)
   in
   let result_patt =
     match output.Idl.Param.typedef.Rpc.Types.ty with
     | Unit -> "()"
     | _ ->
       (match output.Idl.Param.name with
-      | Some n -> n
-      | None -> output.Idl.Param.typedef.Rpc.Types.name)
+       | Some n -> n
+       | None -> output.Idl.Param.typedef.Rpc.Types.name)
   in
   Printf.sprintf
     "%slet %s = Client.%s %s in\n    ...\n%s\n"
@@ -385,7 +385,7 @@ let of_method namespace is i (Codegen.BoxedFunction m) =
   @ [ "" ]
   @ of_args
       (List.map (fun p -> true, p) Method.(find_inputs m.ty)
-      @ [ (false, Method.(find_output m.ty)) ])
+       @ [ (false, Method.(find_output m.ty)) ])
 
 
 let all_errors i =
@@ -412,7 +412,7 @@ let expand_types is =
     | _ -> None
   in
   let rec expand : type a. bool -> a typ -> boxed_def list =
-   fun documented ty ->
+    fun documented ty ->
     let expand ty = expand false ty in
     let defs =
       match ty with
@@ -447,12 +447,12 @@ let expand_types is =
      already documented earlier won't be repeated. *)
   List.fold_left
     (fun documented_defs (BoxedDef { ty; _ } as def) ->
-      let expanded =
-        (* Each function parameter we expand is already documented *)
-        expand true ty |> List.filter (fun d -> not (same d def))
-      in
-      let not_documented d = not (List.exists (same d) documented_defs) in
-      documented_defs @ List.filter not_documented (expanded @ [ def ]))
+       let expanded =
+         (* Each function parameter we expand is already documented *)
+         expand true ty |> List.filter (fun d -> not (same d def))
+       in
+       let not_documented d = not (List.exists (same d) documented_defs) in
+       documented_defs @ List.filter not_documented (expanded @ [ def ]))
     []
     is.Interfaces.type_decls
 

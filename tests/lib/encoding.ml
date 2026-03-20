@@ -12,8 +12,7 @@ let run_not_strict () =
   let str = Xmlrpc.to_string ~strict:false test in
   assert (
     str
-    = "<value><struct><member><name>foo</name><value>&amp;</value></member><member><name>bar</name><value>3</value></member></struct></value>"
-  )
+    = "<value><struct><member><name>foo</name><value>&amp;</value></member><member><name>bar</name><value>3</value></member></struct></value>")
 
 
 let run_strict () =
@@ -21,8 +20,7 @@ let run_strict () =
   let str = Xmlrpc.to_string ~strict:true test in
   assert (
     str
-    = "<value><struct><member><name>foo</name><value>&amp;</value></member><member><name>bar</name><value><i8>3</i8></value></member></struct></value>"
-  )
+    = "<value><struct><member><name>foo</name><value>&amp;</value></member><member><name>bar</name><value><i8>3</i8></value></member></struct></value>")
 
 
 let tests =

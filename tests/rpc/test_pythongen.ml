@@ -15,8 +15,8 @@ module Interface (R : Idl.RPC) = struct
     ; raiser = (fun e -> Calc_error e)
     ; matcher =
         (function
-        | Calc_error e -> Some e
-        | _ -> None)
+          | Calc_error e -> Some e
+          | _ -> None)
     }
 
 
@@ -67,6 +67,7 @@ module Interface (R : Idl.RPC) = struct
 end
 
 module IfCode = Interface (Codegen.Gen ())
+
 module UnitVInterface (R : Idl.RPC) = struct
   open R
 
@@ -87,6 +88,7 @@ module UnitVInterface (R : Idl.RPC) = struct
       ]
       (unit_variant_p @-> returning int_p Idl.DefaultError.err)
 
+
   let implementation =
     implement
       { Idl.Interface.name = "UnitVInterface"
@@ -105,12 +107,13 @@ module UnitVCode : sig
 end =
   UnitVInterface (Codegen.Gen ())
 
-let unitv_interface = 
+let unitv_interface =
   Codegen.Interfaces.create
     ~name:"unitv"
     ~title:"Unit Variant"
     ~description:[ "Interface for Unit variant" ]
     ~interfaces:[ UnitVCode.implementation () ]
+
 
 let interfaces =
   Codegen.Interfaces.create
@@ -136,7 +139,7 @@ let run_linters file =
     "pylint should exit with 0"
     ("pylint \
       --disable=line-too-long,too-few-public-methods,unused-argument,no-self-use,invalid-name,broad-except,protected-access,redefined-builtin,useless-object-inheritance,super-with-arguments,consider-using-f-string "
-    ^ file);
+     ^ file);
   run_cmd "pycodestyle should exit with 0" ("pycodestyle --ignore=W504,E501 " ^ file)
 
 
@@ -150,8 +153,8 @@ let run ?input cmd =
   print_endline cmd;
   let inp, out = Unix.open_process cmd in
   (match input with
-  | Some input -> output_string out input
-  | None -> ());
+   | Some input -> output_string out input
+   | None -> ());
   close_out out;
   let l = input_line inp in
   close_in inp;
@@ -190,8 +193,10 @@ let check_exceptions () =
   gen_python_bindings "python/bindings.py";
   run_cmd "Exceptions should be correctly generated" "python python/exn_test.py"
 
+
 let check_unit_variants () =
   Pythongen.of_interfaces interfaces |> Pythongen.string_of_ts |> ignore
+
 
 let tests =
   [ ( "Check generated test interface bindings with pylint & pycodestyle"
@@ -200,5 +205,7 @@ let tests =
   ; "Check generated commandline bindings", `Slow, test_commandline
   ; "Check generated test class with commandline bindings", `Slow, check_test_class
   ; "Check generated exceptions", `Slow, check_exceptions
-  ; "Check python generation on variants with zero-arg constructors", `Quick, check_unit_variants
+  ; ( "Check python generation on variants with zero-arg constructors"
+    , `Quick
+    , check_unit_variants )
   ]

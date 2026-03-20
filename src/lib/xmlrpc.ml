@@ -105,9 +105,9 @@ let string_of_call ?(strict = false) call =
   add "</methodName><params>";
   List.iter
     (fun p ->
-      add "<param>";
-      add (to_string ~strict p);
-      add "</param>")
+       add "<param>";
+       add (to_string ~strict p);
+       add "</param>")
     call.params;
   add "</params></methodCall>";
   B.contents buf
@@ -154,14 +154,14 @@ let debug_input input =
         aux (tag :: tags)
       | `El_end ->
         (match tags with
-        | [] ->
-          Buffer.add_string buf "<?/>";
-          aux tags
-        | h :: t ->
-          Buffer.add_string buf "</";
-          Buffer.add_string buf h;
-          Buffer.add_string buf ">";
-          aux t)
+         | [] ->
+           Buffer.add_string buf "<?/>";
+           aux tags
+         | h :: t ->
+           Buffer.add_string buf "</";
+           Buffer.add_string buf h;
+           Buffer.add_string buf ">";
+           aux t)
       | `Data d ->
         Buffer.add_string buf d;
         aux tags
@@ -268,11 +268,12 @@ module Parser = struct
         | `El_end -> Rpc.String ""
         | `Data d ->
           let _ = Xmlm.input input in
-          if is_empty d
-             &&
-             match Xmlm.peek input with
-             | `El_start _ -> true
-             | _ -> false
+          if
+            is_empty d
+            &&
+            match Xmlm.peek input with
+            | `El_start _ -> true
+            | _ -> false
           then f input
           else Rpc.String d
         | _ -> f input
@@ -313,8 +314,11 @@ module Parser = struct
   let make_float = make (fun data -> Float (float_of_string data))
   let make_string = make (fun data -> String data)
   let make_dateTime = make (fun data -> DateTime data)
-  let make_base64 ?(base64_decoder=fun s -> Base64.decode_exn s) =
+
+  let make_base64 ?(base64_decoder = fun s -> Base64.decode_exn s) =
     make (fun data -> Base64 (base64_decoder data))
+
+
   let make_enum = make (fun data -> Enum data)
   let make_dict = make (fun data -> Dict data)
 
@@ -363,8 +367,8 @@ end
 let of_string ?callback ?base64_decoder str =
   let input = Xmlm.make_input (`String (0, str)) in
   (match Xmlm.peek input with
-  | `Dtd _ -> ignore (Xmlm.input input)
-  | _ -> ());
+   | `Dtd _ -> ignore (Xmlm.input input)
+   | _ -> ());
   Parser.of_xml ?callback ?base64_decoder [] input
 
 
@@ -381,27 +385,27 @@ let of_a ?callback ?base64_decoder ~next_char b =
 let call_of_string ?callback ?base64_decoder str =
   let input = Xmlm.make_input (`String (0, str)) in
   (match Xmlm.peek input with
-  | `Dtd _ -> ignore (Xmlm.input input)
-  | _ -> ());
+   | `Dtd _ -> ignore (Xmlm.input input)
+   | _ -> ());
   let name = ref "" in
   let params = ref [] in
   Parser.map_tag
     "methodCall"
     (fun input ->
-      name := Parser.map_tag "methodName" Parser.get_data input;
-      Parser.map_tag
-        "params"
-        (fun input ->
-          Parser.skip_empty input;
-          while Xmlm.peek input <> `El_end do
-            Parser.map_tag
-              "param"
-              (fun input -> params :=
-                Parser.of_xml ?callback ?base64_decoder [] input :: !params)
-              input;
-            Parser.skip_empty input
-          done)
-        input)
+       name := Parser.map_tag "methodName" Parser.get_data input;
+       Parser.map_tag
+         "params"
+         (fun input ->
+            Parser.skip_empty input;
+            while Xmlm.peek input <> `El_end do
+              Parser.map_tag
+                "param"
+                (fun input ->
+                   params := Parser.of_xml ?callback ?base64_decoder [] input :: !params)
+                input;
+              Parser.skip_empty input
+            done)
+         input)
     input;
   call !name (List.rev !params)
 
@@ -410,12 +414,12 @@ let response_of_fault ?callback ?base64_decoder input =
   Parser.map_tag
     "fault"
     (fun input ->
-      match Parser.of_xml ?callback ?base64_decoder [] input with
-      | Dict d ->
-        let fault_code = List.assoc "faultCode" d in
-        let fault_string = List.assoc "faultString" d in
-        failure (Rpc.Enum [ String "fault"; fault_code; fault_string ])
-      | r -> parse_error (to_string r) "fault" input)
+       match Parser.of_xml ?callback ?base64_decoder [] input with
+       | Dict d ->
+         let fault_code = List.assoc "faultCode" d in
+         let fault_string = List.assoc "faultString" d in
+         failure (Rpc.Enum [ String "fault"; fault_code; fault_string ])
+       | r -> parse_error (to_string r) "fault" input)
     input
 
 
@@ -423,43 +427,44 @@ let response_of_success ?callback ?base64_decoder input =
   Parser.map_tag
     "params"
     (fun input ->
-      Parser.map_tag
-        "param"
-        (fun input ->
-          match Parser.of_xml ?callback ?base64_decoder [] input with
-          | Dict d ->
-            if List.mem_assoc "Status" d
-               && List.assoc "Status" d = String "Success"
-               && List.mem_assoc "Value" d
-            then success (List.assoc "Value" d)
-            else if List.mem_assoc "Status" d
-                    && List.assoc "Status" d = String "Failure"
-                    && List.mem_assoc "ErrorDescription" d
-            then failure (List.assoc "ErrorDescription" d)
-            else success (Dict d)
-          | v -> success v)
-        input)
+       Parser.map_tag
+         "param"
+         (fun input ->
+            match Parser.of_xml ?callback ?base64_decoder [] input with
+            | Dict d ->
+              if
+                List.mem_assoc "Status" d
+                && List.assoc "Status" d = String "Success"
+                && List.mem_assoc "Value" d
+              then success (List.assoc "Value" d)
+              else if
+                List.mem_assoc "Status" d
+                && List.assoc "Status" d = String "Failure"
+                && List.mem_assoc "ErrorDescription" d
+              then failure (List.assoc "ErrorDescription" d)
+              else success (Dict d)
+            | v -> success v)
+         input)
     input
 
 
 let response_of_input ?callback ?base64_decoder input =
   (match Xmlm.peek input with
-  | `Dtd _ -> ignore (Xmlm.input input)
-  | _ -> ());
+   | `Dtd _ -> ignore (Xmlm.input input)
+   | _ -> ());
   Parser.map_tag
     "methodResponse"
     (fun input ->
-      Parser.skip_empty input;
-      match Xmlm.peek input with
-      | `El_start ((_, "params"), _) ->
-          response_of_success ?callback ?base64_decoder input
-      | `El_start ((_, "fault"), _) ->
-          response_of_fault ?callback ?base64_decoder input
-      | `El_start ((_, tag), _) ->
-        parse_error (sprintf "open_tag(%s)" tag) "open_tag(fault/params)" input
-      | `Data d -> parse_error (String.escaped d) "open_tag(fault/params)" input
-      | `El_end -> parse_error "close_tag" "open_tag(fault/params)" input
-      | `Dtd _ -> parse_error "dtd" "open_tag(fault/params)" input)
+       Parser.skip_empty input;
+       match Xmlm.peek input with
+       | `El_start ((_, "params"), _) ->
+         response_of_success ?callback ?base64_decoder input
+       | `El_start ((_, "fault"), _) -> response_of_fault ?callback ?base64_decoder input
+       | `El_start ((_, tag), _) ->
+         parse_error (sprintf "open_tag(%s)" tag) "open_tag(fault/params)" input
+       | `Data d -> parse_error (String.escaped d) "open_tag(fault/params)" input
+       | `El_end -> parse_error "close_tag" "open_tag(fault/params)" input
+       | `Dtd _ -> parse_error "dtd" "open_tag(fault/params)" input)
     input
 
 

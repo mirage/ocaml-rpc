@@ -5,7 +5,6 @@ open Example2_idl
    lwt or async, you should also use their specific IO functions
    including the print functions. *)
 module M = Idl.IdM (* You can easily put ExnM here and the code would stay unchanged *)
-
 module MyIdl = Idl.Make (M)
 module Server = API (MyIdl.GenServer ())
 
@@ -74,7 +73,7 @@ let binary_handler process s =
 
 let serve_requests rpcfn path =
   (try Unix.unlink path with
-  | Unix.Unix_error (Unix.ENOENT, _, _) -> ());
+   | Unix.Unix_error (Unix.ENOENT, _, _) -> ());
   mkdir_rec (Filename.dirname path) 0o0755;
   let sock = Unix.socket Unix.PF_UNIX Unix.SOCK_STREAM 0 in
   Unix.bind sock (Unix.ADDR_UNIX path);
@@ -85,12 +84,12 @@ let serve_requests rpcfn path =
     let (_ : Thread.t) =
       Thread.create
         (fun () ->
-          finally
-            (* Here I am calling M.run to make sure that I am running the process,
+           finally
+             (* Here I am calling M.run to make sure that I am running the process,
                 this is not much of a problem with IdM or ExnM, but in general you
                 should ensure that the computation is started by a runner. *)
-              (fun () -> binary_handler rpcfn this_connection |> M.run)
-            (fun () -> Unix.close this_connection))
+             (fun () -> binary_handler rpcfn this_connection |> M.run)
+             (fun () -> Unix.close this_connection))
         ()
     in
     ()

@@ -50,11 +50,11 @@ module Error = struct
       { def = T.t
       ; raiser =
           (function
-          | e -> Exn e)
+            | e -> Exn e)
       ; matcher =
           (function
-          | Exn e -> Some e
-          | e -> T.internal_error_of e)
+            | Exn e -> Some e
+            | e -> T.internal_error_of e)
       }
   end
 end
@@ -100,8 +100,8 @@ let get_wire_name description name =
   | None -> name
   | Some d ->
     (match d.Interface.namespace with
-    | Some ns -> Printf.sprintf "%s.%s" ns name
-    | None -> name)
+     | Some ns -> Printf.sprintf "%s.%s" ns name
+     | None -> name)
 
 
 let check_dups_exn api params =
@@ -122,21 +122,22 @@ let get_arg call has_named name is_opt =
   match has_named, name, call.Rpc.params with
   | true, Some n, Rpc.Dict named :: unnamed ->
     (match List.partition (fun (x, _) -> x = n) named with
-    | (_, arg) :: dups, others when is_opt ->
-      Result.Ok
-        (Rpc.Enum [ arg ], { call with Rpc.params = Rpc.Dict (dups @ others) :: unnamed })
-    | (_, arg) :: dups, others ->
-      Result.Ok (arg, { call with Rpc.params = Rpc.Dict (dups @ others) :: unnamed })
-    | [], _others when is_opt -> Result.Ok (Rpc.Enum [], call)
-    | _, _ -> Result.Error (`Msg (Printf.sprintf "Expecting named argument '%s'" n)))
+     | (_, arg) :: dups, others when is_opt ->
+       Result.Ok
+         (Rpc.Enum [ arg ], { call with Rpc.params = Rpc.Dict (dups @ others) :: unnamed })
+     | (_, arg) :: dups, others ->
+       Result.Ok (arg, { call with Rpc.params = Rpc.Dict (dups @ others) :: unnamed })
+     | [], _others when is_opt -> Result.Ok (Rpc.Enum [], call)
+     | _, _ -> Result.Error (`Msg (Printf.sprintf "Expecting named argument '%s'" n)))
   | true, None, Rpc.Dict named :: unnamed ->
     (match unnamed with
-    | head :: tail -> Result.Ok (head, { call with Rpc.params = Rpc.Dict named :: tail })
-    | _ -> Result.Error (`Msg "Incorrect number of arguments"))
+     | head :: tail -> Result.Ok (head, { call with Rpc.params = Rpc.Dict named :: tail })
+     | _ -> Result.Error (`Msg "Incorrect number of arguments"))
   | true, _, _ ->
     Result.Error
       (`Msg
-        "Marshalling error: Expecting dict as first argument when named parameters exist")
+          "Marshalling error: Expecting dict as first argument when named parameters \
+           exist")
   | false, None, head :: tail -> Result.Ok (head, { call with Rpc.params = tail })
   | false, None, [] -> Result.Error (`Msg "Incorrect number of arguments")
   | false, Some _, _ -> failwith "Can't happen by construction"
@@ -244,40 +245,40 @@ module Make (M : MONAD) = struct
     let declare_ is_notification name _ ty (rpc : T.rpcfn) =
       let open Result in
       let rec inner : type b. (string * Rpc.t) list option * Rpc.t list -> b fn -> b =
-       fun (named, unnamed) -> function
-        | Function (t, f) ->
-          let cur_named =
-            match named with
-            | Some l -> l
-            | None -> []
-          in
-          fun v ->
-            (match t.Param.name with
-            | Some n ->
-              (match t.Param.typedef.Rpc.Types.ty, v with
-              | Rpc.Types.Option ty, Some v' ->
-                let marshalled = Rpcmarshal.marshal ty v' in
-                inner (Some ((n, marshalled) :: cur_named), unnamed) f
-              | Rpc.Types.Option _ty, None -> inner (Some cur_named, unnamed) f
-              | ty, v ->
-                let marshalled = Rpcmarshal.marshal ty v in
-                inner (Some ((n, marshalled) :: cur_named), unnamed) f)
-            | None ->
-              let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
-              inner (named, marshalled :: unnamed) f)
-        | NoArgsFunction f -> fun () -> inner (named, unnamed) f
-        | Returning (t, e) ->
-          let wire_name = get_wire_name !description name in
-          let args =
-            match named with
-            | None -> List.rev unnamed
-            | Some l -> Rpc.Dict l :: List.rev unnamed
-          in
-          let call' = Rpc.call wire_name args in
-          let call = { call' with is_notification } in
-          let rpc = T.put (rpc call) in
-          let res =
-            T.bind rpc (fun r ->
+        fun (named, unnamed) -> function
+          | Function (t, f) ->
+            let cur_named =
+              match named with
+              | Some l -> l
+              | None -> []
+            in
+            fun v ->
+              (match t.Param.name with
+               | Some n ->
+                 (match t.Param.typedef.Rpc.Types.ty, v with
+                  | Rpc.Types.Option ty, Some v' ->
+                    let marshalled = Rpcmarshal.marshal ty v' in
+                    inner (Some ((n, marshalled) :: cur_named), unnamed) f
+                  | Rpc.Types.Option _ty, None -> inner (Some cur_named, unnamed) f
+                  | ty, v ->
+                    let marshalled = Rpcmarshal.marshal ty v in
+                    inner (Some ((n, marshalled) :: cur_named), unnamed) f)
+               | None ->
+                 let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
+                 inner (named, marshalled :: unnamed) f)
+          | NoArgsFunction f -> fun () -> inner (named, unnamed) f
+          | Returning (t, e) ->
+            let wire_name = get_wire_name !description name in
+            let args =
+              match named with
+              | None -> List.rev unnamed
+              | Some l -> Rpc.Dict l :: List.rev unnamed
+            in
+            let call' = Rpc.call wire_name args in
+            let call = { call' with is_notification } in
+            let rpc = T.put (rpc call) in
+            let res =
+              T.bind rpc (fun r ->
                 if r.Rpc.success
                 then (
                   match
@@ -290,8 +291,8 @@ module Make (M : MONAD) = struct
                   | Ok x ->
                     if !strict then M.fail (e.Error.raiser x) else M.return (Error x)
                   | Error (`Msg x) -> M.fail (MarshalError x)))
-          in
-          res
+            in
+            res
       in
       inner (None, []) ty
 
@@ -309,11 +310,11 @@ module Make (M : MONAD) = struct
     let unbound_impls =
       Hashtbl.fold
         (fun key fn acc ->
-          match fn with
-          | None -> key :: acc
-          | Some fn ->
-            Hashtbl.add impl key fn;
-            acc)
+           match fn with
+           | None -> key :: acc
+           | Some fn ->
+             Hashtbl.add impl key fn;
+             acc)
         hashtbl
         []
     in
@@ -372,27 +373,27 @@ module Make (M : MONAD) = struct
     let rec has_named_args : type a. a fn -> bool = function
       | Function (t, f) ->
         (match t.Param.name with
-        | Some _ -> true
-        | None -> has_named_args f)
+         | Some _ -> true
+         | None -> has_named_args f)
       | NoArgsFunction f -> has_named_args f
       | Returning (_, _) -> false
 
 
     let declare_ : bool -> string -> string list -> 'a fn -> 'a res =
-     fun is_notification name _ ty ->
+      fun is_notification name _ ty ->
       let ( >>= ) = M.bind in
       (* We do not know the wire name yet as the description may still be unset *)
       Hashtbl.add funcs name None;
       fun impl ->
-        ((* Sanity check: ensure the description has been set before we declare
+        (* Sanity check: ensure the description has been set before we declare
              any RPCs. Here we raise an exception immediately and let everything fail. *)
-        match !description with
-        | Some _ -> ()
-        | None -> raise NoDescription);
+        (match !description with
+         | Some _ -> ()
+         | None -> raise NoDescription);
         let rpcfn =
           let has_named = has_named_args ty in
           let rec inner : type a. a fn -> a -> T.rpcfn =
-           fun f impl call ->
+            fun f impl call ->
             match f with
             | Function (t, f) ->
               let is_opt =
@@ -401,26 +402,24 @@ module Make (M : MONAD) = struct
                 | _ -> false
               in
               (match get_arg call has_named t.Param.name is_opt with
-              | Result.Ok (x, y) -> M.return (x, y)
-              | Result.Error (`Msg m) -> M.fail (MarshalError m))
+               | Result.Ok (x, y) -> M.return (x, y)
+               | Result.Error (`Msg m) -> M.fail (MarshalError m))
               >>= fun (arg_rpc, call') ->
               let z = Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty arg_rpc in
               (match z with
-              | Result.Ok arg -> inner f (impl arg) call'
-              | Result.Error (`Msg m) -> M.fail (MarshalError m))
+               | Result.Ok arg -> inner f (impl arg) call'
+               | Result.Error (`Msg m) -> M.fail (MarshalError m))
             | NoArgsFunction f -> inner f (impl ()) call
             | Returning (t, e) ->
               T.bind impl (function
-                  | Result.Ok x ->
-                    let res =
-                      Rpc.success (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty x)
-                    in
-                    M.return { res with is_notification }
-                  | Result.Error y ->
-                    let res =
-                      Rpc.failure (Rpcmarshal.marshal e.Error.def.Rpc.Types.ty y)
-                    in
-                    M.return { res with is_notification })
+                | Result.Ok x ->
+                  let res =
+                    Rpc.success (Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty x)
+                  in
+                  M.return { res with is_notification }
+                | Result.Error y ->
+                  let res = Rpc.failure (Rpcmarshal.marshal e.Error.def.Rpc.Types.ty y) in
+                  M.return { res with is_notification })
               |> T.get
           in
           inner ty impl
@@ -490,7 +489,7 @@ module DefaultError = struct
     ; tcontents = Basic String
     ; tpreview =
         (function
-        | InternalError s -> Some s)
+          | InternalError s -> Some s)
     ; treview = (fun s -> InternalError s)
     }
 
@@ -524,11 +523,11 @@ module DefaultError = struct
     { def
     ; raiser =
         (function
-        | InternalError s -> raise (InternalErrorExn s))
+          | InternalError s -> raise (InternalErrorExn s))
     ; matcher =
         (function
-        | InternalErrorExn s -> Some (InternalError s)
-        | _ -> None)
+          | InternalErrorExn s -> Some (InternalError s)
+          | _ -> None)
     }
 end
 
@@ -538,8 +537,8 @@ module Exn = struct
   type server_implementation = (string, rpcfn option) Hashtbl.t
 
   module GenClient (R : sig
-    val rpc : rpcfn
-  end) =
+      val rpc : rpcfn
+    end) =
   struct
     type implementation = client_implementation
     type ('a, 'b) comp = 'a
@@ -579,47 +578,47 @@ module Exn = struct
     let declare_ is_notification name _ ty =
       let open Result in
       let rec inner : type b. (string * Rpc.t) list option * Rpc.t list -> b fn -> b =
-       fun (named, unnamed) -> function
-        | Function (t, f) ->
-          let cur_named =
-            match named with
-            | Some l -> l
-            | None -> []
-          in
-          fun v ->
-            (match t.Param.name with
-            | Some n ->
-              (match t.Param.typedef.Rpc.Types.ty, v with
-              | Rpc.Types.Option ty, Some v' ->
-                let marshalled = Rpcmarshal.marshal ty v' in
-                inner (Some ((n, marshalled) :: cur_named), unnamed) f
-              | Rpc.Types.Option _ty, None -> inner (Some cur_named, unnamed) f
-              | ty, v ->
-                let marshalled = Rpcmarshal.marshal ty v in
-                inner (Some ((n, marshalled) :: cur_named), unnamed) f)
-            | None ->
-              let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
-              inner (named, marshalled :: unnamed) f)
-        | NoArgsFunction f -> fun () -> inner (named, unnamed) f
-        | Returning (t, e) ->
-          let wire_name = get_wire_name !description name in
-          let args =
-            match named with
-            | None -> List.rev unnamed
-            | Some l -> Rpc.Dict l :: List.rev unnamed
-          in
-          let call' = Rpc.call wire_name args in
-          let call = { call' with is_notification } in
-          let r = R.rpc call in
-          if r.Rpc.success
-          then (
-            match Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty r.Rpc.contents with
-            | Ok x -> x
-            | Error (`Msg x) -> raise (MarshalError x))
-          else (
-            match Rpcmarshal.unmarshal e.Error.def.Rpc.Types.ty r.Rpc.contents with
-            | Ok x -> raise (e.Error.raiser x)
-            | Error (`Msg x) -> raise (MarshalError x))
+        fun (named, unnamed) -> function
+          | Function (t, f) ->
+            let cur_named =
+              match named with
+              | Some l -> l
+              | None -> []
+            in
+            fun v ->
+              (match t.Param.name with
+               | Some n ->
+                 (match t.Param.typedef.Rpc.Types.ty, v with
+                  | Rpc.Types.Option ty, Some v' ->
+                    let marshalled = Rpcmarshal.marshal ty v' in
+                    inner (Some ((n, marshalled) :: cur_named), unnamed) f
+                  | Rpc.Types.Option _ty, None -> inner (Some cur_named, unnamed) f
+                  | ty, v ->
+                    let marshalled = Rpcmarshal.marshal ty v in
+                    inner (Some ((n, marshalled) :: cur_named), unnamed) f)
+               | None ->
+                 let marshalled = Rpcmarshal.marshal t.Param.typedef.Rpc.Types.ty v in
+                 inner (named, marshalled :: unnamed) f)
+          | NoArgsFunction f -> fun () -> inner (named, unnamed) f
+          | Returning (t, e) ->
+            let wire_name = get_wire_name !description name in
+            let args =
+              match named with
+              | None -> List.rev unnamed
+              | Some l -> Rpc.Dict l :: List.rev unnamed
+            in
+            let call' = Rpc.call wire_name args in
+            let call = { call' with is_notification } in
+            let r = R.rpc call in
+            if r.Rpc.success
+            then (
+              match Rpcmarshal.unmarshal t.Param.typedef.Rpc.Types.ty r.Rpc.contents with
+              | Ok x -> x
+              | Error (`Msg x) -> raise (MarshalError x))
+            else (
+              match Rpcmarshal.unmarshal e.Error.def.Rpc.Types.ty r.Rpc.contents with
+              | Ok x -> raise (e.Error.raiser x)
+              | Error (`Msg x) -> raise (MarshalError x))
       in
       inner (None, []) ty
 
@@ -633,11 +632,11 @@ module Exn = struct
     let unbound_impls =
       Hashtbl.fold
         (fun key fn acc ->
-          match fn with
-          | None -> key :: acc
-          | Some fn ->
-            Hashtbl.add impl key fn;
-            acc)
+           match fn with
+           | None -> key :: acc
+           | Some fn ->
+             Hashtbl.add impl key fn;
+             acc)
         hashtbl
         []
     in
@@ -704,26 +703,26 @@ module Exn = struct
     let rec has_named_args : type a. a fn -> bool = function
       | Function (t, f) ->
         (match t.Param.name with
-        | Some _ -> true
-        | None -> has_named_args f)
+         | Some _ -> true
+         | None -> has_named_args f)
       | NoArgsFunction f -> has_named_args f
       | Returning (_, _) -> false
 
 
     let declare_ : bool -> string -> string list -> 'a fn -> 'a res =
-     fun is_notification name _ ty ->
+      fun is_notification name _ ty ->
       (* We do not know the wire name yet as the description may still be unset *)
       Hashtbl.add funcs name None;
       fun impl ->
-        ((* Sanity check: ensure the description has been set before we declare
+        (* Sanity check: ensure the description has been set before we declare
              any RPCs *)
-        match !description with
-        | Some _ -> ()
-        | None -> raise NoDescription);
+        (match !description with
+         | Some _ -> ()
+         | None -> raise NoDescription);
         let rpcfn =
           let has_named = has_named_args ty in
           let rec inner : type a. a fn -> a -> Rpc.call -> Rpc.response =
-           fun f impl call ->
+            fun f impl call ->
             try
               match f with
               | Function (t, f) ->
@@ -754,9 +753,9 @@ module Exn = struct
             | e ->
               let (BoxedError error_ty) = get_error_ty f in
               (match error_ty.Error.matcher e with
-              | Some y ->
-                Rpc.failure (Rpcmarshal.marshal error_ty.Error.def.Rpc.Types.ty y)
-              | None -> raise e)
+               | Some y ->
+                 Rpc.failure (Rpcmarshal.marshal error_ty.Error.def.Rpc.Types.ty y)
+               | None -> raise e)
           in
           inner ty impl
         in

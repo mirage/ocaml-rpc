@@ -169,8 +169,8 @@ module Typ_of = struct
                   (match
                      getter.Rpc.Types.field_get [%e estring fld.rpc_name] [%e fld.typ]
                    with
-                  | Result.Ok _ as y -> y
-                  | Result.Error _ -> Result.Ok [%e d])
+                   | Result.Ok _ as y -> y
+                   | Result.Error _ -> Result.Ok [%e d])
                   >>= fun [%p pvar fld.value_name] -> [%e expr]]
               | None ->
                 [%expr
@@ -207,7 +207,7 @@ module Typ_of = struct
                               let open Rresult.R in
                               [%e construct_record])
                         }
-                         : [%t core_type] Rpc.Types.structure)])
+                        : [%t core_type] Rpc.Types.structure)])
           ]
       | Ptype_abstract, None -> failwith "Unhandled"
       | Ptype_open, _ -> failwith "Unhandled"
@@ -276,7 +276,7 @@ module Typ_of = struct
                    ~guard:None
                    ~rhs:[%expr Some [%e expr]]
                ]
-              @ vpreview_default)
+               @ vpreview_default)
           in
           let vreview = pexp_function_cases [ case ~lhs:pat' ~guard:None ~rhs:constr ] in
           let variant =
@@ -318,9 +318,9 @@ module Typ_of = struct
               ~guard:None
               ~rhs:
                 (match default_case with
-                | None ->
-                  [%expr Rresult.R.error_msg (Printf.sprintf "Unknown tag '%s'" s)]
-                | Some d -> [%expr Result.Ok [%e d]])
+                 | None ->
+                   [%expr Rresult.R.error_msg (Printf.sprintf "Unknown tag '%s'" s)]
+                 | Some d -> [%expr Result.Ok [%e d]])
           ]
         in
         let version = Attribute.get Attrs.td_version type_decl in
@@ -342,7 +342,7 @@ module Typ_of = struct
                       ; Rpc.Types.vversion = [%e expr_of_option ~loc version]
                       ; Rpc.Types.vconstructor = [%e vconstructor]
                       }
-                       : [%t core_type] Rpc.Types.variant)])
+                      : [%t core_type] Rpc.Types.variant)])
         ]
     in
     let doc =

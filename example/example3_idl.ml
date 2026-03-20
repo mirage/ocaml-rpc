@@ -25,7 +25,7 @@ type uri = string [@@deriving rpcty]
 type blocklist =
   { blocksize : int [@version 1, 1, 0] (** Size of the individual blocks *)
   ; ranges : (int64 * int64) list
-        (** list of block ranges, where a range is
+    (** list of block ranges, where a range is
                                           a (start,length) pair,measured in units
                                           of [blocksize] *)
   }
@@ -37,11 +37,11 @@ type error =
 [@@deriving rpcty]
 
 module E = Idl.Error.Make (struct
-  type t = error
+    type t = error
 
-  let t = error
-  let internal_error_of e = Some (UnexpectedError (Printexc.to_string e))
-end)
+    let t = error
+    let internal_error_of e = Some (UnexpectedError (Printexc.to_string e))
+  end)
 
 let error = E.error
 
@@ -201,15 +201,15 @@ module Data (R : RPC) = struct
 
   type operation =
     | Copy of uri * uri
-        [@doc
-          [ "Copy (src,dst) represents an on-going copy operation from"
-          ; "the [src] URI to the [dst] URI"
-          ]]
+    [@doc
+      [ "Copy (src,dst) represents an on-going copy operation from"
+      ; "the [src] URI to the [dst] URI"
+      ]]
     | Mirror of uri * uri
-        [@doc
-          [ "Mirror (src,dst) represents an on-going mirror operation"
-          ; "from the [src] URI to the [dst] URI"
-          ]]
+    [@doc
+      [ "Mirror (src,dst) represents an on-going mirror operation"
+      ; "from the [src] URI to the [dst] URI"
+      ]]
   [@@deriving rpcty]
   [@@doc [ "The primary key for referring to a long-running operation" ]]
 

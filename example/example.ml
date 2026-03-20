@@ -63,7 +63,6 @@ end
    lwt or async, you should also use their specific IO functions
    including the print functions. *)
 module M = Idl.IdM (* You can easily put ExnM here and the code would stay unchanged *)
-
 module MyIdl = Idl.Make (M)
 
 (* By passing in different modules to the `MyAPI` functor above, we can
@@ -80,11 +79,11 @@ let _ =
      implementations. The return type is expected to be Result.t, hence
      the use of `ok` here. *)
   Server.api1 (fun i s ->
-      Printf.printf "Received '%d' and '%s': returning '%b'\n" i s true;
-      ErrM.return true);
+    Printf.printf "Received '%d' and '%s': returning '%b'\n" i s true;
+    ErrM.return true);
   Server.api2 (fun s ->
-      Printf.printf "Received '%s': returning '%d'\n%!" s 56;
-      ErrM.return 56);
+    Printf.printf "Received '%s': returning '%d'\n%!" s 56;
+    ErrM.return 56);
   (* The Server module has a 'server' function that can be used to service RPC
      requests by passing the funcs value created above. *)
   let rpc_fn = server Server.implementation in
@@ -220,7 +219,7 @@ let errors : (string, exnt) Rpc.Types.tag =
     ; tcontents = Basic String
     ; tpreview =
         (function
-        | Errors s -> Some s)
+          | Errors s -> Some s)
     ; treview = (fun s -> Errors s)
     }
 

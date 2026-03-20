@@ -9,7 +9,7 @@ let string_of_err = function
 
 
 let check_marshal_unmarshal : 'a * Rpc.t * ('a -> Rpc.t) * (Rpc.t -> 'a) -> unit =
- fun (x, r, marshal, unmarshal) ->
+  fun (x, r, marshal, unmarshal) ->
   let r' = marshal x in
   let x' = unmarshal r in
   Alcotest.check (Testable.from_rpc_of_t marshal) "same after marshal->unmarshal" x x';
@@ -17,7 +17,7 @@ let check_marshal_unmarshal : 'a * Rpc.t * ('a -> Rpc.t) * (Rpc.t -> 'a) -> unit
 
 
 let check_unmarshal_error : (Rpc.t -> 'a) -> Rpc.t -> unit =
- fun unmarshal t ->
+  fun unmarshal t ->
   let u =
     try Some (unmarshal t) with
     | _e -> None
@@ -28,7 +28,7 @@ let check_unmarshal_error : (Rpc.t -> 'a) -> Rpc.t -> unit =
 
 
 let check_unmarshal_ok : 'a Alcotest.testable -> (Rpc.t -> 'a) -> 'a -> Rpc.t -> unit =
- fun testable unmarshal x r ->
+  fun testable unmarshal x r ->
   let x' = unmarshal r in
   Alcotest.check testable "unmarshaller returned expected value" x x'
 

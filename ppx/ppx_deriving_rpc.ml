@@ -67,7 +67,7 @@ module Of_rpc = struct
           | Rpc.Dict l ->
             Rpcmarshal.tailrec_map
               (fun (k, v) ->
-                [%e expr_of_typ ~loc typ1] (Rpc.String k), [%e expr_of_typ ~loc typ2] v)
+                 [%e expr_of_typ ~loc typ1] (Rpc.String k), [%e expr_of_typ ~loc typ2] v)
               l
           | y ->
             failwith
@@ -150,58 +150,56 @@ module Of_rpc = struct
       let tag_cases =
         tags
         |> ListLabels.rev_map ~f:(fun field ->
-               let { prf_desc; _ } = field in
-               match prf_desc with
-               | Rtag (label, true, []) ->
-                 let label' = String.lowercase_ascii label.txt in
-                 let name =
-                   match Attribute.get Attrs.rt_name field with
-                   | Some s -> s
-                   | None -> label'
-                 in
-                 case
-                   ~lhs:[%pat? Rpc.String [%p pstring name]]
-                   ~guard:None
-                   ~rhs:(pexp_variant label.txt None)
-               | Rtag (label, false, [ { ptyp_desc = Ptyp_tuple typs; _ } ]) ->
-                 let label' = String.lowercase_ascii label.txt in
-                 let name =
-                   match Attribute.get Attrs.rt_name field with
-                   | Some s -> s
-                   | None -> label'
-                 in
-                 let exprs =
-                   ListLabels.mapi
-                     ~f:(fun i typ ->
-                       [%expr [%e expr_of_typ ~loc typ] [%e evar (argn i)]])
-                     typs
-                 in
-                 case
-                   ~lhs:
-                     [%pat?
-                       Rpc.Enum
-                         [ Rpc.String [%p pstring name]
-                         ; Rpc.Enum
-                             [%p
-                               plist (ListLabels.mapi ~f:(fun i _ -> pvar (argn i)) typs)]
-                         ]]
-                   ~guard:None
-                   ~rhs:(pexp_variant label.txt (Some (pexp_tuple exprs)))
-               | Rtag (label, false, [ typ ]) ->
-                 let label' = String.lowercase_ascii label.txt in
-                 let name =
-                   match Attribute.get Attrs.rt_name field with
-                   | Some s -> s
-                   | None -> label'
-                 in
-                 case
-                   ~lhs:[%pat? Rpc.Enum [ Rpc.String [%p pstring name]; y ]]
-                   ~guard:None
-                   ~rhs:
-                     [%expr
-                       [%e expr_of_typ ~loc typ] y
-                       |> fun x -> [%e pexp_variant label.txt (Some [%expr x])]]
-               | _ -> failwith "Cannot derive variant case")
+          let { prf_desc; _ } = field in
+          match prf_desc with
+          | Rtag (label, true, []) ->
+            let label' = String.lowercase_ascii label.txt in
+            let name =
+              match Attribute.get Attrs.rt_name field with
+              | Some s -> s
+              | None -> label'
+            in
+            case
+              ~lhs:[%pat? Rpc.String [%p pstring name]]
+              ~guard:None
+              ~rhs:(pexp_variant label.txt None)
+          | Rtag (label, false, [ { ptyp_desc = Ptyp_tuple typs; _ } ]) ->
+            let label' = String.lowercase_ascii label.txt in
+            let name =
+              match Attribute.get Attrs.rt_name field with
+              | Some s -> s
+              | None -> label'
+            in
+            let exprs =
+              ListLabels.mapi
+                ~f:(fun i typ -> [%expr [%e expr_of_typ ~loc typ] [%e evar (argn i)]])
+                typs
+            in
+            case
+              ~lhs:
+                [%pat?
+                  Rpc.Enum
+                    [ Rpc.String [%p pstring name]
+                    ; Rpc.Enum
+                        [%p plist (ListLabels.mapi ~f:(fun i _ -> pvar (argn i)) typs)]
+                    ]]
+              ~guard:None
+              ~rhs:(pexp_variant label.txt (Some (pexp_tuple exprs)))
+          | Rtag (label, false, [ typ ]) ->
+            let label' = String.lowercase_ascii label.txt in
+            let name =
+              match Attribute.get Attrs.rt_name field with
+              | Some s -> s
+              | None -> label'
+            in
+            case
+              ~lhs:[%pat? Rpc.Enum [ Rpc.String [%p pstring name]; y ]]
+              ~guard:None
+              ~rhs:
+                [%expr
+                  [%e expr_of_typ ~loc typ] y
+                  |> fun x -> [%e pexp_variant label.txt (Some [%expr x])]]
+          | _ -> failwith "Cannot derive variant case")
         |> List.rev
       and inherits_case =
         (*let toplevel_typ = typ in*)
@@ -256,8 +254,8 @@ module Of_rpc = struct
               let key =
                 String.lowercase_ascii
                   (match Attribute.get Attrs.key label with
-                  | Some s -> s
-                  | None -> name)
+                   | Some s -> s
+                   | None -> name)
               in
               let pat = pvar (argn i) in
               let expr' = evar (argn i) in
@@ -275,8 +273,8 @@ module Of_rpc = struct
                 [%e
                   pexp_record
                     (labels
-                    |> ListLabels.mapi ~f:(fun i { pld_name = { txt = name; _ }; _ } ->
-                           { txt = Lident name; loc }, evar (argn i)))
+                     |> ListLabels.mapi ~f:(fun i { pld_name = { txt = name; _ }; _ } ->
+                       { txt = Lident name; loc }, evar (argn i)))
                     None]]
             (labels |> ListLabels.mapi ~f:(fun i label -> i, label))
         in
@@ -285,38 +283,38 @@ module Of_rpc = struct
         in
         let cases =
           (labels
-          |> ListLabels.mapi ~f:(fun i label ->
-                 let { pld_name = { txt = name; _ }; pld_type; _ } = label in
-                 let key =
-                   String.lowercase_ascii
-                     (match Attribute.get Attrs.key label with
-                     | Some s -> s
-                     | None -> name)
-                 in
-                 let thunks =
-                   labels
-                   |> ListLabels.mapi ~f:(fun j _ ->
-                          if i = j
-                          then
-                            [%expr
-                              Some
-                                [%e
-                                  pexp_apply
-                                    (expr_of_typ ~loc pld_type)
-                                    [ Nolabel, wrap_opt pld_type (evar "x") ]]]
-                          else evar (argn j))
-                 in
-                 case
-                   ~lhs:[%pat? ([%p pstring key], x) :: xs]
-                   ~guard:None
-                   ~rhs:[%expr loop xs [%e pexp_tuple thunks]]))
+           |> ListLabels.mapi ~f:(fun i label ->
+             let { pld_name = { txt = name; _ }; pld_type; _ } = label in
+             let key =
+               String.lowercase_ascii
+                 (match Attribute.get Attrs.key label with
+                  | Some s -> s
+                  | None -> name)
+             in
+             let thunks =
+               labels
+               |> ListLabels.mapi ~f:(fun j _ ->
+                 if i = j
+                 then
+                   [%expr
+                     Some
+                       [%e
+                         pexp_apply
+                           (expr_of_typ ~loc pld_type)
+                           [ Nolabel, wrap_opt pld_type (evar "x") ]]]
+                 else evar (argn j))
+             in
+             case
+               ~lhs:[%pat? ([%p pstring key], x) :: xs]
+               ~guard:None
+               ~rhs:[%expr loop xs [%e pexp_tuple thunks]]))
           @ [ case ~lhs:[%pat? []] ~guard:None ~rhs:record
             ; case ~lhs:[%pat? _ :: xs] ~guard:None ~rhs:[%expr loop xs _state]
             ]
         and thunks =
           labels
           |> ListLabels.rev_map ~f:(fun { pld_name = _; pld_type; _ } ->
-                 if is_option pld_type then [%expr Some None] else [%expr None])
+            if is_option pld_type then [%expr Some None] else [%expr None])
           |> List.rev
         in
         [%expr
@@ -328,9 +326,11 @@ module Of_rpc = struct
                 @@ ListLabels.rev_map ~f:(fun (k, v) -> String.lowercase_ascii k, v) dict
               in
               let rec loop
-                  xs
-                  ([%p ppat_tuple (ListLabels.mapi ~f:(fun i _ -> pvar (argn i)) labels)]
-                  as _state)
+                        xs
+                        ([%p
+                           ppat_tuple
+                             (ListLabels.mapi ~f:(fun i _ -> pvar (argn i)) labels)] as
+                         _state)
                 =
                 [%e pexp_match [%expr xs] cases]
               in
@@ -344,40 +344,37 @@ module Of_rpc = struct
         let cases =
           constrs
           |> ListLabels.rev_map ~f:(fun constr ->
-                 let { pcd_name = { txt = name; _ }; pcd_args; _ } = constr in
-                 let name' =
-                   match Attribute.get Attrs.constr_name constr with
-                   | Some n -> n
-                   | None -> name
-                 in
-                 match pcd_args with
-                 | Pcstr_tuple typs ->
-                   let subpattern =
-                     ListLabels.mapi ~f:(fun i _ -> pvar (argn i)) typs |> plist
-                   in
-                   let exprs =
-                     ListLabels.mapi
-                       ~f:(fun i typ ->
-                         [%expr [%e expr_of_typ ~loc typ] [%e evar (argn i)]])
-                       typs
-                   in
-                   let contents =
-                     match exprs with
-                     | [] -> None
-                     | [ x ] -> Some x
-                     | xs -> Some (pexp_tuple xs)
-                   in
-                   let rpc_of = pexp_construct { txt = Lident name; loc } contents in
-                   let main =
-                     [%pat? Rpc.String [%p pstring (String.lowercase_ascii name')]]
-                   in
-                   let pattern =
-                     match typs with
-                     | [] -> main
-                     | _ -> [%pat? Rpc.Enum ([%p main] :: [%p subpattern])]
-                   in
-                   case ~lhs:pattern ~guard:None ~rhs:rpc_of
-                 | Pcstr_record _ -> failwith "record variants are not supported")
+            let { pcd_name = { txt = name; _ }; pcd_args; _ } = constr in
+            let name' =
+              match Attribute.get Attrs.constr_name constr with
+              | Some n -> n
+              | None -> name
+            in
+            match pcd_args with
+            | Pcstr_tuple typs ->
+              let subpattern =
+                ListLabels.mapi ~f:(fun i _ -> pvar (argn i)) typs |> plist
+              in
+              let exprs =
+                ListLabels.mapi
+                  ~f:(fun i typ -> [%expr [%e expr_of_typ ~loc typ] [%e evar (argn i)]])
+                  typs
+              in
+              let contents =
+                match exprs with
+                | [] -> None
+                | [ x ] -> Some x
+                | xs -> Some (pexp_tuple xs)
+              in
+              let rpc_of = pexp_construct { txt = Lident name; loc } contents in
+              let main = [%pat? Rpc.String [%p pstring (String.lowercase_ascii name')]] in
+              let pattern =
+                match typs with
+                | [] -> main
+                | _ -> [%pat? Rpc.Enum ([%p main] :: [%p subpattern])]
+              in
+              case ~lhs:pattern ~guard:None ~rhs:rpc_of
+            | Pcstr_record _ -> failwith "record variants are not supported")
           |> List.rev
         in
         let default =
@@ -422,21 +419,22 @@ module Rpc_of = struct
         if [%e is_dict loc typ] || [%e is_string loc typ1]
         then
           fun l ->
-          Rpc.Dict
-            (List.rev
-            @@ ListLabels.rev_map
-                 ~f:(fun (k, v) ->
-                   ( Rpc.string_of_rpc ([%e expr_of_typ ~loc typ1] k)
-                   , [%e expr_of_typ ~loc typ2] v ))
-                 l)
+            Rpc.Dict
+              (List.rev
+               @@ ListLabels.rev_map
+                    ~f:(fun (k, v) ->
+                      ( Rpc.string_of_rpc ([%e expr_of_typ ~loc typ1] k)
+                      , [%e expr_of_typ ~loc typ2] v ))
+                    l)
         else
           fun l ->
-          Rpc.Enum
-            (List.rev
-            @@ ListLabels.rev_map
-                 ~f:(fun (a, b) ->
-                   Rpc.Enum [ [%e expr_of_typ ~loc typ1] a; [%e expr_of_typ ~loc typ2] b ])
-                 l)]
+            Rpc.Enum
+              (List.rev
+               @@ ListLabels.rev_map
+                    ~f:(fun (a, b) ->
+                      Rpc.Enum
+                        [ [%e expr_of_typ ~loc typ1] a; [%e expr_of_typ ~loc typ2] b ])
+                    l)]
     | [%type: [%t? typ] list] ->
       [%expr fun l -> Rpc.Enum (Rpcmarshal.tailrec_map [%e expr_of_typ ~loc typ] l)]
     | [%type: [%t? typ] array] ->
@@ -469,59 +467,56 @@ module Rpc_of = struct
       let cases =
         fields
         |> ListLabels.rev_map ~f:(fun field ->
-               let { prf_desc; _ } = field in
-               match prf_desc with
-               | Rtag (label, true, []) ->
-                 let l =
-                   match Attribute.get Attrs.rt_name field with
-                   | Some x -> x
-                   | None -> label.txt
-                 in
-                 case
-                   ~lhs:(ppat_variant label.txt None)
-                   ~guard:None
-                   ~rhs:[%expr Rpc.String [%e estring l]]
-               | Rtag (label, false, [ { ptyp_desc = Ptyp_tuple typs; _ } ]) ->
-                 let l =
-                   elist
-                     (ListLabels.mapi
-                        ~f:(fun i typ ->
-                          pexp_apply (expr_of_typ ~loc typ) [ Nolabel, evar (argn i) ])
-                        typs)
-                 in
-                 let label =
-                   match Attribute.get Attrs.rt_name field with
-                   | Some x -> x
-                   | None -> label.txt
-                 in
-                 case
-                   ~lhs:
-                     (ppat_variant
-                        label
-                        (ppat_tuple_opt
-                           (ListLabels.mapi ~f:(fun i _ -> pvar (argn i)) typs)))
-                   ~guard:None
-                   ~rhs:
-                     [%expr Rpc.Enum [ Rpc.String [%e estring label]; Rpc.Enum [%e l] ]]
-               | Rtag (label, false, [ typ ]) ->
-                 let label =
-                   match Attribute.get Attrs.rt_name field with
-                   | Some x -> x
-                   | None -> label.txt
-                 in
-                 case
-                   ~lhs:(ppat_variant label (Some [%pat? x]))
-                   ~guard:None
-                   ~rhs:
-                     [%expr
-                       Rpc.Enum
-                         [ Rpc.String [%e estring label]; [%e expr_of_typ ~loc typ] x ]]
-               | Rinherit ({ ptyp_desc = Ptyp_constr (tname, _); _ } as typ) ->
-                 case
-                   ~lhs:[%pat? [%p ppat_type tname] as x]
-                   ~guard:None
-                   ~rhs:[%expr [%e expr_of_typ ~loc typ] x]
-               | _ -> failwith "cannot be derived for")
+          let { prf_desc; _ } = field in
+          match prf_desc with
+          | Rtag (label, true, []) ->
+            let l =
+              match Attribute.get Attrs.rt_name field with
+              | Some x -> x
+              | None -> label.txt
+            in
+            case
+              ~lhs:(ppat_variant label.txt None)
+              ~guard:None
+              ~rhs:[%expr Rpc.String [%e estring l]]
+          | Rtag (label, false, [ { ptyp_desc = Ptyp_tuple typs; _ } ]) ->
+            let l =
+              elist
+                (ListLabels.mapi
+                   ~f:(fun i typ ->
+                     pexp_apply (expr_of_typ ~loc typ) [ Nolabel, evar (argn i) ])
+                   typs)
+            in
+            let label =
+              match Attribute.get Attrs.rt_name field with
+              | Some x -> x
+              | None -> label.txt
+            in
+            case
+              ~lhs:
+                (ppat_variant
+                   label
+                   (ppat_tuple_opt (ListLabels.mapi ~f:(fun i _ -> pvar (argn i)) typs)))
+              ~guard:None
+              ~rhs:[%expr Rpc.Enum [ Rpc.String [%e estring label]; Rpc.Enum [%e l] ]]
+          | Rtag (label, false, [ typ ]) ->
+            let label =
+              match Attribute.get Attrs.rt_name field with
+              | Some x -> x
+              | None -> label.txt
+            in
+            case
+              ~lhs:(ppat_variant label (Some [%pat? x]))
+              ~guard:None
+              ~rhs:
+                [%expr
+                  Rpc.Enum [ Rpc.String [%e estring label]; [%e expr_of_typ ~loc typ] x ]]
+          | Rinherit ({ ptyp_desc = Ptyp_constr (tname, _); _ } as typ) ->
+            case
+              ~lhs:[%pat? [%p ppat_type tname] as x]
+              ~guard:None
+              ~rhs:[%expr [%e expr_of_typ ~loc typ] x]
+          | _ -> failwith "cannot be derived for")
         |> List.rev
       in
       pexp_function_cases cases
@@ -549,35 +544,35 @@ module Rpc_of = struct
         let fields =
           labels
           |> ListLabels.rev_map ~f:(fun label ->
-                 let { pld_name = { txt = name; _ }; pld_type; _ } = label in
-                 let rpc_name =
-                   match Attribute.get Attrs.key label with
-                   | Some s -> s
-                   | None -> name
-                 in
-                 if is_option pld_type
-                 then
-                   [%expr
-                     let rpc =
-                       [%e expr_of_typ ~loc pld_type]
-                         [%e pexp_field (evar "x") { txt = Lident name; loc }]
-                     in
-                     match rpc with
-                     | Rpc.Enum [ x ] -> Some ([%e estring rpc_name], x)
-                     | Rpc.Enum [] -> None
-                     | _ ->
-                       failwith
-                         (Printf.sprintf
-                            "Programmer error when marshalling %s.%s"
-                            [%e estring type_decl.ptype_name.txt]
-                            [%e estring name])]
-                   (* Should never happen *)
-                 else
-                   [%expr
-                     Some
-                       ( [%e estring rpc_name]
-                       , [%e expr_of_typ ~loc pld_type]
-                           [%e pexp_field (evar "x") { txt = Lident name; loc }] )])
+            let { pld_name = { txt = name; _ }; pld_type; _ } = label in
+            let rpc_name =
+              match Attribute.get Attrs.key label with
+              | Some s -> s
+              | None -> name
+            in
+            if is_option pld_type
+            then
+              [%expr
+                let rpc =
+                  [%e expr_of_typ ~loc pld_type]
+                    [%e pexp_field (evar "x") { txt = Lident name; loc }]
+                in
+                match rpc with
+                | Rpc.Enum [ x ] -> Some ([%e estring rpc_name], x)
+                | Rpc.Enum [] -> None
+                | _ ->
+                  failwith
+                    (Printf.sprintf
+                       "Programmer error when marshalling %s.%s"
+                       [%e estring type_decl.ptype_name.txt]
+                       [%e estring name])]
+              (* Should never happen *)
+            else
+              [%expr
+                Some
+                  ( [%e estring rpc_name]
+                  , [%e expr_of_typ ~loc pld_type]
+                      [%e pexp_field (evar "x") { txt = Lident name; loc }] )])
           |> List.rev
         in
         [%expr
@@ -596,35 +591,31 @@ module Rpc_of = struct
         let cases =
           constrs
           |> ListLabels.rev_map ~f:(fun constr ->
-                 let { pcd_name = { txt = name; _ }; pcd_args; _ } = constr in
-                 match pcd_args with
-                 | Pcstr_tuple typs ->
-                   let args =
-                     ListLabels.mapi
-                       ~f:(fun i typ ->
-                         [%expr [%e expr_of_typ ~loc typ] [%e evar (argn i)]])
-                       typs
-                   in
-                   let argsl = elist args in
-                   let pattern = ListLabels.mapi ~f:(fun i _ -> pvar (argn i)) typs in
-                   let name' =
-                     match Attribute.get Attrs.constr_name constr with
-                     | Some s -> s
-                     | None -> name
-                   in
-                   let rpc_of =
-                     match args with
-                     | [] -> [%expr Rpc.String [%e estring name']]
-                     | _ -> [%expr Rpc.Enum (Rpc.String [%e estring name'] :: [%e argsl])]
-                   in
-                   case
-                     ~lhs:
-                       (ppat_construct
-                          { txt = Lident name; loc }
-                          (ppat_tuple_opt pattern))
-                     ~guard:None
-                     ~rhs:rpc_of
-                 | Pcstr_record _ -> failwith "record variants are not supported")
+            let { pcd_name = { txt = name; _ }; pcd_args; _ } = constr in
+            match pcd_args with
+            | Pcstr_tuple typs ->
+              let args =
+                ListLabels.mapi
+                  ~f:(fun i typ -> [%expr [%e expr_of_typ ~loc typ] [%e evar (argn i)]])
+                  typs
+              in
+              let argsl = elist args in
+              let pattern = ListLabels.mapi ~f:(fun i _ -> pvar (argn i)) typs in
+              let name' =
+                match Attribute.get Attrs.constr_name constr with
+                | Some s -> s
+                | None -> name
+              in
+              let rpc_of =
+                match args with
+                | [] -> [%expr Rpc.String [%e estring name']]
+                | _ -> [%expr Rpc.Enum (Rpc.String [%e estring name'] :: [%e argsl])]
+              in
+              case
+                ~lhs:(ppat_construct { txt = Lident name; loc } (ppat_tuple_opt pattern))
+                ~guard:None
+                ~rhs:rpc_of
+            | Pcstr_record _ -> failwith "record variants are not supported")
           |> List.rev
         in
         pexp_function_cases cases

@@ -33,18 +33,18 @@ end
 module GenClient () : sig
   include
     Idl.RPC
-      with type implementation = client_implementation
-       and type 'a res = T.rpcfn -> 'a
-       and type ('a, 'b) comp = ('a, 'b) T.resultb
+    with type implementation = client_implementation
+     and type 'a res = T.rpcfn -> 'a
+     and type ('a, 'b) comp = ('a, 'b) T.resultb
 end
 
 (** Server generator similar to {!Idl.GenServer} that uses [Async.Deferred]. *)
 module GenServer () : sig
   include
     Idl.RPC
-      with type implementation = server_implementation
-       and type 'a res = 'a -> unit
-       and type ('a, 'b) comp = ('a, 'b) T.resultb
+    with type implementation = server_implementation
+     and type 'a res = 'a -> unit
+     and type ('a, 'b) comp = ('a, 'b) T.resultb
 end
 
 val server : server_implementation -> T.rpcfn
