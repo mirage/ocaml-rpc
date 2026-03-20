@@ -29,17 +29,17 @@ let do_rpc enc dec content_type ~url call =
     (Js_of_ocaml.Js.string "Content-type")
     (Js_of_ocaml.Js.string content_type);
   req##.onreadystatechange
-    := Js_of_ocaml.Js.wrap_callback (fun _ ->
-           match req##.readyState with
-           | Js_of_ocaml.XmlHttpRequest.DONE ->
-             Lwt.wakeup
-               w
-               (dec
-                  (Js_of_ocaml.Js.Opt.case
-                     req##.responseText
-                     (fun () -> "")
-                     (fun x -> Js_of_ocaml.Js.to_string x)))
-           | _ -> ());
+  := Js_of_ocaml.Js.wrap_callback (fun _ ->
+       match req##.readyState with
+       | Js_of_ocaml.XmlHttpRequest.DONE ->
+         Lwt.wakeup
+           w
+           (dec
+              (Js_of_ocaml.Js.Opt.case
+                 req##.responseText
+                 (fun () -> "")
+                 (fun x -> Js_of_ocaml.Js.to_string x)))
+       | _ -> ());
   req##send (Js_of_ocaml.Js.some (Js_of_ocaml.Js.string contents));
   Lwt.on_cancel res (fun () -> req##abort);
   res

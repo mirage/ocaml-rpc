@@ -14,7 +14,7 @@ module Method = struct
     }
 
   let rec find_inputs : type a. a outerfn -> Idl.Param.boxed list =
-   fun m ->
+    fun m ->
     match m with
     | Function (x, y) -> Idl.Param.Boxed x :: find_inputs y
     | NoArgsFunction y -> find_inputs y
@@ -22,7 +22,7 @@ module Method = struct
 
 
   let rec find_output : type a. a outerfn -> Idl.Param.boxed =
-   fun m ->
+    fun m ->
     match m with
     | Returning (x, _y) -> Idl.Param.Boxed x
     | NoArgsFunction y -> find_output y
@@ -30,7 +30,7 @@ module Method = struct
 
 
   let rec find_errors : type a. a outerfn -> Rpc.Types.boxed_def =
-   fun m ->
+    fun m ->
     match m with
     | Returning (_x, y) -> Rpc.Types.BoxedDef y.Idl.Error.def
     | NoArgsFunction y -> find_errors y
@@ -48,21 +48,21 @@ module Interface = struct
     }
 
   let prepend_arg : t -> 'a Idl.Param.t -> t =
-   fun interface param ->
+    fun interface param ->
     let prepend : type b. b outerfn -> ('a -> b) outerfn =
-     fun arg -> Function (param, arg)
+      fun arg -> Function (param, arg)
     in
     { interface with
       methods =
         List.map
           (fun (BoxedFunction m) ->
-            BoxedFunction
-              Method.
-                { name = m.name
-                ; description = m.description
-                ; ty = prepend m.ty
-                ; is_notification = m.is_notification
-                })
+             BoxedFunction
+               Method.
+                 { name = m.name
+                 ; description = m.description
+                 ; ty = prepend m.ty
+                 ; is_notification = m.is_notification
+                 })
           interface.methods
     }
 
@@ -73,7 +73,7 @@ module Interface = struct
 
 
   let all_types : t -> boxed_def list =
-   fun i ->
+    fun i ->
     let all_inputs =
       List.map
         (function
@@ -157,7 +157,7 @@ module Gen () = struct
 
 
   let declare : string -> string list -> 'a fn -> 'a res =
-   fun name description ty -> declare_ false name description ty
+    fun name description ty -> declare_ false name description ty
 
 
   let declare_notification name description ty = declare_ true name description ty

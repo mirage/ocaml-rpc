@@ -89,9 +89,7 @@ module Types = struct
     }
 
   and 'a boxed_field = BoxedField : ('a, 's) field -> 's boxed_field
-
-  and field_getter =
-    { field_get : 'a. string -> 'a typ -> ('a, Rresult.R.msg) Result.t }
+  and field_getter = { field_get : 'a. string -> 'a typ -> ('a, Rresult.R.msg) Result.t }
 
   and 'a structure =
     { sname : string
@@ -110,7 +108,6 @@ module Types = struct
     }
 
   and 'a boxed_tag = BoxedTag : ('a, 's) tag -> 's boxed_tag
-
   and tag_getter = { tget : 'a. 'a typ -> ('a, Rresult.R.msg) Result.t }
 
   and 'a variant =
@@ -260,7 +257,7 @@ module ResultUnmarshallers = struct
     | Int i -> R.ok i
     | String s ->
       (try R.ok (Int64.of_string s) with
-      | _ -> R.error_msg (Printf.sprintf "Expected int64, got string '%s'" s))
+       | _ -> R.error_msg (Printf.sprintf "Expected int64, got string '%s'" s))
     | x -> R.error_msg (Printf.sprintf "Expected int64, got '%s'" (to_string x))
 
 
@@ -268,7 +265,7 @@ module ResultUnmarshallers = struct
     | Int i -> R.ok (Int64.to_int32 i)
     | String s ->
       (try R.ok (Int32.of_string s) with
-      | _ -> R.error_msg (Printf.sprintf "Expected int32, got string '%s'" s))
+       | _ -> R.error_msg (Printf.sprintf "Expected int32, got string '%s'" s))
     | x -> R.error_msg (Printf.sprintf "Expected int32, got '%s'" (to_string x))
 
 
@@ -276,7 +273,7 @@ module ResultUnmarshallers = struct
     | Int i -> R.ok (Int64.to_int i)
     | String s ->
       (try R.ok (int_of_string s) with
-      | _ -> R.error_msg (Printf.sprintf "Expected int, got string '%s'" s))
+       | _ -> R.error_msg (Printf.sprintf "Expected int, got string '%s'" s))
     | x -> R.error_msg (Printf.sprintf "Expected int, got '%s'" (to_string x))
 
 
@@ -291,7 +288,7 @@ module ResultUnmarshallers = struct
     | Int32 i -> R.ok (Int32.to_float i)
     | String s ->
       (try R.ok (float_of_string s) with
-      | _ -> R.error_msg (Printf.sprintf "Expected float, got string '%s'" s))
+       | _ -> R.error_msg (Printf.sprintf "Expected float, got string '%s'" s))
     | x -> R.error_msg (Printf.sprintf "Expected float, got '%s'" (to_string x))
 
 
@@ -317,9 +314,9 @@ module ResultUnmarshallers = struct
 
   let char_of_rpc x =
     Rresult.R.bind (int_of_rpc x) (fun x ->
-        if x < 0 || x > 255
-        then R.error_msg (Printf.sprintf "Char out of range (%d)" x)
-        else R.ok (Char.chr x))
+      if x < 0 || x > 255
+      then R.error_msg (Printf.sprintf "Char out of range (%d)" x)
+      else R.ok (Char.chr x))
 
 
   let t_of_rpc t = R.ok t
@@ -331,7 +328,7 @@ let struct_extend rpc default_rpc =
     Dict
       (List.fold_left
          (fun real (f, default) ->
-           if List.mem_assoc f real then real else (f, default) :: real)
+            if List.mem_assoc f real then real else (f, default) :: real)
          real
          default_fields)
   | _, _ -> rpc

@@ -7,13 +7,13 @@ let rec canonicalise r =
   | Rpc.Dict x ->
     Rpc.Dict
       (List.sort (fun (s1, _) (s2, _) -> compare s1 s2) x
-      |> List.map (fun (x, y) -> x, canonicalise y))
+       |> List.map (fun (x, y) -> x, canonicalise y))
   | Rpc.Enum ys -> Rpc.Enum (List.map canonicalise ys)
   | x -> x
 
 
 let check_marshal_unmarshal : 'a * Rpc.t * 'a Rpc.Types.typ -> unit =
- fun (x, r, typ) ->
+  fun (x, r, typ) ->
   let r' = Rpcmarshal.marshal typ x in
   let x' = Rpcmarshal.unmarshal typ r in
   Alcotest.check
@@ -29,14 +29,14 @@ let check_marshal_unmarshal : 'a * Rpc.t * 'a Rpc.Types.typ -> unit =
 
 
 let check_unmarshal_error : 'a Rpc.Types.typ -> Rpc.t -> unit =
- fun typ t ->
+  fun typ t ->
   match Rpcmarshal.unmarshal typ t with
   | Result.Ok _ -> Alcotest.fail "unmarshal error expected"
   | Result.Error e -> Printf.printf "%s\n" (string_of_err e)
 
 
 let check_unmarshal_ok : 'a -> 'a Rpc.Types.typ -> Rpc.t -> unit =
- fun x typ r ->
+  fun x typ r ->
   Alcotest.check
     (Testable.unmarshal_res typ)
     "correctly unmarshalled"
@@ -329,12 +329,12 @@ let fakegen () =
       (function
         | a ->
           (function
-          | Result.Ok b ->
-            assert (a = b);
-            ()
-          | Result.Error (`Msg err) ->
-            print_endline err;
-            assert false))
+            | Result.Ok b ->
+              assert (a = b);
+              ()
+            | Result.Error (`Msg err) ->
+              print_endline err;
+              assert false))
       fake
       test2
   in
@@ -382,7 +382,7 @@ let test_multiple_args () =
   check_marshal_unmarshal
     ( x
     , (let open Rpc in
-      Enum [ String "Banana"; Enum [ Enum [ String "foo" ]; Enum [ String "hello" ] ] ])
+       Enum [ String "Banana"; Enum [ Enum [ String "foo" ]; Enum [ String "hello" ] ] ])
     , typ_of_varianttest )
 
 
@@ -399,7 +399,7 @@ let test_multiple_args4 () =
   check_marshal_unmarshal
     ( x
     , (let open Rpc in
-      Enum [ String "Beetroot"; Enum [ Int 6L; String "seven"; Float 8.0; Bool true ] ])
+       Enum [ String "Beetroot"; Enum [ Int 6L; String "seven"; Float 8.0; Bool true ] ])
     , typ_of_varianttest )
 
 
@@ -414,7 +414,7 @@ let test_variantclash () =
   check_marshal_unmarshal
     ( x
     , (let open Rpc in
-      Enum [ String "String"; String "hello" ])
+       Enum [ String "String"; String "hello" ])
     , typ_of_variantclash )
 
 

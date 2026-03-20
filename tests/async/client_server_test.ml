@@ -33,9 +33,11 @@ let test_call_async () =
     Client.mul rpc 2 3
     >>>= with_ok (fun n -> Alcotest.(check int) "mul" 6 n |> return)
     >>= fun () ->
-    Client.div rpc 8 2 >>>= with_ok (fun n -> Alcotest.(check int) "div" 4 n |> return)
+    Client.div rpc 8 2
+    >>>= with_ok (fun n -> Alcotest.(check int) "div" 4 n |> return)
     >>= fun () ->
-    Client.ping rpc () >>>= with_ok (fun n -> Alcotest.(check string) "ping" "OK" n |> return)
+    Client.ping rpc ()
+    >>>= with_ok (fun n -> Alcotest.(check string) "ping" "OK" n |> return)
   in
   Thread_safe.block_on_async_exn run
 

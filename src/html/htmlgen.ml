@@ -57,8 +57,8 @@ let of_args args =
                 "code"
                 (string
                    (match name with
-                   | Some s -> s
-                   | None -> "unnamed")))
+                    | Some s -> s
+                    | None -> "unnamed")))
          ; tag "td" (string direction)
          ; tag "td" (tag "code" (list ty))
          ; tag "td" (string (String.concat " " description))
@@ -105,12 +105,12 @@ let sidebar x =
        ~cls:"menu vertical"
        (list
           ([ tag "li" ~cls:"docs-nav-title" (string "types") ]
-          @ List.map of_typedef x.Interfaces.type_decls
-          @ List.concat (List.map of_interface x.Interfaces.interfaces))))
+           @ List.map of_typedef x.Interfaces.type_decls
+           @ List.concat (List.map of_interface x.Interfaces.interfaces))))
 
 
 let of_struct_fields : 'a boxed_field list -> Cow.Html.t =
- fun all ->
+  fun all ->
   let of_row (BoxedField f) =
     let ty = html_of_t f.field in
     tag
@@ -140,7 +140,7 @@ let of_struct_fields : 'a boxed_field list -> Cow.Html.t =
 
 (* TODO: Unify with the above! *)
 let of_variant_tags : 'a boxed_tag list -> Cow.Html.t =
- fun all ->
+  fun all ->
   let of_row (BoxedTag t) =
     let ty = html_of_t t.tcontents in
     tag
@@ -220,7 +220,7 @@ let tabs_of _ i m =
              ~id:id_defn
              (of_args
                 (List.map (fun p -> true, p) Method.(find_inputs m.ty)
-                @ [ (false, Method.(find_output m.ty)) ]))
+                 @ [ (false, Method.(find_output m.ty)) ]))
          ; div
              ~cls:"tabs-panel"
              ~id:id_ocaml
@@ -235,14 +235,14 @@ let tabs_of _ i m =
                     ~cls:"prettyprint lang-py"
                     (string
                        (Pythongen.example_stub_user i (BoxedFunction m)
-                       |> Pythongen.string_of_ts))
+                        |> Pythongen.string_of_ts))
                 ; h4 (string "Server:")
                 ; tag
                     "pre"
                     ~cls:"prettyprint lang-py"
                     (string
                        (Pythongen.example_skeleton_user i (BoxedFunction m)
-                       |> Pythongen.string_of_ts))
+                        |> Pythongen.string_of_ts))
                 ])
          ])
   ]
@@ -308,8 +308,8 @@ let of_interfaces x =
            ~cls:"large-9 medium-9 columns"
            (list
               ([ h1 (string name); p (string (String.concat " " description)) ]
-              @ List.concat (List.map (of_type_decl None) x.Interfaces.type_decls)
-              @ List.concat (List.map (of_interface x) x.Interfaces.interfaces)))
+               @ List.concat (List.map (of_type_decl None) x.Interfaces.type_decls)
+               @ List.concat (List.map (of_interface x) x.Interfaces.interfaces)))
        ])
 
 

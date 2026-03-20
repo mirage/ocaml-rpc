@@ -26,24 +26,23 @@ let binary_rpc path (call : Rpc.call) : Rpc.response =
   in
   response
 
+
 let server_cmd =
   let doc = "Start the server" in
-  Cmdliner.(Cmd.v
-   (Cmd.info "server" ~doc )
-   (Term.(const Example2_server.start_server $ const ())))
+  Cmdliner.(
+    Cmd.v (Cmd.info "server" ~doc) Term.(const Example2_server.start_server $ const ()))
 
 
 let cli () =
-  let default =
-    Cmdliner.Term.(ret (const (fun _ -> `Help (`Pager, None)) $ const ()))
-  in
+  let default = Cmdliner.Term.(ret (const (fun _ -> `Help (`Pager, None)) $ const ())) in
   let info = Cmdliner.Cmd.info "cli" ~version:"1.6.1" ~doc:"a cli for an API" in
   let rpc = binary_rpc Example2_idl.sockpath in
-  let cmds = server_cmd
+  let cmds =
+    server_cmd
     :: List.map
          (fun t ->
-           let term, info = t rpc in
-           Cmdliner.(Cmd.v info Term.(term $ const ())))
+            let term, info = t rpc in
+            Cmdliner.(Cmd.v info Term.(term $ const ())))
          (Cmds.implementation ())
   in
   let cmd = Cmdliner.Cmd.group ~default info cmds in

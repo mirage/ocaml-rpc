@@ -83,9 +83,7 @@ module Types : sig
     }
 
   and 'a boxed_field = BoxedField : ('a, 's) field -> 's boxed_field
-
-  and field_getter =
-    { field_get : 'a. string -> 'a typ -> ('a, Rresult.R.msg) Result.t }
+  and field_getter = { field_get : 'a. string -> 'a typ -> ('a, Rresult.R.msg) Result.t }
 
   and 'a structure =
     { sname : string
@@ -105,7 +103,6 @@ module Types : sig
     }
 
   and 'a boxed_tag = BoxedTag : ('a, 's) tag -> 's boxed_tag
-
   and tag_getter = { tget : 'a. 'a typ -> ('a, Rresult.R.msg) Result.t }
 
   and 'a variant =

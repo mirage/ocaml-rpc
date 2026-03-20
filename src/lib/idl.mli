@@ -190,9 +190,9 @@ module Make (M : MONAD) : sig
   module GenClient () : sig
     include
       RPC
-        with type implementation = client_implementation
-         and type 'a res = T.rpcfn -> 'a
-         and type ('a, 'b) comp = ('a, 'b) T.resultb
+      with type implementation = client_implementation
+       and type 'a res = T.rpcfn -> 'a
+       and type ('a, 'b) comp = ('a, 'b) T.resultb
 
     (** This is irreversible, once used the client will fail in case of Rpc
         failure ([M.fail]) instead of returning the error
@@ -215,9 +215,9 @@ module Make (M : MONAD) : sig
   module GenServer () : sig
     include
       RPC
-        with type implementation = server_implementation
-         and type 'a res = 'a -> unit
-         and type ('a, 'b) comp = ('a, 'b) T.resultb
+      with type implementation = server_implementation
+       and type 'a res = 'a -> unit
+       and type ('a, 'b) comp = ('a, 'b) T.resultb
   end
 
   val server : server_implementation -> T.rpcfn
@@ -259,16 +259,16 @@ module Exn : sig
       declarations. See the {!GenClient} module for a description of
       the common entries. *)
   module GenClient (R : sig
-    val rpc : rpcfn
-  end) : sig
+      val rpc : rpcfn
+    end) : sig
     include
       RPC
-        with type implementation = client_implementation
-         and type 'a res = 'a
-        (* Our functions never return the error parameter, hence the following
+      with type implementation = client_implementation
+       and type 'a res = 'a
+      (* Our functions never return the error parameter, hence the following
           type declaration drops the `b parameter. Instead, the exception declared
           in the Error.t passed in the `returning` function below will be raised.  *)
-         and type ('a, 'b) comp = 'a
+       and type ('a, 'b) comp = 'a
   end
 
   type server_implementation
@@ -281,8 +281,8 @@ module Exn : sig
   module GenServer () : sig
     include
       RPC
-        with type implementation = server_implementation
-         and type 'a res = 'a -> unit
-         and type ('a, 'b) comp = 'a
+      with type implementation = server_implementation
+       and type 'a res = 'a -> unit
+       and type ('a, 'b) comp = 'a
   end
 end

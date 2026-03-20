@@ -52,8 +52,8 @@ module API (R : Idl.RPC) = struct
           ; rpc_of = (fun t -> Rpc.String (AbstractMod.string_of t))
           ; of_rpc =
               (function
-              | Rpc.String s -> Ok (AbstractMod.of_string s)
-              | _ -> Error (`Msg "bad"))
+                | Rpc.String s -> Ok (AbstractMod.of_string s)
+                | _ -> Error (`Msg "bad"))
           }
     ; description = [ "Abstract" ]
     }
@@ -102,12 +102,12 @@ module ImplM = struct
 
   let rpc2 opt v =
     (match opt with
-    | Some s -> Printf.printf "Got an optional string: %s\n" s
-    | None -> ());
+     | Some s -> Printf.printf "Got an optional string: %s\n" s
+     | None -> ());
     (match v with
-    | Foo ss -> Printf.printf "Foo: [%s]\n" (String.concat ";" ss)
-    | Bar -> Printf.printf "Bar\n"
-    | Baz f -> Printf.printf "Baz: %f\n" f);
+     | Foo ss -> Printf.printf "Foo: [%s]\n" (String.concat ";" ss)
+     | Bar -> Printf.printf "Bar\n"
+     | Baz f -> Printf.printf "Baz: %f\n" f);
     return ()
 
 
@@ -156,19 +156,19 @@ let main () =
     checked_bind
       (Client.rpc1 rpc "test argument" 5)
       (fun result ->
-        Printf.printf
-          "result.result='%s', metadata=[%s]\n"
-          result.result
-          (String.concat
-             ";"
-             (List.map (fun (a, b) -> Printf.sprintf "(%d,%d)" a b) result.metadata))
-        |> return)
+         Printf.printf
+           "result.result='%s', metadata=[%s]\n"
+           result.result
+           (String.concat
+              ";"
+              (List.map (fun (a, b) -> Printf.sprintf "(%d,%d)" a b) result.metadata))
+         |> return)
       (fun err ->
-        Printf.printf
-          "Error: %s\n"
-          (match err with
-          | Idl.DefaultError.InternalError s -> s)
-        |> return)
+         Printf.printf
+           "Error: %s\n"
+           (match err with
+            | Idl.DefaultError.InternalError s -> s)
+         |> return)
     >>= fun () ->
     Client.rpc2 rpc None (Foo [ "hello"; "there" ])
     >>= fun _ ->
