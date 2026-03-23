@@ -26,6 +26,14 @@
  (wrapped false))
 
 (library
+ (name csexprpc)
+ (public_name rpclib.csexp)
+ (modules csexprpc)
+ (libraries rpclib.core csexp sexplib0)
+ (lint
+  (pps ppx_sexp_conv)))
+
+(library
  (name cmdlinergen)
  (public_name rpclib.cmdliner)
  (modules cmdlinergen)
