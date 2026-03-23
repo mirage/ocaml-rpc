@@ -10,7 +10,7 @@ license: "ISC"
 depends: [
   "ocaml"
   "alcotest" {with-test}
-  "dune" {>= "2.0.0"}
+  "dune" {>= "3.10.0"}
   "rpclib" {=version}
   "lwt" {>= "3.0.0"}
   "alcotest-lwt" {with-test}

@@ -1,6 +1,7 @@
 open Ppxlib
 open Ast_builder.Default
 open Common
+open! Ppx_compat
 
 let argn = Printf.sprintf "a%d"
 let rpc_of str = "rpc_of_" ^ str
@@ -229,15 +230,7 @@ module Of_rpc = struct
             | y -> y
           in
           [%e pexp_match [%expr rpc'] (tag_cases @ [ inherits_case ])]]
-    | { ptyp_desc = Ptyp_any; _ } -> failwith "Ptyp_any not handled"
-    | { ptyp_desc = Ptyp_poly (_, _); _ } -> failwith "Ptyp_poly not handled"
-    | { ptyp_desc = Ptyp_extension _; _ } -> failwith "Ptyp_extension not handled"
-    | { ptyp_desc = Ptyp_arrow (_, _, _); _ } -> failwith "Ptyp_arrow not handled"
-    | { ptyp_desc = Ptyp_object (_, _); _ } -> failwith "Ptyp_object not handled"
-    | { ptyp_desc = Ptyp_alias (_, _); _ } -> failwith "Ptyp_alias not handled"
-    | { ptyp_desc = Ptyp_class (_, _); _ } -> failwith "Ptyp_class not handled"
-    | { ptyp_desc = Ptyp_package _; _ } -> failwith "Ptyp_package not handled"
-    | { ptyp_desc = Ptyp_open _; _ } -> failwith "Ptyp_open not handled"
+    | unsupported -> failwith ("core type not handled: " ^ string_of_core_type unsupported)
 
 
   let str_of_type ~loc type_decl =
@@ -520,16 +513,8 @@ module Rpc_of = struct
         |> List.rev
       in
       pexp_function_cases cases
-    | { ptyp_desc = Ptyp_any; _ } -> failwith "Ptyp_any not handled"
     | { ptyp_desc = Ptyp_var name; _ } -> [%expr [%e evar ("poly_" ^ name)]]
-    | { ptyp_desc = Ptyp_poly (_, _); _ } -> failwith "Ptyp_poly not handled"
-    | { ptyp_desc = Ptyp_extension _; _ } -> failwith "Ptyp_extension not handled"
-    | { ptyp_desc = Ptyp_arrow (_, _, _); _ } -> failwith "Ptyp_arrow not handled"
-    | { ptyp_desc = Ptyp_object (_, _); _ } -> failwith "Ptyp_object not handled"
-    | { ptyp_desc = Ptyp_alias (_, _); _ } -> failwith "Ptyp_alias not handled"
-    | { ptyp_desc = Ptyp_class (_, _); _ } -> failwith "Ptyp_class not handled"
-    | { ptyp_desc = Ptyp_package _; _ } -> failwith "Ptyp_package not handled"
-    | { ptyp_desc = Ptyp_open _; _ } -> failwith "Ptyp_open not handled"
+    | unsupported -> failwith ("core type not handled: " ^ string_of_core_type unsupported)
 
 
   (*  | _ -> failwith "Error"*)

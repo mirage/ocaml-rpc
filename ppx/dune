@@ -6,5 +6,19 @@
  (ppx_runtime_libraries rpclib)
  (libraries ppxlib)
  (preprocess
-  (pps ppxlib.metaquot ppxlib.runner))
+  (pps ppxlib.metaquot))
  (wrapped false))
+
+(rule
+ (package ppx_deriving_rpc)
+ (enabled_if
+  (< %{version:ppxlib} 0.36))
+ (action
+  (copy# ppx_compat.lt36.ml ppx_compat.ml)))
+
+(rule
+ (package ppx_deriving_rpc)
+ (enabled_if
+  (>= %{version:ppxlib} 0.36))
+ (action
+  (copy# ppx_compat.gte36.ml ppx_compat.ml)))
