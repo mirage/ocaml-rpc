@@ -1,0 +1,3 @@
+(library
+ (name bench_lib)
+ (libraries fmt rpclib.core))

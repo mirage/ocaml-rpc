@@ -1,0 +1,3 @@
+(executable
+ (name rpc_stats)
+ (libraries bench_lib rpclib.xml))
