@@ -258,7 +258,7 @@ module Exn : sig
   (** This module generates exception-raising Client modules from RPC
       declarations. See the {!GenClient} module for a description of
       the common entries. *)
-  module GenClient (R : sig
+  module GenClient (_ : sig
       val rpc : rpcfn
     end) : sig
     include

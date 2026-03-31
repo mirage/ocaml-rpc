@@ -9,7 +9,7 @@ bug-reports: "https://github.com/mirage/ocaml-rpc/issues"
 license: "ISC"
 depends: [
   "ocaml"
-  "dune" {>= "2.0.0"}
+  "dune" {>= "3.10.0"}
   "rpclib" {=version}
   "js_of_ocaml" {>= "3.5.0"}
   "js_of_ocaml-ppx" {>= "3.5.0"}
