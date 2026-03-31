@@ -40,7 +40,7 @@ type version =
 let rec rpc_to_json t =
   match t with
   | Int i -> `Intlit (Int64.to_string i)
-  | Int32 i -> `Int (Int32.to_int i)
+  | Int32 i -> `Intlit (Int32.to_string i)
   | Bool b -> `Bool b
   | Float r -> `Float r
   | String s -> `String s
