@@ -1,4 +1,4 @@
-## 10.1.0 (Mar 2026)
+## 10.2.0 (Mar 2026)
 * Improve compatibility with 4.14 (ppxlib 0.35)
 * Idl.declare now checks for duplicate argument names
 * Fixes unmarshaling datetime and base64 for JSONRPC
