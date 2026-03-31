@@ -1,3 +1,10 @@
+## 10.1.0 (Mar 2026)
+* Improve compatibility with 4.14 (ppxlib 0.35)
+* Idl.declare now checks for duplicate argument names
+* Fixes unmarshaling datetime and base64 for JSONRPC
+* Avoid int32_of_rpc failing for Int32
+* roundtrip tests for XMLRPC, JSONRPC and Rpc.t
+
 ## 10.0.0 (Dec 2025)
 * Removed deprecated rpc virtual package
 * Python3 support
