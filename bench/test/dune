@@ -1,0 +1,4 @@
+(tests
+ (names test_histogram test_distribution test_bucket_index)
+ (libraries qcheck-alcotest alcotest bench_lib)
+ (package rpclib-bench))

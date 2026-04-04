@@ -1,0 +1,5 @@
+(executables
+ (public_names rpclib_bench rpclib_bench_map)
+ (libraries bench_lib cmdliner rpclib.xml rpclib.json bechamel bechamel-notty
+   notty.unix fmt sexplib)
+ (package rpclib-bench))
