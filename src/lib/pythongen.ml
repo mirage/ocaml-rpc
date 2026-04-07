@@ -192,7 +192,10 @@ let rec typecheck : type a. a typ -> string -> t list =
       match f.field with
       | Option ty ->
         [ Line (sprintf "if '%s' in %s:" f.fname v); Block (typecheck ty member) ]
-      | _ -> typecheck f.field member
+      | _ -> (match f.fdefault with
+         | None -> typecheck f.field member
+         | Some _ -> [ Line (sprintf "if '%s' in %s:" f.fname v); Block (typecheck f.field member) ]
+      )
     in
     List.concat (List.rev (List.map check (List.rev fields)))
   | Variant { variants; _ } ->

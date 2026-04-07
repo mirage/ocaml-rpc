@@ -50,9 +50,6 @@ let rec rpc_to_json t =
   | Enum a -> `List (Rpcmarshal.tailrec_map rpc_to_json a)
   | Dict a -> `Assoc (Rpcmarshal.tailrec_map (fun (k, v) -> k, rpc_to_json v) a)
 
-
-exception JsonToRpcError of Y.t
-
 let rec json_to_rpc t =
   match t with
   | `Intlit i -> Int (Int64.of_string i)
@@ -65,8 +62,6 @@ let rec json_to_rpc t =
   | `Null -> Null
   | `List a -> Enum (Rpcmarshal.tailrec_map json_to_rpc a)
   | `Assoc a -> Dict (Rpcmarshal.tailrec_map (fun (k, v) -> k, json_to_rpc v) a)
-  | unsupported -> raise (JsonToRpcError unsupported)
-
 
 let to_fct t f = rpc_to_json t |> Y.to_string |> f
 let to_buffer t buf = to_fct t (fun s -> Buffer.add_string buf s)
@@ -209,10 +204,6 @@ let version_id_and_call_of_string_option str =
   with
   | Missing_field field ->
     raise (Malformed_method_request (Printf.sprintf "Required field %s is missing" field))
-  | JsonToRpcError json ->
-    raise
-      (Malformed_method_request (Printf.sprintf "Unable to parse %s" (Y.to_string json)))
-
 
 let version_id_and_call_of_string s =
   let version, id_, call = version_id_and_call_of_string_option s in
@@ -291,11 +282,6 @@ let get_response extractor str =
   with
   | Missing_field field ->
     raise (Malformed_method_response (Printf.sprintf "<%s was not found>" field))
-  | JsonToRpcError json ->
-    raise
-      (Malformed_method_response
-         (Printf.sprintf "<unable to parse %s>" (Y.to_string json)))
-
 
 let response_of_string ?(strict = true) str = get_response (of_string ~strict) str
 
